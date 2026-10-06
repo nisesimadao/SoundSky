@@ -1,0 +1,55 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { JSDOM } from 'jsdom';
+import { build } from 'esbuild';
+const result=await build({entryPoints:['src/content.ts'],bundle:true,format:'iife',loader:{'.css':'text'},write:false});
+const code=result.outputFiles[0].text;
+test('reopening and reinjecting retain one instance and release every observer/timer on teardown',async t=>{
+ const dom=new JSDOM('<!doctype html><body><main id="content">Page</main><div class="playControls"><div class="playControls__elements"><button class="playControl"></button><div class="playbackSoundBadge"><a class="playbackSoundBadge__titleLink" href="/a/b" title="Song"></a><a class="playbackSoundBadge__lightLink" href="/a" title="Artist"></a><a class="playbackSoundBadge__showQueue"></a></div></div><div class="queue"><button class="queue__hide"></button><div class="queue__scrollableInner"></div></div></div></body>',{url:'https://soundcloud.com',runScripts:'outside-only',pretendToBeVisual:true});
+ const w=dom.window;const observers=new Set();const timeouts=new Set();const intervals=new Set();
+ t.after(()=>dom.window.close());
+ Object.defineProperty(w.HTMLElement.prototype,'inert',{get(){return this.hasAttribute('inert');},set(value){this.toggleAttribute('inert',!!value);},configurable:true});
+ const originalTimeout=w.setTimeout.bind(w),originalClearTimeout=w.clearTimeout.bind(w);
+ w.setTimeout=(fn,delay,...args)=>{const id=originalTimeout(()=>{timeouts.delete(id);fn(...args);},delay);timeouts.add(id);return id;};
+ w.clearTimeout=id=>{timeouts.delete(id);originalClearTimeout(id);};
+ const originalInterval=w.setInterval.bind(w),originalClearInterval=w.clearInterval.bind(w);
+ w.setInterval=(...args)=>{const id=originalInterval(...args);intervals.add(id);return id;};w.clearInterval=id=>{intervals.delete(id);originalClearInterval(id);};
+ w.requestAnimationFrame=fn=>w.setTimeout(()=>fn(w.performance.now()),16);w.cancelAnimationFrame=id=>w.clearTimeout(id);
+ w.ResizeObserver=class{constructor(callback){this.callback=callback;}observe(){observers.add(this);}disconnect(){observers.delete(this);}};
+ const ActualMutationObserver=w.MutationObserver;
+ w.MutationObserver=class extends ActualMutationObserver{observe(...args){observers.add(this);super.observe(...args);}disconnect(){observers.delete(this);super.disconnect();}};
+ w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
+ w.HTMLCanvasElement.prototype.getContext=()=>null;
+ const queue=w.document.querySelector('.queue');w.document.querySelector('.playbackSoundBadge__showQueue').onclick=()=>queue.classList.toggle('m-visible');w.document.querySelector('.queue__hide').onclick=()=>queue.classList.remove('m-visible');
+ w.localStorage.setItem('soundsky:settings',JSON.stringify({pulseSensitivity:5,materialSpeed:4}));
+ w.eval(code);assert.equal(w.document.querySelectorAll('soundsky-player').length,1);assert.equal(intervals.size,1);
+ const ui=w.document.querySelector('soundsky-player').shadowRoot;
+ assert.equal(ui.querySelector('[data-setting="heatSpeed"]').value,'4');
+ for(let i=0;i<12;i++){w.__soundsky.toggle();w.__soundsky.toggle();}
+ w.__soundsky.toggle();
+ ui.querySelector('[data-command="settings"]').click();
+ ui.querySelector('#tab-light').click();
+ assert.equal(ui.querySelector('#settings-light').hidden,false);
+ ui.querySelector('#tab-light').dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,composed:true}));
+ assert.equal(ui.querySelector('#settings-background').hidden,false);
+ assert.equal(ui.querySelector('#settings-light').hidden,true);
+ assert.equal(ui.activeElement,ui.querySelector('#tab-background'));
+ ui.querySelector('#tab-background').dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true,composed:true}));
+ assert.equal(ui.querySelector('.settings-panel').hidden,true);
+ assert.equal(ui.activeElement,ui.querySelector('[data-command="settings"]'));
+ const openObservers=observers.size;w.eval(code);assert.equal(w.document.querySelectorAll('soundsky-player').length,1);assert.equal(observers.size,openObservers);assert.equal(intervals.size,2);
+ w.__soundsky.toggle();assert.equal(queue.hasAttribute('data-soundsky-queue'),false);assert.equal(queue.classList.contains('m-visible'),false);assert.equal(w.document.getElementById('content').inert,false);assert.equal(w.document.documentElement.style.overflow,'');
+ // Simulate the new isolated world created by reloading an extension.
+ delete w.__soundsky;w.eval(code);assert.equal(w.document.querySelectorAll('soundsky-player').length,1);assert.equal(w.document.querySelectorAll('[data-soundsky-native-style]').length,1);assert.equal(intervals.size,1);
+ // Page teardown can remove parts or all of the shadow UI before pagehide.
+ const errors=[];w.addEventListener('error',event=>errors.push(event.error));
+ w.__soundsky.toggle();
+ w.document.querySelector('soundsky-player').shadowRoot.querySelector('.settings-panel').remove();
+ w.dispatchEvent(new w.PageTransitionEvent('pagehide',{persisted:true}));
+ assert.deepEqual(errors,[]);assert.equal(w.document.documentElement.style.overflow,'');
+ w.__soundsky.toggle();
+ w.document.querySelector('soundsky-player').shadowRoot.replaceChildren();
+ w.dispatchEvent(new w.PageTransitionEvent('pagehide',{persisted:false}));
+ assert.deepEqual(errors,[]);assert.equal(w.document.getElementById('content').inert,false);
+ w.__soundsky.destroy();await new Promise(r=>setTimeout(r,120));assert.equal(observers.size,0);assert.equal(intervals.size,0);assert.equal(timeouts.size,0);assert.equal(w.document.querySelectorAll('soundsky-player').length,0);assert.equal(w.document.querySelectorAll('[data-soundsky-native-style]').length,0);dom.window.close();
+});
