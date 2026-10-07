@@ -10,7 +10,7 @@ import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.2.20';
+const VERSION = '1.2.21';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
@@ -110,7 +110,7 @@ class SoundSky {
             <div class="settings-section" role="tabpanel" id="settings-cover" aria-labelledby="tab-cover">
               <p class="settings-section-note">音に合わせたジャケットの動きを調整します。</p>
               ${settingControl('pulseMax', '拡大の上限', 0, .3, .005, '音が強いとき、元の大きさからどこまで拡大するか。', '拡大なし', '最大 +30%')}
-              ${settingControl('pulseSensitivity', '音への反応', .2, 12, .1, '厚く続く音では少し持ち上がり、打音ではさらに弾みます。上げるほど反応が強くなります。', '控えめ', '強く')}
+              ${settingControl('pulseSensitivity', '音への反応', .2, 12, .1, '音量と音の変化に合わせて動きます。上げるほど反応が強くなります。', '控えめ', '強く')}
             </div>
             <div class="settings-section" role="tabpanel" id="settings-light" aria-labelledby="tab-light" hidden>
               <div class="settings-effect-toggle">
