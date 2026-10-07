@@ -15,13 +15,14 @@ test('ordinary loudness and spectral changes remain linear and preserve sensitiv
  p.sample(.05,32,.2);assert.ok(Math.abs(p.expansion(32,.3,1)-.025)<1e-12);
  p.sample(.06,64,.2);assert.ok(p.expansion(64,.3,1)>.025);
 });
-test('upper-range relief affects only a prolonged near-limit section',()=>{
- const p=new CoverPulse();p.sample(3,0,.5);const peak=p.expansion(0,.15,3);
- assert.ok(peak>.145 && peak<.15);
- for(let i=1;i<=100;i++){p.sample(3,i*32,.5);p.expansion(i*32,.15,3);}
- const held=p.expansion(3200,.15,3);assert.ok(held>.13&&held<peak);
- p.sample(0,3232,.1);assert.ok(Math.abs(p.expansion(3232,.15,3)-.03)<1e-12);
- p.sample(3,3264,.5);assert.ok(p.expansion(3264,.15,3)>held);
+test('near-limit sound retains small increases and decreases without timed shrinking',()=>{
+ const p=new CoverPulse();p.sample(3,0,.5);const base=p.expansion(0,.15,3);
+ for(let i=1;i<=100;i++){p.sample(3,i*32,.5);assert.equal(p.expansion(i*32,.15,3),base);}
+ p.sample(3.02,3232,.5);const up=p.expansion(3232,.15,3);
+ p.sample(2.98,3264,.5);const down=p.expansion(3264,.15,3);
+ assert.ok(up>base+.001 && down<base-.001);
+ assert.ok(up<=.15 && down>=.12);
+ p.sample(0,3296,.1);assert.ok(Math.abs(p.expansion(3296,.15,3)-.03)<1e-12);
 });
 test('silence, stale input, reset and zero expansion cannot retain motion',()=>{
  const p=new CoverPulse();p.sample(.5,0,.5);assert.ok(p.expansion(0,.15,3)>0);

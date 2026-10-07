@@ -3,24 +3,29 @@ export class CoverPulse {
   private level = 0;
   private onset = 0;
   private lastSample = -Infinity;
-  private ceilingSince = -Infinity;
-  reset() { this.level = this.onset = 0; this.lastSample = this.ceilingSince = -Infinity; }
+  private average = 0;
+  reset() { this.level = this.onset = 0; this.lastSample = -Infinity; this.average = 0; }
   sample(onset: number, now: number, level = 0) {
-    if (now - this.lastSample > 200) this.ceilingSince = -Infinity;
+    const dt = now - this.lastSample;
     this.level = Number.isFinite(level) ? Math.max(0, level) : 0;
     this.onset = Number.isFinite(onset) ? Math.max(0, onset) : 0;
+    const energy = this.level + this.onset;
+    if (dt > 200) this.average = energy;
+    else this.average += (energy - this.average) * (1 - Math.exp(-Math.max(0, dt) / 500));
     this.lastSample = now;
   }
   expansion(now: number, maximum: number, sensitivity: number) {
-    if (now - this.lastSample >= 200 || maximum <= 0) { this.ceilingSince = -Infinity; return 0; }
+    if (now - this.lastSample >= 200 || maximum <= 0) { return 0; }
     const raw = (this.level + this.onset) * .1 * sensitivity;
     const knee = maximum * .8;
-    if (raw <= knee) { this.ceilingSince = -Infinity; return raw; }
-    if (!Number.isFinite(this.ceilingSince)) this.ceilingSince = now;
-    // Preserve the lower 80% exactly. Ease only near the ceiling; prolonged
-    // loud sections give back a little room without losing the sustained lift.
-    const held = Math.max(0, now - this.ceilingSince - 300);
-    const headroom = maximum * (.2 - .1 * (1 - Math.exp(-held / 600)));
-    return knee + headroom * (1 - Math.exp(-(raw - knee) / headroom));
+    if (raw <= knee) return raw;
+    const soft = knee + maximum * .2 * (1 - Math.exp(-(raw - knee) / (maximum * .2)));
+    // Near the ceiling, retain small audio changes around a moving baseline.
+    // Constant input stays still; there is no timed shrink or invented wobble.
+    const change = (raw - this.average * .1 * sensitivity) / maximum;
+    const detail = maximum * (.9 + .1 * Math.tanh(change * 4));
+    const t = Math.min(1, (raw - knee) / (maximum * .4));
+    const blend = t * t * (3 - 2 * t);
+    return soft * (1 - blend) + detail * blend;
   }
 }

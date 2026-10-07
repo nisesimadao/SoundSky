@@ -11,13 +11,16 @@ async page => {
   for(let i=0;i<8;i++)await send(.1);
   const changed=scale();if(Math.abs(changed-1.09)>.002)throw new Error('Ordinary spectral movement is gated');
   for(let i=0;i<10;i++)await send(3);
-  const peak=scale();if(peak<1.14||peak>=1.15)throw new Error('Ceiling easing is excessive or absent');
+  const peak=scale();if(peak<1.13||peak>=1.15)throw new Error('Ceiling easing is excessive or absent');
   for(let i=0;i<30;i++)await send(3);
-  const held=scale();if(held>=peak||held<1.13)throw new Error('Prolonged ceiling relief is wrong');
+  const held=scale();
+  for(let i=0;i<3;i++)await send(3.04);const up=scale();
+  for(let i=0;i<3;i++)await send(2.96);const down=scale();
+  if(up-down<.003)throw new Error('Near-ceiling details are lost');
   for(let i=0;i<12;i++)await send(0);
   if(Math.abs(scale()-1.06)>.002)throw new Error('Ordinary sound remains suppressed after a loud section');
   await send(0,0);await new Promise(r=>setTimeout(r,250));
   if(scale()>1.001)throw new Error('Silence leaves cover enlarged');
-  return {sustainedScale:sustained,ordinaryChangeScale:changed,peakScale:peak,heldScale:held,rawResponse:true,silenceRests:true};
+  return {sustainedScale:sustained,ordinaryChangeScale:changed,peakScale:peak,heldScale:held,detailRange:up-down,rawResponse:true,silenceRests:true};
  });
 }
