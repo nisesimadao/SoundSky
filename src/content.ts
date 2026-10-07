@@ -2,19 +2,35 @@ import { SoundCloudAdapter, artworkURL } from './adapter';
 import { NativeQueue } from './queue';
 import { Ambient } from './ambient';
 import { Atmosphere } from './atmosphere';
+import { CoverPulse } from './cover-pulse';
 import { Materials } from './materials';
 import { ArtworkAccent, accentColor } from './accent';
 import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.2.17';
+const VERSION = '1.2.18';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
   return s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2,'0')}`;
 };
 
+type NumericSetting = Exclude<keyof SoundSkySettings, 'heatEnabled'>;
+const settingValue = (key: NumericSetting, value: number) => {
+  if (value === 0) return key === 'pulseMax' ? 'なし' : key === 'ambientGlow' ? '消灯' : key === 'heatResponse' ? '反応なし' : '停止';
+  return key === 'pulseMax' ? `+${(value * 100).toFixed(1)}%` : key === 'ambientGlow' ? `${Math.round(value * 100)}%` : `${value.toFixed(1)}倍`;
+};
+const settingControl = (key: NumericSetting, label: string, min: number, max: number, step: number, hint: string, low: string, high: string) => `
+  <div class="settings-group">
+    <div class="settings-label-row"><label for="setting-${key}">${label}</label><output class="settings-val" id="val-${key}" for="setting-${key}"></output></div>
+    <p class="settings-hint" id="hint-${key}">${hint}</p>
+    <div class="settings-range-wrap" style="--default-position: ${(defaultSettings[key] - min) / (max - min) * 100}%">
+      <input class="settings-slider" id="setting-${key}" type="range" min="${min}" max="${max}" step="${step}" data-setting="${key}" aria-describedby="hint-${key}">
+      <i class="settings-default-tick" aria-hidden="true"></i>
+    </div>
+    <div class="settings-scale"><span>${low}</span><button data-command="setting-default" data-setting-key="${key}" aria-label="${label}を標準に戻す">標準 ${settingValue(key, defaultSettings[key])}</button><span>${high}</span></div>
+  </div>`;
 class SoundSky {
   private host = document.createElement('soundsky-player');
   private shadow = this.host.attachShadow({ mode: 'open' });
@@ -40,6 +56,8 @@ class SoundSky {
   private audioOnset = 0;
   private audioAt = 0;
   private artScale = 1;
+  private coverPulse = new CoverPulse();
+  private pulseFrameAt = 0;
   private reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   private scrubbing = false;
   private scrubKey = '';
@@ -69,69 +87,49 @@ class SoundSky {
         <div class="shell">
           <header class="topbar"><div class="brand">${icon('sky')}<span>SoundSky</span><span class="brand-caption">MUSIC PLAYER</span></div>
             <div class="top-actions">
-              <button class="icon-button" data-command="settings" aria-label="Visual settings" aria-expanded="false" aria-controls="visual-settings" title="Visual settings">${icon('tune')}</button>
+              <button class="icon-button" data-command="settings" aria-label="見た目の設定" aria-expanded="false" aria-controls="visual-settings" title="見た目の設定">${icon('tune')}</button>
               <button class="return" data-command="close" aria-label="Back to SoundCloud" title="Return to SoundCloud · Escape">${icon('down')}<span>Back to SoundCloud</span></button>
               <button class="icon-button" data-command="fullscreen" aria-label="Enter fullscreen" title="Fullscreen">${icon('expand')}</button>
             </div>
           </header>
           <section class="settings-panel" id="visual-settings" popover="manual" aria-labelledby="settings-title" hidden>
             <div class="settings-header">
-              <div><p class="settings-kicker">SOUNDSKY / VISUALS</p><h2 class="settings-title" id="settings-title">Motion & light</h2></div>
-              <button class="settings-close icon-button" data-command="settings-close" aria-label="Close visual settings">${icon('close')}</button>
+              <div><p class="settings-kicker">SOUNDSKY / VISUALS</p><h2 class="settings-title" id="settings-title">見た目の設定</h2></div>
+              <button class="settings-close icon-button" data-command="settings-close" aria-label="設定を閉じる">${icon('close')}</button>
             </div>
-            <div class="settings-tabs" role="tablist" aria-label="Visual controls">
-              <button class="settings-tab" role="tab" id="tab-cover" aria-controls="settings-cover" aria-selected="true" tabindex="0" data-settings-tab="cover">Cover</button>
-              <button class="settings-tab" role="tab" id="tab-light" aria-controls="settings-light" aria-selected="false" tabindex="-1" data-settings-tab="light">Light</button>
-              <button class="settings-tab" role="tab" id="tab-background" aria-controls="settings-background" aria-selected="false" tabindex="-1" data-settings-tab="background">Scene</button>
+            <div class="settings-tabs" role="tablist" aria-label="設定のカテゴリ">
+              <button class="settings-tab" role="tab" id="tab-cover" aria-controls="settings-cover" aria-selected="true" tabindex="0" data-settings-tab="cover">カバー</button>
+              <button class="settings-tab" role="tab" id="tab-light" aria-controls="settings-light" aria-selected="false" tabindex="-1" data-settings-tab="light">周囲の光</button>
+              <button class="settings-tab" role="tab" id="tab-background" aria-controls="settings-background" aria-selected="false" tabindex="-1" data-settings-tab="background">背景</button>
+              <button class="settings-tab" role="tab" id="tab-controls" aria-controls="settings-controls" aria-selected="false" tabindex="-1" data-settings-tab="controls">操作部分</button>
             </div>
             <div class="settings-section" role="tabpanel" id="settings-cover" aria-labelledby="tab-cover">
-              <div class="settings-group">
-                <div class="settings-label-row"><label for="setting-pulseMax">Pulse size</label><output class="settings-val" id="val-pulseMax" for="setting-pulseMax"></output></div>
-                <input class="settings-slider" id="setting-pulseMax" type="range" min="0" max="0.3" step="0.005" data-setting="pulseMax" aria-describedby="hint-pulseMax">
-                <p class="settings-hint" id="hint-pulseMax">Maximum cover expansion</p>
-              </div>
-              <div class="settings-group">
-                <div class="settings-label-row"><label for="setting-pulseSensitivity">Pulse response</label><output class="settings-val" id="val-pulseSensitivity" for="setting-pulseSensitivity"></output></div>
-                <input class="settings-slider" id="setting-pulseSensitivity" type="range" min="0.2" max="12" step="0.1" data-setting="pulseSensitivity" aria-describedby="hint-pulseSensitivity">
-                <p class="settings-hint" id="hint-pulseSensitivity">How strongly the cover follows attacks</p>
-              </div>
+              <p class="settings-section-note">音に合わせたジャケットの動きを調整します。</p>
+              ${settingControl('pulseMax', '拡大の上限', 0, .3, .005, '音が強いとき、元の大きさからどこまで拡大するか。', '拡大なし', '最大 +30%')}
+              ${settingControl('pulseSensitivity', '音への反応', .2, 12, .1, '上げるほど、小さな打音でもカバーが大きく動きます。', '控えめ', '強く')}
             </div>
             <div class="settings-section" role="tabpanel" id="settings-light" aria-labelledby="tab-light" hidden>
-              <div class="settings-group">
-                <div class="settings-label-row settings-toggle"><label for="setting-heatEnabled">Cover Heatmap</label><input id="setting-heatEnabled" type="checkbox" role="switch" aria-label="Cover Heatmap"></div>
-                <div class="settings-label-row"><label for="setting-heatSpeed">Heatmap speed</label><output class="settings-val" id="val-heatSpeed" for="setting-heatSpeed"></output></div>
-                <input class="settings-slider" id="setting-heatSpeed" type="range" min="0" max="8" step="0.1" data-setting="heatSpeed" aria-describedby="hint-heatSpeed">
-                <p class="settings-hint" id="hint-heatSpeed">Speed of the flowing Heatmap</p>
+              <div class="settings-effect-toggle">
+                <div class="settings-label-row settings-toggle"><label for="setting-heatEnabled">カバー周囲の光</label><input id="setting-heatEnabled" type="checkbox" role="switch" aria-describedby="hint-heatEnabled"><output id="val-heatEnabled"></output></div>
+                <p class="settings-hint" id="hint-heatEnabled">赤い光は音に反応し、空色の帯は一定の速さで流れます。</p>
               </div>
-              <div class="settings-group">
-                <div class="settings-label-row"><label for="setting-materialSpeed">Metal speed</label><output class="settings-val" id="val-materialSpeed" for="setting-materialSpeed"></output></div>
-                <input class="settings-slider" id="setting-materialSpeed" type="range" min="0" max="8" step="0.1" data-setting="materialSpeed" aria-describedby="hint-materialSpeed">
-                <p class="settings-hint" id="hint-materialSpeed">Surface motion on the play button</p>
+              <div class="settings-heat-controls">
+                ${settingControl('heatResponse', '赤い光の反応', 0, 3, .1, '上げるほど、同じ音量でも赤い光が下まで広がります。', '反応なし', '強く')}
+                ${settingControl('heatSpeed', '光が流れる速さ', 0, 8, .1, '空色の帯の流速。赤い光もこの速さを基準に動きます。', '停止', '速く')}
               </div>
             </div>
             <div class="settings-section" role="tabpanel" id="settings-background" aria-labelledby="tab-background" hidden>
-              <div class="settings-group">
-                <div class="settings-label-row"><label for="setting-ambientSpeed">Drift speed</label><output class="settings-val" id="val-ambientSpeed" for="setting-ambientSpeed"></output></div>
-                <input class="settings-slider" id="setting-ambientSpeed" type="range" min="0" max="8" step="0.1" data-setting="ambientSpeed" aria-describedby="hint-ambientSpeed">
-                <p class="settings-hint" id="hint-ambientSpeed">Loud passages move faster; quiet ones slow down</p>
-              </div>
-              <div class="settings-group">
-                <div class="settings-label-row"><label for="setting-ambientGlow">Background glow</label><output class="settings-val" id="val-ambientGlow" for="setting-ambientGlow"></output></div>
-                <input class="settings-slider" id="setting-ambientGlow" type="range" min="0" max="2" step="0.05" data-setting="ambientGlow" aria-describedby="hint-ambientGlow">
-                <p class="settings-hint" id="hint-ambientGlow">Loud passages brighten the background</p>
-              </div>
-              <div class="settings-group">
-                <div class="settings-label-row"><label for="setting-consoleSpeed">Smoke drift</label><output class="settings-val" id="val-consoleSpeed" for="setting-consoleSpeed"></output></div>
-                <input class="settings-slider" id="setting-consoleSpeed" type="range" min="0" max="2" step="0.1" data-setting="consoleSpeed" aria-describedby="hint-consoleSpeed">
-                <p class="settings-hint" id="hint-consoleSpeed">Gentle smoke inside the transport housing</p>
-              </div>
-              <div class="settings-group">
-                <div class="settings-label-row"><label for="setting-seekSpeed">Seek light speed</label><output class="settings-val" id="val-seekSpeed" for="setting-seekSpeed"></output></div>
-                <input class="settings-slider" id="setting-seekSpeed" type="range" min="0" max="3" step="0.1" data-setting="seekSpeed" aria-describedby="hint-seekSpeed">
-                <p class="settings-hint" id="hint-seekSpeed">Smooth color flowing through the progress line</p>
-              </div>
+              <p class="settings-section-note">背景は音が強いと明るく速く、静かなときは暗くゆっくり動きます。</p>
+              ${settingControl('ambientSpeed', '背景の動く速さ', 0, 8, .1, '画面全体に広がる模様の動き。0で止まります。', '停止', '速く')}
+              ${settingControl('ambientGlow', '背景の明るさ', 0, 2, .05, '音に反応する背景の光量。0で光を消します。', '消灯', '明るく')}
             </div>
-            <div class="settings-footer"><span>Saved as you adjust</span><button class="settings-reset" data-command="settings-reset">Restore defaults</button></div>
+            <div class="settings-section" role="tabpanel" id="settings-controls" aria-labelledby="tab-controls" hidden>
+              <p class="settings-section-note">再生ボタンやバーの質感を調整します。</p>
+              ${settingControl('materialSpeed', '再生ボタンの動く速さ', 0, 8, .1, '金属のような表面の流れ。音が強いと速く動きます。', '停止', '速く')}
+              ${settingControl('consoleSpeed', '操作パネルの煙の速さ', 0, 2, .1, '再生ボタンの土台にある、薄い煙の動き。', '停止', '速く')}
+              ${settingControl('seekSpeed', 'シークバーの色の流れ', 0, 3, .1, '再生済みの部分を流れる色。曲の再生速度は変わりません。', '停止', '速く')}
+            </div>
+            <div class="settings-footer"><span>すぐ反映・自動保存</span><button class="settings-reset" data-command="settings-reset">すべて標準に戻す</button></div>
           </section>
           <main class="stage">
             <div class="artwork-area reveal"><div class="artwork-frame"><div class="cover-heat" aria-hidden="true" hidden></div><div class="artwork"><div class="artwork-placeholder">${icon('music')}</div><img class="art-image" alt="" hidden></div></div></div>
@@ -200,6 +198,7 @@ class SoundSky {
       if (typeof level === 'number' && Number.isFinite(level)) {
         this.audioLevel = Math.max(0, level); this.audioAt = performance.now();
         this.audioOnset = typeof event.data.onset === 'number' && Number.isFinite(event.data.onset) ? Math.max(0, event.data.onset) : 0;
+        if (this.active && this.state.playing && !this.state.muted) this.coverPulse.sample(this.audioOnset, this.audioAt);
         this.materials.setLevel(this.state.muted ? 0 : this.audioLevel, this.state.muted ? 0 : this.audioOnset);
         this.atmosphere.setLevel(this.state.muted ? 0 : this.audioLevel, this.state.muted ? 0 : this.audioOnset);
 
@@ -221,6 +220,12 @@ class SoundSky {
       else if (command === 'fullscreen') void this.fullscreen();
       else if (command === 'settings') this.toggleSettings();
       else if (command === 'settings-close') this.toggleSettings(false);
+      else if (command === 'setting-default') {
+        const key = button.dataset.settingKey as NumericSetting;
+        if (key && typeof defaultSettings[key] === 'number') {
+          this.settings[key] = defaultSettings[key]; this.updateSettingsUI(); this.applySettings(); this.saveSettings();
+        }
+      }
       else if (command === 'settings-reset') this.resetSettings();
       else if (command) {
         if (!this.adapter.click(command as 'play' | 'previous' | 'next' | 'mute' | 'track' | 'artist')) this.toast('This control is not available yet.');
@@ -354,6 +359,7 @@ class SoundSky {
     this.atmosphere.setPlaying(state.playing);
     if (this.active && state.track.key && !state.actions.repost.available) void this.adapter.probeRepost();
     if (changedTrack) {
+      this.coverPulse.reset();
       this.lastTrack = state.track.key;
       this.scrubbing = false; this.scrubKey = '';
       if (this.active) void this.adapter.probeRepost();
@@ -418,10 +424,10 @@ class SoundSky {
     }
     if (now - this.audioAt >= 200) { this.materials.setLevel(0); this.atmosphere.setLevel(0); }
     const level = this.state.playing && !this.state.muted && now - this.audioAt < 200 && !this.reducedMotion.matches ? this.audioLevel : 0;
-    const onset = level > 0 ? this.audioOnset : 0;
-    // Reserve expansion for spectral attacks instead of saturating on mastered RMS.
-    const target = 1 + Math.min(this.settings.pulseMax, (level * .006 + onset * .24) * this.settings.pulseSensitivity);
-    this.artScale += (target - this.artScale) * (target > this.artScale ? .28 : .09);
+    const target = 1 + (level > 0 ? this.coverPulse.expansion(now, this.settings.pulseMax, this.settings.pulseSensitivity) : 0);
+    const dt = this.pulseFrameAt ? Math.min(100, now - this.pulseFrameAt) : 16;
+    this.pulseFrameAt = now;
+    this.artScale += (target - this.artScale) * (1 - Math.exp(-dt / (target > this.artScale ? 20 : 45)));
     const artwork = this.el('.artwork');
     artwork.style.setProperty('--beat-scale', String(this.artScale));
     artwork.style.borderRadius = `${6 + this.el('.artwork-frame').clientWidth * Math.max(0, this.artScale - 1) * .3}px`;
@@ -433,7 +439,7 @@ class SoundSky {
     this.atmosphere.setActive(active);
     window.postMessage({ type: 'soundsky:analysis', active }, location.origin);
     if (active) this.animation = requestAnimationFrame(this.animate);
-    else { this.audioLevel = 0; this.audioOnset = 0; this.materials.setLevel(0); this.atmosphere.setLevel(0); this.artScale = 1; const artwork = this.shadow.querySelector<HTMLElement>('.artwork'); if (artwork) { artwork.style.setProperty('--beat-scale', '1'); artwork.style.borderRadius = '6px'; } }
+    else { this.coverPulse.reset(); this.pulseFrameAt = 0; this.audioLevel = 0; this.audioOnset = 0; this.materials.setLevel(0); this.atmosphere.setLevel(0); this.artScale = 1; const artwork = this.shadow.querySelector<HTMLElement>('.artwork'); if (artwork) { artwork.style.setProperty('--beat-scale', '1'); artwork.style.borderRadius = '6px'; } }
   }
   private loadArtwork(url: string, title: string) {
     const generation = ++this.artworkGeneration;
@@ -554,16 +560,22 @@ class SoundSky {
       }
       const valEl = this.shadow.querySelector(`#val-${key}`);
       if (valEl) {
-        valEl.textContent = key === 'pulseMax' ? `${(val * 100).toFixed(1)}%` : key === 'ambientGlow' ? `${Math.round(val * 100)}%` : `${val.toFixed(1)}x`;
+        valEl.textContent = settingValue(key as NumericSetting, val);
+        slider?.setAttribute('aria-valuetext', valEl.textContent);
       }
     }
     this.el<HTMLInputElement>('#setting-heatEnabled').checked = this.settings.heatEnabled;
-    this.el<HTMLInputElement>('#setting-heatSpeed').disabled = !this.settings.heatEnabled;
+    this.el('#val-heatEnabled').textContent = this.settings.heatEnabled ? 'オン' : 'オフ';
+    this.el('.settings-heat-controls').classList.toggle('is-disabled', !this.settings.heatEnabled);
+    for (const key of ['heatSpeed', 'heatResponse']) {
+      this.el<HTMLInputElement>(`#setting-${key}`).disabled = !this.settings.heatEnabled;
+      this.el<HTMLButtonElement>(`[data-setting-key="${key}"]`).disabled = !this.settings.heatEnabled;
+    }
   }
   private applySettings() {
     this.ambient.setFlowSpeed(this.settings.ambientSpeed);
     this.atmosphere.setSettings(this.settings.ambientSpeed, this.settings.ambientGlow, this.settings.consoleSpeed, this.settings.seekSpeed);
-    this.materials.setSettings(this.settings.materialSpeed, this.settings.heatSpeed, this.settings.heatEnabled);
+    this.materials.setSettings(this.settings.materialSpeed, this.settings.heatSpeed, this.settings.heatEnabled, this.settings.heatResponse);
   }
   private async loadSettings() {
     try {

@@ -143,7 +143,7 @@ input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.25); }
 .play-glyph-outline { position: absolute; z-index: 1; width: 24px; height: 24px; background: #000; mask-image: var(--glyph-outline); mask-position: center; mask-size: contain; mask-repeat: no-repeat; pointer-events: none; }
 
 /* A compact instrument panel, in the same cool metal as the player. */
-.settings-panel { position: fixed; margin: 0; left: auto; bottom: auto; top: 66px; right: clamp(30px, 5vw, 100px); width: min(328px, calc(100vw - 32px)); max-height: calc(100dvh - 86px); overflow-y: auto; background: #15191d; border: 1px solid #a5c2d326; border-radius: 8px; padding: 22px 24px 0; z-index: 10; box-shadow: 0 18px 60px #0008; animation: arrive .18s ease-out; scrollbar-width: thin; }
+.settings-panel { position: fixed; margin: 0; left: auto; bottom: auto; top: 66px; right: clamp(30px, 5vw, 100px); width: min(380px, calc(100vw - 32px)); max-height: calc(100dvh - 86px); overflow-y: auto; background: #15191d; border: 1px solid #a5c2d326; border-radius: 8px; padding: 22px 24px 0; z-index: 10; box-shadow: 0 18px 60px #0008; animation: arrive .18s ease-out; scrollbar-width: thin; }
 .settings-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .settings-kicker { font-size: 9px; font-weight: 500; letter-spacing: .16em; color: #8297a1; margin: 0 0 8px; }
 .settings-title { font-family: 'Avenir Next', Avenir, 'Helvetica Neue', sans-serif; font-size: 24px; font-weight: 500; color: #e7eff2; letter-spacing: -.035em; margin: 0; line-height: 1.2; }
@@ -158,12 +158,12 @@ input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.25); }
 .settings-group { padding: 15px 0 13px; border-bottom: 1px solid #a5c2d310; }
 .settings-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; font-size: 12px; color: #d1dce1; }
 .settings-val { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 11px; font-variant-numeric: tabular-nums; color: #dfc5ab; }
-.settings-panel input.settings-slider { height: 27px; margin-top: 5px; }
-.settings-panel input.settings-slider::-webkit-slider-runnable-track { height: 2px; border-radius: 0; background: linear-gradient(#a5c8d7,#a5c8d7) 0 0 / var(--progress) 100% no-repeat, #a5c2d329; }
-.settings-panel input.settings-slider::-webkit-slider-thumb { width: 8px; height: 12px; margin-top: -5px; border-radius: 2px; background: #d9e8ee; box-shadow: 0 0 0 3px #15191d; }
-.settings-panel input.settings-slider::-moz-range-track { height: 2px; background: #a5c2d329; }
-.settings-panel input.settings-slider::-moz-range-progress { height: 2px; background: #a5c8d7; }
-.settings-panel input.settings-slider::-moz-range-thumb { width: 8px; height: 12px; border: 0; border-radius: 2px; background: #d9e8ee; }
+.settings-panel input.settings-slider { height: 36px; margin-top: 0; }
+.settings-panel input.settings-slider::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(#a5c8d7,#a5c8d7) 0 0 / var(--progress) 100% no-repeat, #a5c2d329; }
+.settings-panel input.settings-slider::-webkit-slider-thumb { width: 14px; height: 14px; margin-top: -5px; border-radius: 50%; background: #d9e8ee; box-shadow: 0 0 0 3px #15191d; }
+.settings-panel input.settings-slider::-moz-range-track { height: 4px; background: #a5c2d329; }
+.settings-panel input.settings-slider::-moz-range-progress { height: 4px; background: #a5c8d7; }
+.settings-panel input.settings-slider::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 50%; background: #d9e8ee; }
 .settings-hint { margin: 0; color: #82939c; font-size: 10px; line-height: 1.4; }
 .settings-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 17px 0; font-size: 9px; color: #788b95; }
 .settings-reset { font-size: 10px; color: #b0c4cd; padding: 5px 0; text-underline-offset: 4px; }
@@ -201,7 +201,7 @@ input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.25); }
 .seek-surface input.seek::-webkit-slider-thumb { margin-top: -2px; }
 @media (max-width: 620px) { .atmosphere { opacity: calc(var(--ambient-intensity, .14) * .85); } }
 
-.settings-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 20px; padding-bottom: 10px; border-bottom: 1px solid #a5c2d31c; }
+.settings-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 20px; padding-bottom: 10px; border-bottom: 1px solid #a5c2d31c; }
 .settings-tab { padding: 9px 4px; font-size: 11px; color: #8b9da5; border-radius: 4px; }
 .settings-tab:hover { color: #dce9ee; background: #c7dfe908; }
 .settings-tab[aria-selected="true"] { color: #e8d4be; background: #c7dfe910; box-shadow: inset 0 -1px #dfc5ab; }
@@ -236,3 +236,25 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
 .cover-heat { position: absolute; inset: -10px; pointer-events: none; z-index: 0; border-radius: 12px; overflow: hidden; background: #11206a; }
 
 @media (max-width: 620px) { .cover-heat { inset: -6px; border-radius: 10px; } }
+
+.settings-panel { font-family: 'Avenir Next', 'Hiragino Sans', 'Yu Gothic', sans-serif; }
+.settings-title { font-size: 21px; letter-spacing: .01em; }
+.settings-header { padding-bottom: 2px; }
+.settings-section-note { margin: 18px 0 4px; font-size: 11px; line-height: 1.8; color: #8e9fa8; }
+.settings-group { padding: 20px 0 17px; }
+.settings-label-row { font-size: 13px; align-items: center; }
+.settings-val { font-size: 12px; color: var(--accent); }
+.settings-hint { margin-top: 7px; font-size: 11px; line-height: 1.8; }
+.settings-range-wrap { position: relative; margin-top: 9px; }
+.settings-default-tick { position: absolute; left: clamp(7px, var(--default-position), calc(100% - 7px)); top: 27px; width: 1px; height: 4px; background: #aab7bc60; pointer-events: none; }
+.settings-scale { display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #7c8c96; }
+.settings-scale button { font-size: 10px; color: #a8b8c0; padding: 3px 6px; border-radius: 3px; }
+.settings-scale button:hover { color: var(--accent); background: #ffffff08; }
+.settings-effect-toggle { margin-top: 18px; padding: 14px 0 17px; border-bottom: 1px solid var(--line); }
+.settings-toggle { gap: 8px; padding: 0; }
+.settings-toggle label { flex: 1; }
+.settings-toggle input { order: 3; }
+.settings-toggle output { order: 2; font-size: 10px; min-width: 24px; color: #92a1a9; }
+.settings-heat-controls.is-disabled .settings-hint, .settings-heat-controls.is-disabled .settings-label-row, .settings-heat-controls.is-disabled .settings-scale { opacity: .4; }
+.settings-footer { font-size: 10px; padding: 20px 0; }
+.settings-reset { font-size: 11px; }

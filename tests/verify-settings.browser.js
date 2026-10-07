@@ -1,0 +1,29 @@
+// Against npm run dev, using playwright-cli run-code --filename.
+async page => {
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('http://127.0.0.1:4173');
+ await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();
+ await page.getByRole('button',{name:'見た目の設定',exact:true}).click();
+ await page.getByRole('tab',{name:'カバー',exact:true}).click();
+ await page.screenshot({path:'output/playwright/settings-cover-ja.png'});
+ await page.getByRole('tab',{name:'周囲の光',exact:true}).click();
+ await page.evaluate(()=>{const s=document.querySelector('soundsky-player').shadowRoot;const input=s.querySelector('#setting-heatResponse');input.value='2';input.dispatchEvent(new Event('input',{bubbles:true}));});
+ if ((await page.locator('soundsky-player').locator('#val-heatResponse').textContent())!=='2.0倍') throw new Error('Response value is unclear');
+ await page.getByRole('switch',{name:'カバー周囲の光',exact:true}).uncheck();
+ if (!(await page.getByRole('slider',{name:'赤い光の反応',exact:true}).isDisabled())) throw new Error('Disabled heat remains adjustable');
+ await page.getByRole('switch',{name:'カバー周囲の光',exact:true}).check();
+ await page.reload();
+ await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();
+ await page.getByRole('button',{name:'見た目の設定',exact:true}).click();
+ await page.getByRole('tab',{name:'周囲の光',exact:true}).click();
+ if ((await page.getByRole('slider',{name:'赤い光の反応',exact:true}).inputValue())!=='2') throw new Error('Response preference was lost');
+ await page.getByRole('button',{name:'赤い光の反応を標準に戻す',exact:true}).click();
+ if ((await page.getByRole('slider',{name:'赤い光の反応',exact:true}).inputValue())!=='1') throw new Error('Individual default reset failed');
+ await page.screenshot({path:'output/playwright/settings-light-ja.png'});
+ await page.getByRole('tab',{name:'操作部分',exact:true}).click();
+ await page.setViewportSize({width:390,height:844});
+ await page.screenshot({path:'output/playwright/settings-controls-ja-mobile.png'});
+ const fits=await page.evaluate(()=>{const panel=document.querySelector('soundsky-player').shadowRoot.querySelector('.settings-panel');return panel.scrollWidth<=panel.clientWidth});
+ if(!fits) throw new Error('Settings overflow horizontally on mobile');
+ return {japaneseLabels:true,individualReset:true,preferencePersists:true,disabledControls:true,mobileFits:true};
+}

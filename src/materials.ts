@@ -13,6 +13,7 @@ export class Materials {
   private onset = 0;
   private speedMul = 1;
   private heatSpeedMul = 1;
+  private heatResponse = 1;
   private motion = matchMedia('(prefers-reduced-motion: reduce)');
   private disposed = false;
   private heatEnabled = true;
@@ -33,8 +34,9 @@ export class Materials {
     this.onset = attack;
     this.render();
   }
-  setSettings(materialSpeed: number, heatSpeed: number, heatEnabled: boolean) {
+  setSettings(materialSpeed: number, heatSpeed: number, heatEnabled: boolean, heatResponse: number) {
     this.heatEnabled = heatEnabled;
+    this.heatResponse = Math.max(0, heatResponse);
     this.speedMul = Math.max(0, materialSpeed);
     this.heatSpeedMul = Math.max(0, heatSpeed);
     this.render();
@@ -62,7 +64,7 @@ export class Materials {
       scale: 1, fit: 'contain' as const,
       minPixelRatio: 1, maxPixelCount: 131072,
     };
-    const reach = this.active && this.playing && !document.hidden && this.level > 0 ? Math.max(-18, Math.min(110, this.level * 420 - 12)) : -18;
+    const reach = this.active && this.playing && !document.hidden && this.level > 0 && this.heatResponse > 0 ? Math.max(-18, Math.min(110, this.level * 420 * this.heatResponse - 12)) : -18;
     const reveal = `linear-gradient(to bottom, #000 ${reach}%, transparent ${reach + 18}%)`;
     this.roots.heat.render(showHeat ? createElement(Fragment, null,
       // Keep Paper's original cool wave animation running independently of audio.
