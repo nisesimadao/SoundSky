@@ -42,7 +42,7 @@ export interface SoundSkySettings {
   consoleSpeed: number;
   /** Smooth light motion in the seek fill (0–3). */
   seekSpeed: number;
-  /** Slow whole-scene drift, 0 off to 1 (2px amplitude). */
+  /** Whole-scene random drift with bass-driven acceleration, 0 off to 1 (up to about 14px). */
   sceneSway: number;
 }
 

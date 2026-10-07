@@ -16,7 +16,9 @@ export class NativeQueue {
   private active = false;
   private accent = 'hsl(210 55% 72%)';
   private alignTimer: ReturnType<typeof setTimeout> | null = null;
-  private mutation = new MutationObserver(() => this.update());
+  private mutation = new MutationObserver(records => {
+    if (records.some(record => record.target !== this.queue || record.attributeName !== 'style')) this.update();
+  });
   onUpdate: ((info: { available: boolean; hasTracks: boolean; autoplay: boolean | null; upcoming: number; history: boolean }) => void) | null = null;
 
   constructor(private adapter: SoundCloudAdapter, private aperture: HTMLElement) {
@@ -41,6 +43,7 @@ export class NativeQueue {
     this.root.setAttribute('data-soundsky-player', '');
     queue.setAttribute('data-soundsky-queue', '');
     queue.style.setProperty('--sky-accent', this.accent);
+    this.setMotion(this.motionX, this.motionY);
     this.position();
     if (!this.originalVisible) this.adapter.query<HTMLElement>('.playbackSoundBadge__showQueue')?.click();
     this.mutation.observe(queue, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'href'] });
@@ -48,7 +51,15 @@ export class NativeQueue {
     this.currentKey = '';
     this.update();
   }
-  setMotion(x: number, y: number) { this.motionX = x; this.motionY = y; }
+  setMotion(x: number, y: number) {
+    this.motionX = x; this.motionY = y;
+    if (!this.queue) return;
+    for (const [key, value] of [['--soundsky-scene-x', x], ['--soundsky-scene-y', y]] as const) {
+      const next = `${value.toFixed(3)}px`;
+      if (Math.abs(value) < .0005) this.queue.style.removeProperty(key);
+      else if (this.queue.style.getPropertyValue(key) !== next) this.queue.style.setProperty(key, next);
+    }
+  }
   private position() {
     if (!this.active || !this.queue) return;
     const rect = this.aperture.getBoundingClientRect();
@@ -109,6 +120,8 @@ export class NativeQueue {
       if (!this.originalVisible && this.queue.classList.contains('m-visible')) this.queue.querySelector<HTMLElement>('.queue__hide')?.click();
       this.queue.removeAttribute('data-soundsky-queue');
       this.queue.style.removeProperty('--sky-accent');
+      this.queue.style.removeProperty('--soundsky-scene-x');
+      this.queue.style.removeProperty('--soundsky-scene-y');
       for (const property of ['left', 'top', 'width', 'height']) this.queue.style.removeProperty(`--sky-queue-${property}`);
       this.queue.querySelectorAll('[data-sky-status]').forEach(el => el.removeAttribute('data-sky-status'));
     }

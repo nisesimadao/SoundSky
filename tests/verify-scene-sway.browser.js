@@ -16,13 +16,26 @@ async page => {
   const s=document.querySelector('soundsky-player').shadowRoot;
   const aperture=s.querySelector('.queue-aperture').getBoundingClientRect();
   const queue=document.querySelector('[data-soundsky-queue]').getBoundingClientRect();
-  const x=parseFloat(document.documentElement.style.getPropertyValue('--soundsky-scene-x'))||0;
-  const y=parseFloat(document.documentElement.style.getPropertyValue('--soundsky-scene-y'))||0;
+  const x=parseFloat(document.querySelector('soundsky-player').style.getPropertyValue('--soundsky-scene-x'))||0;
+  const y=parseFloat(document.querySelector('soundsky-player').style.getPropertyValue('--soundsky-scene-y'))||0;
   if(Math.abs(aperture.left-queue.left)>1.1||Math.abs(aperture.top-queue.top)>1.1)throw new Error('Native Queue drifts out of position');
-  if(Math.abs(x)>2||Math.abs(y)>1.2)throw new Error('Sway exceeds its subtle bounds');
+  if(Math.abs(x)>14||Math.abs(y)>14)throw new Error('Sway exceeds its subtle bounds');
   return {x,y};
  });
- const initial=await compare();if(Math.abs(initial.x)<.05)throw new Error('Sway is frozen');
+ const initial=await compare();if(Math.hypot(initial.x,initial.y)<.02)throw new Error('Sway is frozen');
+ const kickResult=await page.evaluate(async()=>{
+  const host=document.querySelector('soundsky-player');
+  const y=()=>parseFloat(host.style.getPropertyValue('--soundsky-scene-y'))||0;
+  const read=()=>({x:parseFloat(host.style.getPropertyValue('--soundsky-scene-x'))||0,y:y()});
+  const travel=async(count)=>{let last=read(),sum=0;for(let i=0;i<count;i++){await new Promise(r=>requestAnimationFrame(r));const next=read();sum+=Math.hypot(next.x-last.x,next.y-last.y);last=next;}return sum;};
+  const normal=await travel(20);
+  window.postMessage({type:'soundsky:audio',level:.3,onset:.1,bassOnset:.5},location.origin);
+  const accelerated=await travel(20);
+  if(accelerated<normal*3)throw new Error('Kick does not accelerate the route');
+  return {kickAcceleration:true};
+ });
+ await compare();
+
  await page.setViewportSize({width:390,height:844});await page.waitForTimeout(300);await compare();
  await page.emulateMedia({reducedMotion:'reduce'});await page.waitForTimeout(120);
  const reduced=await compare();if(reduced.x||reduced.y)throw new Error('Reduced Motion does not stop sway');
@@ -30,11 +43,11 @@ async page => {
  await page.getByRole('button',{name:'Pause',exact:true}).last().click({force:true});
  await page.waitForTimeout(3000);const paused=await compare();if(Math.abs(paused.x)>.04)throw new Error('Pause does not return scene to rest');
  await page.getByRole('button',{name:'Back to SoundCloud',exact:true}).click();
- const clean=await page.evaluate(()=>!document.documentElement.style.getPropertyValue('--soundsky-scene-x')&&!document.querySelector('[data-soundsky-queue]'));
+ const clean=await page.evaluate(()=>!document.querySelector('soundsky-player').style.getPropertyValue('--soundsky-scene-x')&&!document.querySelector('[data-soundsky-queue]'));
  if(!clean)throw new Error('Sway persists after close');
  await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();
  await page.getByRole('button',{name:'見た目の設定',exact:true}).click();
  await page.getByRole('tab',{name:'背景',exact:true}).click();
  await page.getByRole('button',{name:'画面のゆらぎを標準に戻す',exact:true}).click();
- return {subtleSway:true,queueAligned:true,mobileAligned:true,reducedMotion:true,pauseSettles:true,closeClean:true};
+ return {...kickResult,subtleSway:true,queueAligned:true,mobileAligned:true,reducedMotion:true,pauseSettles:true,closeClean:true};
 }

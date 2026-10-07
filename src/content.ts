@@ -4,13 +4,14 @@ import { Ambient } from './ambient';
 import { Atmosphere } from './atmosphere';
 import { loadSavedSettings } from './settings';
 import { CoverPulse } from './cover-pulse';
+import { SceneFlow } from './scene-flow';
 import { Materials } from './materials';
 import { ArtworkAccent, accentColor } from './accent';
 import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.2.22';
+const VERSION = '1.2.23';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
@@ -60,7 +61,7 @@ class SoundSky {
   private artScale = 1;
   private coverPulse = new CoverPulse();
   private pulseFrameAt = 0;
-  private swayTime = 0;
+  private sceneFlow = new SceneFlow();
   private swayAmplitude = 0;
   private reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   private scrubbing = false;
@@ -125,7 +126,7 @@ class SoundSky {
             <div class="settings-section" role="tabpanel" id="settings-background" aria-labelledby="tab-background" hidden>
               <p class="settings-section-note">背景は音が強いと明るく速く、静かなときは暗くゆっくり動きます。</p>
               ${settingControl('ambientSpeed', '背景の動く速さ', 0, 8, .1, '画面全体に広がる模様の動き。0で止まります。', '停止', '速く')}
-              ${settingControl('sceneSway', '画面のゆらぎ', 0, 1, .05, '画面全体が約24秒かけて、ごく小さく往復します。停止中は止まります。', 'オフ', '最大 2px')}
+              ${settingControl('sceneSway', '画面のゆらぎ', 0, 1, .05, 'ランダムな地点へ約5秒で移動し、キックで加速して徐々に元の速さへ戻ります。停止中は止まります。', 'オフ', '最大 約14px')}
               ${settingControl('ambientGlow', '背景の明るさ', 0, 2, .05, '音に反応する背景の光量。0で光を消します。', '消灯', '明るく')}
             </div>
             <div class="settings-section" role="tabpanel" id="settings-controls" aria-labelledby="tab-controls" hidden>
@@ -204,6 +205,7 @@ class SoundSky {
         this.audioLevel = Math.max(0, level); this.audioAt = performance.now();
         this.audioOnset = typeof event.data.onset === 'number' && Number.isFinite(event.data.onset) ? Math.max(0, event.data.onset) : 0;
         if (this.active && this.state.playing && !this.state.muted) this.coverPulse.sample(this.audioOnset, this.audioAt, this.audioLevel);
+        if (this.active && this.state.playing && !this.state.muted && !this.reducedMotion.matches && this.settings.sceneSway > 0) this.sceneFlow.sample(event.data.bassOnset, this.audioAt);
         this.materials.setLevel(this.state.muted ? 0 : this.audioLevel, this.state.muted ? 0 : this.audioOnset);
         this.atmosphere.setLevel(this.state.muted ? 0 : this.audioLevel, this.state.muted ? 0 : this.audioOnset);
 
@@ -364,7 +366,7 @@ class SoundSky {
     this.atmosphere.setPlaying(state.playing);
     if (this.active && state.track.key && !state.actions.repost.available) void this.adapter.probeRepost();
     if (changedTrack) {
-      this.coverPulse.reset();
+      this.coverPulse.reset(); this.sceneFlow.reset();
       this.lastTrack = state.track.key;
       this.scrubbing = false; this.scrubKey = '';
       if (this.active) void this.adapter.probeRepost();
@@ -433,12 +435,11 @@ class SoundSky {
     const dt = this.pulseFrameAt ? Math.min(100, now - this.pulseFrameAt) : 16;
     this.pulseFrameAt = now;
     this.artScale += (target - this.artScale) * (1 - Math.exp(-dt / (target > this.artScale ? 20 : 45)));
-    const sway = this.state.playing && !this.reducedMotion.matches ? this.settings.sceneSway * 2 : 0;
-    if (this.reducedMotion.matches) this.swayAmplitude = 0;
-    this.swayAmplitude += (sway - this.swayAmplitude) * (1 - Math.exp(-dt / 700));
-    if (this.state.playing && !this.reducedMotion.matches) this.swayTime += dt / 1000;
-    const phase = this.swayTime * Math.PI * 2 / 24;
-    this.setSceneOffset(Math.sin(phase) * this.swayAmplitude, Math.sin(phase * .73) * this.swayAmplitude * .6);
+    const sway = this.state.playing && !this.reducedMotion.matches ? this.settings.sceneSway * 14 : 0;
+    if (this.reducedMotion.matches) { this.swayAmplitude = 0; this.sceneFlow.reset(); }
+    this.swayAmplitude += (sway - this.swayAmplitude) * (1 - Math.exp(-dt / (this.state.playing ? 700 : 250)));
+    const position = this.state.playing && !this.reducedMotion.matches ? this.sceneFlow.step(dt) : this.sceneFlow.step(0);
+    this.setSceneOffset(position.x * this.swayAmplitude, position.y * this.swayAmplitude);
     const artwork = this.el('.artwork');
     artwork.style.setProperty('--beat-scale', String(this.artScale));
     artwork.style.borderRadius = `${6 + this.el('.artwork-frame').clientWidth * Math.max(0, this.artScale - 1) * .3}px`;
@@ -446,7 +447,7 @@ class SoundSky {
   };
   private setSceneOffset(x: number, y: number) {
     this.queue.setMotion(x, y);
-    const style = document.documentElement.style;
+    const style = this.host.style;
     for (const [key, value] of [['--soundsky-scene-x', x], ['--soundsky-scene-y', y]] as const) {
       const next = `${value.toFixed(3)}px`;
       if (Math.abs(value) < .0005) style.removeProperty(key);
@@ -459,7 +460,7 @@ class SoundSky {
     this.atmosphere.setActive(active);
     window.postMessage({ type: 'soundsky:analysis', active }, location.origin);
     if (active) this.animation = requestAnimationFrame(this.animate);
-    else { this.setSceneOffset(0, 0); this.swayAmplitude = this.swayTime = 0; this.coverPulse.reset(); this.pulseFrameAt = 0; this.audioLevel = 0; this.audioOnset = 0; this.materials.setLevel(0); this.atmosphere.setLevel(0); this.artScale = 1; const artwork = this.shadow.querySelector<HTMLElement>('.artwork'); if (artwork) { artwork.style.setProperty('--beat-scale', '1'); artwork.style.borderRadius = '6px'; } }
+    else { this.setSceneOffset(0, 0); this.swayAmplitude = 0; this.coverPulse.reset(); this.sceneFlow.reset(); this.pulseFrameAt = 0; this.audioLevel = 0; this.audioOnset = 0; this.materials.setLevel(0); this.atmosphere.setLevel(0); this.artScale = 1; const artwork = this.shadow.querySelector<HTMLElement>('.artwork'); if (artwork) { artwork.style.setProperty('--beat-scale', '1'); artwork.style.borderRadius = '6px'; } }
   }
   private loadArtwork(url: string, title: string) {
     const generation = ++this.artworkGeneration;
