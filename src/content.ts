@@ -8,7 +8,7 @@ import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.2.15';
+const VERSION = '1.2.16';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
@@ -98,7 +98,7 @@ class SoundSky {
             </div>
             <div class="settings-section" role="tabpanel" id="settings-light" aria-labelledby="tab-light" hidden>
               <div class="settings-group">
-                <div class="settings-label-row settings-toggle"><label for="setting-heatEnabled">Title Heatmap</label><input id="setting-heatEnabled" type="checkbox" role="switch" aria-label="Title Heatmap"></div>
+                <div class="settings-label-row settings-toggle"><label for="setting-heatEnabled">Cover Heatmap</label><input id="setting-heatEnabled" type="checkbox" role="switch" aria-label="Cover Heatmap"></div>
                 <div class="settings-label-row"><label for="setting-heatSpeed">Heatmap speed</label><output class="settings-val" id="val-heatSpeed" for="setting-heatSpeed"></output></div>
                 <input class="settings-slider" id="setting-heatSpeed" type="range" min="0" max="8" step="0.1" data-setting="heatSpeed" aria-describedby="hint-heatSpeed">
                 <p class="settings-hint" id="hint-heatSpeed">Speed of the flowing Heatmap</p>
@@ -134,9 +134,9 @@ class SoundSky {
             <div class="settings-footer"><span>Saved as you adjust</span><button class="settings-reset" data-command="settings-reset">Restore defaults</button></div>
           </section>
           <main class="stage">
-            <div class="artwork-area reveal"><div class="artwork-frame"><div class="cover-glow" aria-hidden="true"><img class="glow-image" alt="" hidden></div><div class="artwork"><div class="artwork-placeholder">${icon('music')}</div><img class="art-image" alt="" hidden></div></div></div>
+            <div class="artwork-area reveal"><div class="artwork-frame"><div class="cover-heat" aria-hidden="true" hidden></div><div class="artwork"><div class="artwork-placeholder">${icon('music')}</div><img class="art-image" alt="" hidden></div></div></div>
             <div class="details"><div class="metadata reveal"><p class="eyebrow"><span class="live-dot"></span><span class="now-label">NOW PLAYING</span></p>
-              <button class="title-link" data-command="track" title="Open this track on SoundCloud"><h1>Your music, in focus.</h1><span class="title-heat" aria-hidden="true" hidden></span></button>
+              <button class="title-link" data-command="track" title="Open this track on SoundCloud"><h1>Your music, in focus.</h1></button>
               <button class="artist" data-command="artist">Play something on SoundCloud to begin.</button>
               <div class="socials">
                 <button class="social" data-action="like" aria-label="Like current track" aria-pressed="false" disabled>${icon('heart')}<span>Like</span></button>
@@ -168,7 +168,7 @@ class SoundSky {
     };
     this.ambient = new Ambient(this.el<HTMLCanvasElement>('.ambient'), this.el('.ambient-fallback'));
     this.atmosphere = new Atmosphere(this.el('.atmosphere'), this.el('.console-smoke'), this.el('.seek-shader'));
-    this.materials = new Materials(this.el('.metal-surface'), this.el('.title-heat'), this.el('h1'));
+    this.materials = new Materials(this.el('.metal-surface'), this.el('.cover-heat'));
     this.accent = new ArtworkAccent(hue => {
       this.host.style.setProperty('--accent', accentColor(hue));
       this.queue.setAccent(accentColor(hue));
@@ -200,7 +200,7 @@ class SoundSky {
       if (typeof level === 'number' && Number.isFinite(level)) {
         this.audioLevel = Math.max(0, level); this.audioAt = performance.now();
         this.audioOnset = typeof event.data.onset === 'number' && Number.isFinite(event.data.onset) ? Math.max(0, event.data.onset) : 0;
-        this.materials.setLevel(this.audioLevel, this.audioOnset);
+        this.materials.setLevel(this.state.muted ? 0 : this.audioLevel, this.state.muted ? 0 : this.audioOnset);
         this.atmosphere.setLevel(this.state.muted ? 0 : this.audioLevel, this.state.muted ? 0 : this.audioOnset);
 
       }
@@ -358,7 +358,7 @@ class SoundSky {
       this.scrubbing = false; this.scrubKey = '';
       if (this.active) void this.adapter.probeRepost();
     }
-    if (this.el('h1').textContent !== state.track.title) { this.setText('h1', state.track.title); this.materials.setTitle(); }
+    this.setText('h1', state.track.title);
     this.el('.title-link').title = state.track.key ? `${state.track.title} — open on SoundCloud` : state.track.title;
     this.el<HTMLButtonElement>('.title-link').disabled = !state.track.key;
     this.setText('.artist', state.track.artist);
@@ -439,18 +439,18 @@ class SoundSky {
     const generation = ++this.artworkGeneration;
     const display = this.el<HTMLImageElement>('.art-image');
     const placeholder = this.el('.artwork-placeholder');
-    const glow = this.el<HTMLImageElement>('.glow-image');
-    display.hidden = true; glow.hidden = true; placeholder.hidden = false;
+    display.hidden = true; placeholder.hidden = false;
+    this.materials.setArtwork('');
     this.ambient.setArtwork(url);
     this.accent.setArtwork(url);
-    if (!url) { glow.removeAttribute('src'); display.removeAttribute('src'); this.el('.artwork-frame').style.removeProperty('--art-natural'); return; }
+    if (!url) { display.removeAttribute('src'); this.el('.artwork-frame').style.removeProperty('--art-natural'); return; }
     // SoundCloud offers an explicit 500px artwork rendition. Never assume "original" exists.
     const larger = artworkURL(url.replace(/-t\d+x\d+(?=\.)/, '-t500x500')) || url;
     const image = new Image();
     const commit = () => {
       if (this.disposed || generation !== this.artworkGeneration) return;
       display.src = image.src; display.alt = `${title} artwork`;
-      glow.src = image.src; glow.hidden = false;
+      this.materials.setArtwork(image.src);
       display.hidden = false; placeholder.hidden = true;
       this.el('.artwork-frame').style.setProperty('--art-natural', `${Math.min(580, image.naturalWidth || 500)}px`);
       this.ambient.setArtwork(url);
