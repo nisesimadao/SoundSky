@@ -42,6 +42,8 @@ export interface SoundSkySettings {
   consoleSpeed: number;
   /** Smooth light motion in the seek fill (0–3). */
   seekSpeed: number;
+  /** Slow whole-scene drift, 0 off to 1 (2px amplitude). */
+  sceneSway: number;
 }
 
 export const defaultSettings: SoundSkySettings = {
@@ -55,4 +57,5 @@ export const defaultSettings: SoundSkySettings = {
   ambientGlow: 1,
   consoleSpeed: .2,
   seekSpeed: .3,
+  sceneSway: 0,
 };

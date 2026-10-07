@@ -10,3 +10,5 @@ output/
 !.env.example
 *.pem
 *.key
+
+.soundsky-package-*/

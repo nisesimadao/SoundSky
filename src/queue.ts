@@ -9,6 +9,8 @@ export class NativeQueue {
   private originalVisible = false;
   private originalScroll = 0;
   private observer = new ResizeObserver(() => this.position());
+  private motionX = 0;
+  private motionY = 0;
   private currentKey = '';
   private pendingAlign = false;
   private active = false;
@@ -46,11 +48,12 @@ export class NativeQueue {
     this.currentKey = '';
     this.update();
   }
+  setMotion(x: number, y: number) { this.motionX = x; this.motionY = y; }
   private position() {
     if (!this.active || !this.queue) return;
     const rect = this.aperture.getBoundingClientRect();
     const properties: Record<string, string> = {
-      '--sky-queue-left': `${Math.round(rect.left)}px`, '--sky-queue-top': `${Math.round(rect.top)}px`,
+      '--sky-queue-left': `${Math.round(rect.left - this.motionX)}px`, '--sky-queue-top': `${Math.round(rect.top - this.motionY)}px`,
       '--sky-queue-width': `${Math.round(rect.width)}px`, '--sky-queue-height': `${Math.round(rect.height)}px`,
     };
     for (const [key, value] of Object.entries(properties)) {

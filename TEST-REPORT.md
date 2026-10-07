@@ -82,3 +82,16 @@ Heatmap padding reduced to 6–10 px (about 8 px on a typical desktop). Added a 
 ## 1.2.4 — 2026-10-06 JST
 
 Added a top-down hot-color reveal driven by raw loudness over the opaque blue Heatmap base. Artwork scaling now affects only the artwork, with a maximum 5.5% expansion and stronger transient response. Heatmap size remains fixed. No tests or browser verification were run for these changes at the user’s explicit request; distribution build completed.
+
+## 1.2.19 / 1.2.20 — 2026-10-07 JST
+
+販売ロードマップの最初の安定化作業。音声解析の再注入と複数出力・部分切断を改善し、保存設定の型・有限値・範囲を検証。生成済みdistとZIPの残存ファイルを防ぐビルド方式、GitHub Actions、1.2.18の内部比較画像を追加しました。
+
+- 1.2.20: TypeScript検証、43件のNodeテスト、配布パッケージ生成が成功。
+- 1.2.19ローカルブラウザ: 日本語設定、個別リセット、保存、無効化、390px幅のレイアウト、公式Heatmapのフラグメント一致、空色の速度維持、赤い光の反応、カバー拡大によるHeatmap位置の不変を確認。
+- 画面のゆらぎ: 初期オフ、最大横2px・縦1.2px、Queueの位置一致（デスクトップ・390px幅）、Reduced Motion、停止後の復帰、閉じた後の後片付けを1.2.19で確認。
+- 実ブラウザのOfflineAudioContextで左右別の4096サンプルを生成し、解析枝の有無で全8192サンプルが完全一致。これはローカルWeb Audioの検証で、実SoundCloudの音源出力比較ではありません。
+- 1.2.20カバーの合成入力: 持続音で約1.021倍、打音で約1.092倍、その後は穏やかな持続音の拡大へ戻り、無音で元に戻ることを確認。持続音の持ち上がりは上限の20%まで。以前の打音のみの方式はsupersaw等の厚い持続音にもすぐ戻ってしまうという報告に合わせて変更しました。
+- ユーザー提供3曲は `docs/verification/tracks.json` に登録。更新後の実Chromeで日本語設定の画面が読み込まれたことを確認。1.2.20の実曲検証は未完了で、登録曲を合格扱いにしていません。
+
+未完了: 3曲の現行版での反応、30曲・連続90分、広告と曲間、OS/GPU差、性能計測、ベータ、商用条件確認。販売準備完了とは扱いません。

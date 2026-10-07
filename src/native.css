@@ -102,3 +102,6 @@ body[data-soundsky-open] [data-soundsky-menu] .sc-button-repost { color: #e8e3ef
 [data-soundsky-player] * { pointer-events: none !important; }
 [data-soundsky-player] [data-soundsky-queue],
 [data-soundsky-player] [data-soundsky-queue] * { pointer-events: auto !important; }
+
+[data-soundsky-queue].queue { translate: var(--soundsky-scene-x, 0px) var(--soundsky-scene-y, 0px) !important; }
+@media (prefers-reduced-motion: reduce) { [data-soundsky-queue].queue { translate: none !important; } }

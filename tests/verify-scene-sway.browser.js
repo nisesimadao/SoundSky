@@ -1,0 +1,40 @@
+async page => {
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('http://127.0.0.1:4173');
+ await page.evaluate(()=>localStorage.removeItem('soundsky:settings'));
+ await page.reload();
+ await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();
+ await page.getByRole('button',{name:'見た目の設定',exact:true}).click();
+ await page.getByRole('tab',{name:'背景',exact:true}).click();
+ const slider=page.getByRole('slider',{name:'画面のゆらぎ',exact:true});
+ if(await slider.inputValue()!=='0')throw new Error('Scene sway is enabled by default');
+ await page.evaluate(()=>{const input=document.querySelector('soundsky-player').shadowRoot.querySelector('#setting-sceneSway');input.value='1';input.dispatchEvent(new Event('input',{bubbles:true}));});
+ await page.getByRole('button',{name:'見た目の設定',exact:true}).click();
+ await page.getByRole('button',{name:'Play',exact:true}).last().click();
+ await page.waitForTimeout(1200);
+ const compare=()=>page.evaluate(()=>{
+  const s=document.querySelector('soundsky-player').shadowRoot;
+  const aperture=s.querySelector('.queue-aperture').getBoundingClientRect();
+  const queue=document.querySelector('[data-soundsky-queue]').getBoundingClientRect();
+  const x=parseFloat(document.documentElement.style.getPropertyValue('--soundsky-scene-x'))||0;
+  const y=parseFloat(document.documentElement.style.getPropertyValue('--soundsky-scene-y'))||0;
+  if(Math.abs(aperture.left-queue.left)>1.1||Math.abs(aperture.top-queue.top)>1.1)throw new Error('Native Queue drifts out of position');
+  if(Math.abs(x)>2||Math.abs(y)>1.2)throw new Error('Sway exceeds its subtle bounds');
+  return {x,y};
+ });
+ const initial=await compare();if(Math.abs(initial.x)<.05)throw new Error('Sway is frozen');
+ await page.setViewportSize({width:390,height:844});await page.waitForTimeout(300);await compare();
+ await page.emulateMedia({reducedMotion:'reduce'});await page.waitForTimeout(120);
+ const reduced=await compare();if(reduced.x||reduced.y)throw new Error('Reduced Motion does not stop sway');
+ await page.emulateMedia({reducedMotion:'no-preference'});
+ await page.getByRole('button',{name:'Pause',exact:true}).last().click({force:true});
+ await page.waitForTimeout(3000);const paused=await compare();if(Math.abs(paused.x)>.04)throw new Error('Pause does not return scene to rest');
+ await page.getByRole('button',{name:'Back to SoundCloud',exact:true}).click();
+ const clean=await page.evaluate(()=>!document.documentElement.style.getPropertyValue('--soundsky-scene-x')&&!document.querySelector('[data-soundsky-queue]'));
+ if(!clean)throw new Error('Sway persists after close');
+ await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();
+ await page.getByRole('button',{name:'見た目の設定',exact:true}).click();
+ await page.getByRole('tab',{name:'背景',exact:true}).click();
+ await page.getByRole('button',{name:'画面のゆらぎを標準に戻す',exact:true}).click();
+ return {subtleSway:true,queueAligned:true,mobileAligned:true,reducedMotion:true,pauseSettles:true,closeClean:true};
+}
