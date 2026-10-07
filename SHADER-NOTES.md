@@ -1,14 +1,16 @@
-# SoundSky materials (1.2.16)
+# SoundSky materials (1.2.17)
 
-Uses official Paper React components from `@paper-design/shaders-react` 0.0.81 and its matching core package. No custom Heatmap fragment or CSS shader mask is used.
+Uses official Paper React components from `@paper-design/shaders-react` 0.0.81 and its matching core package. No custom Heatmap fragment is used.
 
 ## Cover Heatmap
 
-Two official Heatmap components receive the loaded jacket URL directly through `image`. Paper performs its native luminance and blur preprocessing; SoundSky does not substitute a rectangle, glyph, or generated silhouette. Both sit behind the fixed artwork frame, with a 14% margin on each side. Only the artwork scales with beats.
+Two official Heatmap components share a filled rounded-square SVG input. Jacket-image preprocessing has been removed. The opaque panel extends 10px beyond the fixed artwork frame on desktop, 6px on mobile, and clips to a 12px / 10px corner radius. Only the artwork scales with beats.
 
-- Cool: native outer waves, `innerGlow: 0`, `outerGlow: .5`, transparent deep blue through cyan palette. Its flow speed depends only on Heatmap speed and playback/visibility/reduced-motion state. Audio never changes its time or speed.
-- Warm: native inner waves, `outerGlow: 0`, `contour: 0`, transparent red through orange and yellow palette. `innerGlow = min(1, RMS * 3 + onset * 5)` during active playback, otherwise zero. No audio normalization, timeline reset, CSS reveal mask, or opacity modulation is applied.
+- Cool: original inner/outer glow and contour parameters, blue/cyan palette. Its flow speed depends only on Heatmap speed and playback/visibility/reduced-motion state. Audio never changes its time or speed.
+- Warm: original inner/outer glow and contour parameters, red/orange/yellow palette. The previously used thermal front is restored as a soft vertical reveal: `clamp(RMS * 420 - 12, -18, 110)` percent, with an 18 percentage-point transition. Silence and pause hide the warm layer. The warm material moves at `(0.6 + RMS * 5 + onset * 12) * heatSpeed`; it is never remounted or rewound by an audio hit.
 - Each layer has a 131,072 pixel budget. Cover Heatmap can be disabled in Light settings. Missing artwork produces no Heatmap. Pause, closed/hidden player and reduced motion stop the flow.
+
+The material fragments remain the official Paper shaders. The panel's corner clipping and warm reveal restore the previous cover treatment, rather than the later unmasked jacket-image effect.
 
 ## Other materials
 
@@ -18,4 +20,4 @@ Official references:
 - https://shaders.paper.design/heatmap
 - https://shaders.paper.design/liquid-metal
 
-The browser fixture verifies the official Heatmap fragment hash, autonomous cool animation, warm audio uniforms, pause behavior and saved on/off preference. Synthetic fixture audio checks do not establish reaction on a live SoundCloud track.
+The browser fixture verifies the official Heatmap fragment hash, autonomous cool animation, warm thermal front, pause behavior and saved on/off preference. Synthetic fixture audio checks do not establish reaction on a live SoundCloud track.

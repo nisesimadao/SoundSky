@@ -233,4 +233,6 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
 .settings-toggle input:checked { background: color-mix(in srgb, var(--accent) 35%, transparent); }
 .settings-toggle input:checked::after { transform: translateX(16px); background: var(--accent); }
 
-.cover-heat { position: absolute; inset: -14%; pointer-events: none; z-index: 0; }
+.cover-heat { position: absolute; inset: -10px; pointer-events: none; z-index: 0; border-radius: 12px; overflow: hidden; background: #11206a; }
+
+@media (max-width: 620px) { .cover-heat { inset: -6px; border-radius: 10px; } }

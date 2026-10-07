@@ -2,6 +2,7 @@
 async page => {
   // SHA-256 of the unmodified Heatmap fragment from the pinned Paper 0.0.81 package.
   const officialDigest = '3c0a2ca72910b2f4bb71c92d98869b459fd814aaa117647e8819ad6b66a6e2c9';
+  await page.setViewportSize({width:1440,height:900});
   await page.goto('http://127.0.0.1:4173');
   await page.getByRole('button', { name: 'Open SoundSky', exact: true }).click();
   await page.waitForFunction(() => document.querySelector('soundsky-player').shadowRoot.querySelector('.heatmap-surface')?.paperShaderMount?.providedUniforms.u_image?.naturalWidth > 100);
@@ -15,7 +16,10 @@ async page => {
     if (s.querySelectorAll('.cover-heat canvas').length !== 2) throw new Error('Cover Heatmaps are missing');
     const shape = s.querySelector('.heatmap-surface');
     if (getComputedStyle(shape).maskImage !== 'none' || getComputedStyle(shape.parentElement).maskImage !== 'none') throw new Error('Heatmap is cropped by a CSS mask');
-    if (mount.providedUniforms.u_colorBack[3] !== 0) throw new Error('The floating shape has an opaque rectangular background');
+    if (mount.providedUniforms.u_colorBack[3] !== 1) throw new Error('Cover backing is no longer opaque');
+    const cover = s.querySelector('.artwork').getBoundingClientRect();
+    const panel = s.querySelector('.cover-heat').getBoundingClientRect();
+    if (panel.width - cover.width > 21 || panel.height - cover.height > 21) throw new Error('Heatmap has grown beyond its original margin');
     const gl = mount.gl;
     const read = frame => {
       mount.setFrame(frame);
@@ -43,14 +47,18 @@ async page => {
     if (!input.includes('artwork')) throw new Error('Fixture artwork missing');
     const speed = cool.speed;
     const frame = cool.getCurrentFrame();
+    const panel = s.querySelector('.cover-heat').getBoundingClientRect();
     window.postMessage({type:'soundsky:audio',level:.16,onset:.1}, location.origin);
     await new Promise(resolve => setTimeout(resolve, 70));
-    if (warm.providedUniforms.u_innerGlow <= 0) throw new Error('Warm heat ignores audio');
+    const front = getComputedStyle(s.querySelector('.heatmap-warm')).maskImage;
+    if (!front.includes('55.2%')) throw new Error('Thermal front ignores audio');
+    const nextPanel = s.querySelector('.cover-heat').getBoundingClientRect();
+    if (nextPanel.width !== panel.width || nextPanel.left !== panel.left) throw new Error('Heatmap moves with the pulsing artwork');
     if (cool.speed !== speed || cool.getCurrentFrame() < frame) throw new Error('Audio changed cool animation timing');
-    if (cool.providedUniforms.u_innerGlow !== 0 || cool.providedUniforms.u_outerGlow !== .5) throw new Error('Cool parameters changed with audio');
+    if (cool.providedUniforms.u_innerGlow !== .5 || cool.providedUniforms.u_outerGlow !== .5) throw new Error('Cool parameters changed with audio');
     window.postMessage({type:'soundsky:audio',level:0,onset:0}, location.origin);
     await new Promise(resolve => setTimeout(resolve, 70));
-    if (warm.providedUniforms.u_innerGlow !== 0) throw new Error('Heat remains during silence');
+    if (!getComputedStyle(s.querySelector('.heatmap-warm')).maskImage.includes('-18%')) throw new Error('Thermal front remains during silence');
     return { audioHeat: true, nativeCoolTiming: true };
   });
   await page.getByRole('button', { name: 'Pause', exact: true }).last().click();

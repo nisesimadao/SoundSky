@@ -2,6 +2,8 @@ import { createElement, Fragment } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { Heatmap, LiquidMetal } from '@paper-design/shaders-react';
 
+const coverShape = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><rect width="512" height="512" rx="12" fill="black"/></svg>')}`;
+
 /** Official Paper components own sizing, mask preprocessing and GL lifecycles. */
 export class Materials {
   private roots: { metal: Root; heat: Root } | null = null;
@@ -51,26 +53,28 @@ export class Materials {
       distortion: .07, contour: .4, angle: 70, speed: dynamics * this.speedMul, scale: 1.12, fit: 'contain',
       minPixelRatio: 1, maxPixelCount: 16384,
     }));
-    // Both official shaders receive the jacket itself. No CSS mask, clipping,
-    // custom fragment or reset of the native animation when an audio hit arrives.
     const showHeat = this.heatEnabled && !!this.artwork;
     this.heat.hidden = !showHeat;
     const moving = this.active && this.playing && !document.hidden && !this.motion.matches;
+    // Restore the small, filled backing surface. The jacket is no longer a shader input.
     const common = {
-      width: '100%', height: '100%', image: this.artwork, colorBack: '#00000000',
-      scale: 1, fit: 'contain' as const, contour: 0, noise: 0,
-      speed: moving ? this.heatSpeedMul : 0, minPixelRatio: 1, maxPixelCount: 131072,
+      width: '100%', height: '100%', image: coverShape,
+      scale: 1, fit: 'contain' as const,
+      minPixelRatio: 1, maxPixelCount: 131072,
     };
+    const reach = this.active && this.playing && !document.hidden && this.level > 0 ? Math.max(-18, Math.min(110, this.level * 420 - 12)) : -18;
+    const reveal = `linear-gradient(to bottom, #000 ${reach}%, transparent ${reach + 18}%)`;
     this.roots.heat.render(showHeat ? createElement(Fragment, null,
-      // Native outer waves: fixed parameters keep their timing independent of sound.
+      // Keep Paper's original cool wave animation running independently of audio.
       createElement(Heatmap, { ...common, key: 'cool', className: 'heatmap-surface heatmap-cool',
-        innerGlow: 0, outerGlow: .5,
-        colors: ['#11206a00', '#1f3ba2', '#2f63e7', '#6bd7ff'],
+        colorBack: '#11206a', colors: ['#11206a', '#1f3ba2', '#2f63e7', '#6bd7ff'],
+        speed: moving ? this.heatSpeedMul : 0,
       }),
-      // Sound changes heat inside the image; the shader still animates its own waves.
+      // Restore the sound-driven thermal front over the same official material.
       createElement(Heatmap, { ...common, key: 'warm', className: 'heatmap-surface heatmap-warm',
-        innerGlow: this.active && this.playing && !document.hidden ? Math.min(1, this.level * 3 + this.onset * 5) : 0,
-        outerGlow: 0, colors: ['#ffe67900', '#ffe679', '#ff991e', '#ff4c00'],
+        colorBack: '#391515', colors: ['#661e18', '#ff4c00', '#ff991e', '#ffe679'],
+        speed: dynamics * this.heatSpeedMul,
+        style: { maskImage: reveal, WebkitMaskImage: reveal },
       }),
     ) : null);
   }
