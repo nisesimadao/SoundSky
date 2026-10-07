@@ -8,7 +8,7 @@ export class SceneFlow {
   private previous = 0;
   private lastHit = -Infinity;
   constructor(private random: () => number = Math.random) { this.reset(); }
-  private point(): Point { return { x: (this.random() * 2 - 1) * .8, y: (this.random() * 2 - 1) * .8 }; }
+  private point(): Point { return { x: (this.random() * 2 - 1) * .7, y: (this.random() * 2 - 1) * .7 }; }
   reset() {
     this.points = [{x:0,y:0}, {x:0,y:0}, this.point(), this.point()];
     this.phase = this.slow = this.fast = this.previous = 0; this.lastHit = -Infinity;
@@ -30,7 +30,15 @@ export class SceneFlow {
     this.phase += distance / 5000;
     while (this.phase >= 1) { this.phase--; this.points.shift(); this.points.push(this.point()); }
     const [a,b,c,d] = this.points, t=this.phase;
-    const curve=(key: keyof Point)=>.5*(2*b[key]+(-a[key]+c[key])*t+(2*a[key]-5*b[key]+4*c[key]-d[key])*t*t+(-a[key]+3*b[key]-3*c[key]+d[key])*t*t*t);
+    // Shared velocity and acceleration at each waypoint keep the join C2 smooth.
+    const curve=(key: keyof Point)=>{
+      const delta=c[key]-b[key], v0=(c[key]-a[key])*.5, v1=(d[key]-b[key])*.5;
+      const a0=c[key]-2*b[key]+a[key], a1=d[key]-2*c[key]+b[key];
+      const k3=10*delta-6*v0-4*v1-1.5*a0+.5*a1;
+      const k4=-15*delta+8*v0+7*v1+1.5*a0-a1;
+      const k5=6*delta-3*v0-3*v1-.5*a0+.5*a1;
+      return b[key]+v0*t+a0*.5*t*t+k3*t**3+k4*t**4+k5*t**5;
+    };
     return {x:curve('x'),y:curve('y')};
   }
 }

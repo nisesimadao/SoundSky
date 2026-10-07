@@ -22,6 +22,21 @@ async page => {
   if(Math.abs(x)>14||Math.abs(y)>14)throw new Error('Sway exceeds its subtle bounds');
   return {x,y};
  });
+ const coversEdges=()=>page.evaluate(()=>{
+  const host=document.querySelector('soundsky-player'),shadow=host.shadowRoot;
+  const oldX=host.style.getPropertyValue('--soundsky-scene-x'),oldY=host.style.getPropertyValue('--soundsky-scene-y');
+  try {
+   for(const x of [-14,14])for(const y of [-14,14]){
+    host.style.setProperty('--soundsky-scene-x',`${x}px`);host.style.setProperty('--soundsky-scene-y',`${y}px`);
+    for(const selector of ['.ambient','.ambient-fallback','.atmosphere','.veil']){
+     const layer=shadow.querySelector(selector);if(layer.hidden)continue;
+     const r=layer.getBoundingClientRect();
+     if(r.left>0||r.top>0||r.right<innerWidth||r.bottom<innerHeight)throw new Error(`${selector} exposes a viewport edge`);
+    }
+   }
+  } finally {host.style.setProperty('--soundsky-scene-x',oldX);host.style.setProperty('--soundsky-scene-y',oldY);}
+ });
+ await coversEdges();
  const initial=await compare();if(Math.hypot(initial.x,initial.y)<.02)throw new Error('Sway is frozen');
  const kickResult=await page.evaluate(async()=>{
   const host=document.querySelector('soundsky-player');
@@ -36,7 +51,7 @@ async page => {
  });
  await compare();
 
- await page.setViewportSize({width:390,height:844});await page.waitForTimeout(300);await compare();
+ await page.setViewportSize({width:390,height:844});await page.waitForTimeout(300);await compare();await coversEdges();
  await page.emulateMedia({reducedMotion:'reduce'});await page.waitForTimeout(120);
  const reduced=await compare();if(reduced.x||reduced.y)throw new Error('Reduced Motion does not stop sway');
  await page.emulateMedia({reducedMotion:'no-preference'});
@@ -49,5 +64,5 @@ async page => {
  await page.getByRole('button',{name:'見た目の設定',exact:true}).click();
  await page.getByRole('tab',{name:'背景',exact:true}).click();
  await page.getByRole('button',{name:'画面のゆらぎを標準に戻す',exact:true}).click();
- return {...kickResult,subtleSway:true,queueAligned:true,mobileAligned:true,reducedMotion:true,pauseSettles:true,closeClean:true};
+ return {...kickResult,backgroundEdgesCovered:true,subtleSway:true,queueAligned:true,mobileAligned:true,reducedMotion:true,pauseSettles:true,closeClean:true};
 }
