@@ -82,7 +82,7 @@ html[data-soundsky-theme] :is(.playableTile__artwork,.sound__artwork,.playlist__
 
 @media (prefers-reduced-motion: reduce) { html[data-soundsky-theme] .image__full { transition: none !important; transform: none !important; } }
 /* Native galleries use fixed 208px heights; fluid covers need content-sized rows. */
-html[data-soundsky-theme] :is(.tileGallery,.tileGallery__slider,.tileGallery__sliderPeekContainer,.tileGallery__sliderPanel,.tileGallery__sliderPanelSlide) { height: auto !important; }
+html[data-soundsky-theme] :is(.tileGallery,.tileGallery__slider,.tileGallery__sliderPeekContainer,.tileGallery__sliderPanel,.tileGallery__sliderPanelSlide) { height: auto !important; max-height: none !important; }
 html[data-soundsky-theme] :is(.playControls__bg,.playControls__elements) { background: transparent !important; }
 /* Icon buttons must fit their hit area; native 24px queue button had 24px padding. */
 html[data-soundsky-theme] .playControls .sc-button-icon { display: inline-flex; align-items: center; justify-content: center; padding: 0 !important; }
