@@ -1,3 +1,4 @@
+import { artworkPalette, defaultPalette, paletteAt, hueAt } from './artwork-palette';
 /** Pick a dominant chromatic hue rather than averaging opposing colors into gray. */
 export function artworkHue(pixels: Uint8ClampedArray): number | null {
   const weights = new Float64Array(36);
@@ -24,22 +25,19 @@ export function artworkHue(pixels: Uint8ClampedArray): number | null {
   return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 }
 
-/** Travel along the shorter hue arc, holding saturation and lightness constant. */
-export function hueAt(from: number, to: number, progress: number): number {
-  const distance = ((to - from + 540) % 360) - 180;
-  const t = Math.min(1, Math.max(0, progress));
-  return (from + distance * t * t * (3 - 2 * t) + 360) % 360;
-}
+export { hueAt } from './artwork-palette';
 export const accentColor = (hue: number) => `hsl(${hue.toFixed(3)} 55% 72%)`;
 
 export class ArtworkAccent {
   private hue = 210;
+  private palette = [...defaultPalette];
+  private paletteTransition: {from:string[];to:string[]} | null = null;
   private generation = 0;
   private image: HTMLImageElement | null = null;
   private frame = 0;
   private transition: { from: number; to: number; start: number } | null = null;
   private motion = matchMedia('(prefers-reduced-motion: reduce)');
-  constructor(private apply: (hue: number) => void) { apply(this.hue); }
+  constructor(private apply: (hue: number) => void, private applyPalette: (colors:string[]) => void = () => {}) { apply(this.hue); applyPalette(this.palette); }
   setArtwork(url: string) {
     const generation = ++this.generation;
     if (this.image) this.image.onload = this.image.onerror = null;
@@ -54,7 +52,8 @@ export class ArtworkAccent {
         const context = canvas.getContext('2d', { willReadFrequently: true });
         if (!context) return;
         context.drawImage(image, 0, 0, 40, 40);
-        this.fadeTo(artworkHue(context.getImageData(0, 0, 40, 40).data) ?? 210);
+        const pixels = context.getImageData(0, 0, 40, 40).data;
+        this.fadeTo(artworkHue(pixels) ?? 210, artworkPalette(pixels));
       } catch { this.fadeTo(210); }
       this.image = null;
     };
@@ -66,12 +65,14 @@ export class ArtworkAccent {
     const progress = (now - this.transition.start) / 900;
     this.hue = hueAt(this.transition.from, this.transition.to, progress);
     this.apply(this.hue);
+    if (this.paletteTransition) { this.palette = paletteAt(this.paletteTransition.from, this.paletteTransition.to, progress); this.applyPalette(this.palette); }
     if (progress >= 1) this.transition = null;
   }
-  private fadeTo(hue: number) {
+  private fadeTo(hue: number, colors = defaultPalette) {
     this.sample(performance.now());
     cancelAnimationFrame(this.frame); this.frame = 0;
-    if (this.motion.matches) { this.transition = null; this.hue = hue; this.apply(hue); return; }
+    if (this.motion.matches) { this.transition = null; this.hue = hue; this.apply(hue); this.palette = [...colors]; this.paletteTransition = null; this.applyPalette(this.palette); return; }
+    this.paletteTransition = { from: [...this.palette], to: [...colors] };
     this.transition = { from: this.hue, to: hue, start: performance.now() };
     this.frame = requestAnimationFrame(this.tick);
   }
@@ -83,7 +84,7 @@ export class ArtworkAccent {
   destroy() {
     this.generation++;
     if (this.image) this.image.onload = this.image.onerror = null;
-    this.image = null; this.transition = null;
+    this.image = null; this.transition = null; this.paletteTransition = null;
     cancelAnimationFrame(this.frame); this.frame = 0;
   }
 }

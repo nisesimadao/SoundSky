@@ -1,6 +1,7 @@
 import { createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { accentShaderColor } from './accent';
+import { defaultPalette } from './artwork-palette';
 import { GemSmoke, MeshGradient } from '@paper-design/shaders-react';
 
 /** The decorative Paper backdrop responds to audio separately from the fixed cover materials. */
@@ -14,6 +15,7 @@ export class Atmosphere {
   private consoleSpeed = .2;
   private seekSpeed = .3;
   private accentHue = 210;
+  private palette = [...defaultPalette];
   private level = 0;
   private onset = 0;
   private motion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -30,6 +32,7 @@ export class Atmosphere {
     this.consoleSpeed = Math.max(0, consoleSpeed); this.seekSpeed = Math.max(0, seekSpeed);
     this.render();
   }
+  setPalette(colors: string[]) { this.palette = [...colors]; this.renderBackground(); }
   setAccent(hue: number) { this.accentHue = hue; this.renderSeek(); }
   setLevel(level: number, onset = 0) {
     const next = Number.isFinite(level) ? Math.max(0, level) : 0;
@@ -51,12 +54,7 @@ export class Atmosphere {
     }
     if (!this.roots) return;
     const moving = audible && !this.motion.matches;
-    this.roots.background.render(createElement(MeshGradient, {
-      width: '100%', height: '100%', colors: ['#090e17', '#214451', '#10171e', '#3d3530'],
-      distortion: .65, swirl: .25, grainMixer: .02, grainOverlay: .018,
-      speed: moving ? this.flowSpeed * (.15 + level * 4 + this.onset * 8) : 0,
-      frame: 18000, scale: 1.25, minPixelRatio: 1, maxPixelCount: 230400,
-    }));
+    this.renderBackground();
     this.roots.console.render(createElement(GemSmoke, {
       width: '100%', height: '100%', shape: 'none',
       colors: ['#0d141b', '#263139'], colorBack: '#090d11', colorInner: '#121a20',
@@ -65,6 +63,17 @@ export class Atmosphere {
       speed: moving ? this.consoleSpeed : 0, minPixelRatio: 1, maxPixelCount: 16384,
     }));
     this.renderSeek();
+  }
+  private renderBackground() {
+    if (!this.roots || this.disposed) return;
+    const moving = this.active && this.playing && !document.hidden && !this.motion.matches;
+    const level = moving ? this.level : 0;
+    this.roots.background.render(createElement(MeshGradient, {
+      width: '100%', height: '100%', colors: this.palette,
+      distortion: .65, swirl: .25, grainMixer: .02, grainOverlay: .018,
+      speed: moving ? this.flowSpeed * (.15 + level * 4 + this.onset * 8) : 0,
+      frame: 18000, scale: 1.25, minPixelRatio: 1, maxPixelCount: 230400,
+    }));
   }
   private renderSeek() {
     if (!this.roots || this.disposed) return;

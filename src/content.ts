@@ -11,7 +11,7 @@ import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.2.24';
+const VERSION = '1.2.25';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
@@ -177,7 +177,7 @@ class SoundSky {
       this.host.style.setProperty('--accent', accentColor(hue));
       this.queue.setAccent(accentColor(hue));
       this.atmosphere.setAccent(hue);
-    });
+    }, colors => this.atmosphere.setPalette(colors));
     this.adapter.onRootChange = () => {
       if (!this.active) return;
       this.queue.bind();
