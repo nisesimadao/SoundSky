@@ -1,0 +1,93 @@
+/* Opt-in skin: preserve native controls and virtual row geometry. */
+html[data-soundsky-theme] { color-scheme: dark; --sky-site-bg: #101214; --sky-site-transport-height: 72px; --sky-site-surface: #181c20; --sky-site-ink: #eeeae2; --sky-site-muted: #9da5a5; --sky-site-line: #dce5e514; --sky-site-accent: hsl(210 55% 72%); background: var(--sky-site-bg) !important; }
+html[data-soundsky-theme] body { color: var(--sky-site-ink) !important; background: var(--sky-site-bg) !important; font-family: 'Avenir Next', Avenir, 'Helvetica Neue', sans-serif !important; -webkit-font-smoothing: antialiased; }
+html[data-soundsky-theme] :is(.sc-background-light,.sc-background-white,#app,.l-page,.l-container,.l-content,.l-main,.l-sidebar,.l-fixed,.listenEngagement,.profileHeaderInfo,.userInfoBar) { background-color: transparent !important; border-color: var(--sky-site-line) !important; }
+html[data-soundsky-theme] :is(main,section,article,aside,footer) { color: var(--sky-site-ink); border-color: var(--sky-site-line) !important; }
+html[data-soundsky-theme] :is(h1,h2,h3,h4,.sc-text-h1,.sc-text-h2,.sc-text-h3,.sc-text-h4) { font-family: 'Avenir Next', Avenir, 'Helvetica Neue', sans-serif !important; color: var(--sky-site-ink) !important; letter-spacing: -.025em; }
+html[data-soundsky-theme] :is(h1,.sc-text-h1) { font-weight: 600; }
+html[data-soundsky-theme] :is(p,a,label,button,input,textarea,select) { font-family: inherit; }
+html[data-soundsky-theme] :is(a,.sc-link-dark,.sc-text-dark,.soundTitle__title,.soundTitle__titleContainer,.trackItem__trackTitle) { color: var(--sky-site-ink) !important; }
+html[data-soundsky-theme] :is(.sc-link-light,.sc-text-light,.sc-text-secondary,.soundTitle__username,.soundTitle__uploadTime,.soundTitle__additional,.trackItem__username,.commentItem__timestamp,footer) { color: var(--sky-site-muted) !important; }
+html[data-soundsky-theme] :is(a,button):hover { color: var(--sky-site-accent) !important; }
+html[data-soundsky-theme] :is(button,a,input,textarea,select,[tabindex]):focus-visible { outline: 2px solid var(--sky-site-accent) !important; outline-offset: 3px; }
+html[data-soundsky-theme] :is(.header,header[role="banner"]) { background: #101214eF !important; border-bottom: 1px solid var(--sky-site-line) !important; box-shadow: 0 8px 30px #0002; backdrop-filter: blur(18px); }
+html[data-soundsky-theme] :is(.header__navMenu a,.header__userNavButton) { border: 0 !important; background: transparent !important; color: var(--sky-site-muted) !important; }
+html[data-soundsky-theme] :is(.header__navMenu a.selected,.header__navMenu a:hover,.header__logoLink) { color: var(--sky-site-accent) !important; background: transparent !important; }
+html[data-soundsky-theme] :is(input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),textarea,select,.headerSearch__input) { border: 1px solid #c6d9e11c !important; border-radius: 12px !important; background-color: #1c2228 !important; color: var(--sky-site-ink) !important; box-shadow: none !important; }
+html[data-soundsky-theme] ::placeholder { color: #a4afb6 !important; opacity: .8; }
+html[data-soundsky-theme] :is(button,.sc-button) { border-radius: 6px !important; border-color: #c6d9e126 !important; background-color: transparent !important; color: var(--sky-site-ink) !important; box-shadow: none; transition: background-color .15s ease-out,color .15s ease-out,border-color .15s ease-out; }
+html[data-soundsky-theme] :is(button,.sc-button):hover { background-color: #ffffff09 !important; border-color: color-mix(in srgb,var(--sky-site-accent) 45%,transparent) !important; }
+html[data-soundsky-theme] :is(button,.sc-button):disabled { opacity: .45; }
+html[data-soundsky-theme] :is(.sc-button-selected,.sc-button-active,.sc-button-primary,.sc-button-cta,button[aria-pressed="true"],button[aria-selected="true"]) { color: #101214 !important; background-color: var(--sky-site-accent) !important; border-color: transparent !important; }
+html[data-soundsky-theme] :is(.sc-button-play,.playButton,.playControl) { border-radius: 50% !important; background-color: var(--sky-site-accent) !important; color: #101214 !important; }
+html[data-soundsky-theme] :is(.soundList__item,.chartTrack,.searchItem,.userBadgeListItem,.commentItem,.trackList__item) { border-color: var(--sky-site-line) !important; }
+html[data-soundsky-theme] :is(.sound,.userBadge,.playlist,.compactTrackList,.sidebarModule) { border-radius: 14px; border-color: var(--sky-site-line) !important; }
+html[data-soundsky-theme] :is(.sound__artwork,.image__full,.sc-artwork,.playlist__artwork,.playableTile__artwork,.trackItem__artwork) { border-radius: 12px !important; overflow: hidden; }
+html[data-soundsky-theme] :is(.profileHeaderBackground,.fullHero__artwork) { border-radius: 0 !important; }
+html[data-soundsky-theme] :is(.commentForm__inputWrapper,.commentForm__input) { border-radius: 12px !important; border-color: var(--sky-site-line) !important; background-color: #1c2228 !important; color: var(--sky-site-ink) !important; }
+html[data-soundsky-theme] :is(.g-tabs,.g-tabs-item,.sc-border-light,.sidebarModule,.userInfoBar) { border-color: var(--sky-site-line) !important; }
+html[data-soundsky-theme] :is(.g-tabs-link.active,[role="tab"][aria-selected="true"]) { color: var(--sky-site-accent) !important; border-color: var(--sky-site-accent) !important; }
+html[data-soundsky-theme] :is(.dropdownMenu,.moreActions,.volume__sliderWrapper,[role="dialog"],[role="menu"],.modal__modal) { background-color: #181c20 !important; color: var(--sky-site-ink) !important; border: 1px solid #c6d9e124 !important; border-radius: 16px !important; box-shadow: 0 18px 60px #0005; }
+html[data-soundsky-theme] :is(.dropdownMenu__item,.moreActions__button) { color: var(--sky-site-ink) !important; background-color: transparent !important; }
+html[data-soundsky-theme] :is(.playControls,.playControls__inner) { background-color: #11161bea !important; color: var(--sky-site-ink) !important; border-color: #dce5e51c !important; backdrop-filter: blur(20px); }
+html[data-soundsky-theme] .playControls { box-shadow: 0 -8px 32px #0003; }
+html[data-soundsky-theme] :is(.playbackTimeline__progressBar,.volume__sliderProgress,.volume__sliderHandle,.playbackTimeline__progressHandle) { background-color: var(--sky-site-accent) !important; }
+html[data-soundsky-theme] :is(.playbackSoundBadge__avatar,.playbackSoundBadge__avatar span) { border-radius: 8px !important; }
+html[data-soundsky-theme] .queue:not([data-soundsky-queue]) { border: 1px solid #c6d9e126 !important; border-radius: 16px !important; background-color: #181c20 !important; color: var(--sky-site-ink) !important; box-shadow: 0 18px 60px #0005; overflow: hidden; }
+html[data-soundsky-theme] .queue:not([data-soundsky-queue]) :is(.queue__panel,.queue__scrollableInner,.queueFallback) { background-color: #181c20 !important; border-color: var(--sky-site-line) !important; }
+html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queueItemView { border-color: var(--sky-site-line) !important; }
+html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queueItemView.m-active { box-shadow: inset 2px 0 var(--sky-site-accent); background-color: #ffffff05 !important; }
+/* New SoundCloud pages: component roles and local utility surfaces. */
+html[data-soundsky-theme] main :is([class~="bg-white"],[class~="bg-background"],[class~="bg-surface"],[class~="bg-surface-primary"],[class~="bg-surface-secondary"]) { background-color: #181c20 !important; }
+html[data-soundsky-theme] main :is([class~="text-black"],[class~="text-primary"],[class~="text-foreground"]) { color: var(--sky-site-ink) !important; }
+html[data-soundsky-theme] main :is([class~="rounded"],[class~="rounded-sm"],[class~="rounded-md"],[class~="rounded-lg"]) { border-radius: 12px !important; }
+html[data-soundsky-theme] :is([role="tablist"],hr) { border-color: var(--sky-site-line) !important; }
+html[data-soundsky-theme] [data-soundsky-site-shader] { position: fixed; inset: 0; pointer-events: none; z-index: -1; opacity: .3; }
+html[data-soundsky-theme] body { isolation: isolate; }
+html[data-soundsky-theme] [data-soundsky-site-shader] > div { position: absolute !important; inset: 0; }
+html[data-soundsky-theme] [data-soundsky-site-shader] canvas { width: 100%; height: 100%; display: block; }
+@media (prefers-reduced-motion: reduce) { html[data-soundsky-theme] :is(button,.sc-button) { transition: none; } }
+
+html[data-soundsky-theme] main :is([class~="text-brand"],[class~="text-accent"],[class~="text-orange-500"]) { color: var(--sky-site-accent) !important; }
+html[data-soundsky-theme] main :is([class~="bg-brand"],[class~="bg-accent"],[class~="bg-orange-500"]) { background-color: var(--sky-site-accent) !important; color: #101214 !important; }
+html[data-soundsky-theme] .sc-button-selected::before { filter: brightness(0); }
+
+html[data-soundsky-theme] main { background-color: transparent !important; }
+
+/* One continuous canvas, with wide content and a readable transport. */
+@media (min-width: 1100px) {
+  html[data-soundsky-theme] .l-container { width: calc(100% - 80px) !important; max-width: 1760px !important; }
+  html[data-soundsky-theme] .l-fluid-fixed > .l-main { width: calc(100% - 360px) !important; box-sizing: border-box; padding-right: 40px; }
+  html[data-soundsky-theme] .l-main > .l-content { width: 100% !important; box-sizing: border-box; }
+  html[data-soundsky-theme] .header__inner { padding-inline: 0 !important; }
+  html[data-soundsky-theme] .playControls__wrapper { padding-inline: 0 !important; }
+}
+html[data-soundsky-theme] body { padding-bottom: 72px; }
+html[data-soundsky-theme] :is(.playControls,.playControls__inner,.playControls__wrapper,.playControls__elements) { height: 72px !important; }
+html[data-soundsky-theme] .playControls__elements { align-items: center; }
+html[data-soundsky-theme] .playControls__bg { height: 72px; }
+html[data-soundsky-theme] .playControls__queue { bottom: 80px !important; }
+html[data-soundsky-theme] .playControls__control { flex-shrink: 0; }
+html[data-soundsky-theme] .playControls__play { width: 40px !important; height: 40px !important; }
+html[data-soundsky-theme] .playControls__volume { display: flex; align-items: center; }
+html[data-soundsky-theme] .playbackSoundBadge__avatar { width: 40px !important; height: 40px !important; }
+html[data-soundsky-theme] .playbackSoundBadge { align-items: center; }
+html[data-soundsky-theme] .playbackTimeline__background { background-color: #ffffff20 !important; }
+html[data-soundsky-theme] :is(.sc-button-icon,.playControls__control,.volume__button,.headerSearch__submit) { border-color: transparent !important; }
+/* Lift the artwork inside its existing hit area; don't move rows or clip neighbours. */
+html[data-soundsky-theme] :is(.playableTile__artwork,.sound__artwork,.playlist__artwork,.trackItem__artwork) .image__full { transition: transform 280ms cubic-bezier(.2,.7,.2,1),filter 280ms ease; transform-origin: center; }
+@media (hover:hover) and (prefers-reduced-motion:no-preference) {
+  html[data-soundsky-theme] :is(.audibleTile,.sound,.playlist,.trackItem):is(:hover,:focus-within) :is(.playableTile__artwork,.sound__artwork,.playlist__artwork,.trackItem__artwork) .image__full { transform: scale(1.035); filter: brightness(1.07); }
+}
+
+@media (prefers-reduced-motion: reduce) { html[data-soundsky-theme] .image__full { transition: none !important; transform: none !important; } }
+/* Native galleries use fixed 208px heights; fluid covers need content-sized rows. */
+html[data-soundsky-theme] :is(.tileGallery,.tileGallery__slider,.tileGallery__sliderPeekContainer,.tileGallery__sliderPanel,.tileGallery__sliderPanelSlide) { height: auto !important; }
+html[data-soundsky-theme] :is(.playControls__bg,.playControls__elements) { background: transparent !important; }
+/* Icon buttons must fit their hit area; native 24px queue button had 24px padding. */
+html[data-soundsky-theme] .playControls .sc-button-icon { display: inline-flex; align-items: center; justify-content: center; padding: 0 !important; }
+html[data-soundsky-theme] .playControls__timeline { min-width: 0 !important; flex: 1 1 0%; }
+html[data-soundsky-theme] .playControls__soundBadge { width: clamp(280px,24vw,400px) !important; flex: 0 0 auto; }
+html[data-soundsky-theme] .playbackSoundBadge__titleContextContainer { min-width: 0 !important; }
+html[data-soundsky-theme] .playbackSoundBadge__actions { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+html[data-soundsky-theme] .playbackSoundBadge__actions > .sc-button { width: 32px !important; height: 36px !important; margin: 0 !important; flex: 0 0 32px; }

@@ -18,3 +18,8 @@ test('older speed preference migrates while explicit Heatmap settings take prece
  assert.equal(loadSavedSettings({materialSpeed:4,heatSpeed:0}).heatSpeed,0);
  assert.equal(loadSavedSettings({}).sceneSway,0);
 });
+test('the native site theme is opt-in and only accepts a boolean preference',()=>{
+ assert.equal(loadSavedSettings({}).modernSoundCloud,false);
+ assert.equal(loadSavedSettings({modernSoundCloud:'true'}).modernSoundCloud,false);
+ assert.equal(loadSavedSettings({modernSoundCloud:true}).modernSoundCloud,true);
+});

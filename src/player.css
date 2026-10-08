@@ -7,7 +7,7 @@ button { border: 0; background: transparent; padding: 0; }
 button:focus-visible, input:focus-visible { outline: 2px solid #c1cbee; outline-offset: 5px; }
 svg { width: 22px; height: 22px; display: block; }
 [hidden] { display: none !important; }
-.launcher { position: fixed; right: 22px; bottom: 66px; z-index: 2147483644; display: flex; gap: 9px; align-items: center; padding: 11px 16px; border-radius: 24px; color: #eeedf5; background: #18191eeF; box-shadow: 0 2px 12px #0002; font-size: 12px; font-weight: 500; letter-spacing: .01em; transition: transform .2s ease-out, background .2s ease-out; }
+.launcher { position: fixed; right: 22px; bottom: calc(var(--sky-site-transport-height, 48px) + 18px); z-index: 2147483644; display: flex; gap: 9px; align-items: center; padding: 11px 16px; border-radius: 24px; color: #eeedf5; background: #18191eeF; box-shadow: 0 2px 12px #0002; font-size: 12px; font-weight: 500; letter-spacing: .01em; transition: transform .2s ease-out, background .2s ease-out; }
 .launcher svg { width: 18px; height: 18px; color: #b7c8e5; }
 .launcher:hover { background: #272931; transform: translateY(-2px); }
 .player { position: fixed; inset: 0; z-index: 2147483645; overflow: clip; background: #101214; isolation: isolate; opacity: 0; transition: opacity .24s ease-out; }
@@ -201,8 +201,8 @@ input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.25); }
 .seek-surface input.seek::-webkit-slider-thumb { margin-top: -2px; }
 @media (max-width: 620px) { .atmosphere { opacity: calc(var(--ambient-intensity, .14) * .85); } }
 
-.settings-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 20px; padding-bottom: 10px; border-bottom: 1px solid #a5c2d31c; }
-.settings-tab { padding: 9px 4px; font-size: 11px; color: #8b9da5; border-radius: 4px; }
+.settings-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 20px; padding-bottom: 10px; border-bottom: 1px solid #a5c2d31c; }
+.settings-tab { padding: 9px 2px; font-size: 11px; color: #8b9da5; border-radius: 4px; }
 .settings-tab:hover { color: #dce9ee; background: #c7dfe908; }
 .settings-tab[aria-selected="true"] { color: #e8d4be; background: #c7dfe910; box-shadow: inset 0 -1px #dfc5ab; }
 .settings-section { padding-top: 2px; }

@@ -1,0 +1,23 @@
+async page=>{
+ await page.emulateMedia({reducedMotion:"no-preference"});
+ await page.setViewportSize({width:1680,height:780});
+ // Representative native structure and fixed widths recorded from Discover.
+ await page.setContent(`<!doctype html><style>
+ body{margin:0}.l-container{width:1240px;margin:auto}.l-fluid-fixed{position:relative}.l-main{width:880px;padding-right:32px;box-sizing:border-box}.l-main>.l-content{width:848px}.l-sidebar-right{position:absolute;right:0;top:0;width:360px}.playControls{position:fixed;bottom:0;width:100%;height:48px}.playControls__elements{display:flex;height:48px;align-items:center}.playbackTimeline{height:46px;width:100%}.playControls__timeline{flex:1}.playbackSoundBadge{display:flex;align-items:center}.playbackSoundBadge__actions{width:120px}.sc-button-icon{box-sizing:border-box;padding:6px 12px;width:24px;overflow:hidden}.tileGallery__slider,.tileGallery__sliderPanel,.tileGallery__sliderPanelSlide{height:208px}.tileGallery__slider{overflow:hidden}.tileGallery__sliderPanel{display:flex}.playableTile__artwork{width:160px;height:160px}.image__full{display:block;width:100%;height:100%;background:linear-gradient(45deg,#afc9da,#213547)}button{height:32px}.playControls__queue{position:absolute;bottom:56px;height:532px}
+ </style><div class="l-container l-content"><div class="l-fluid-fixed"><div class="l-main"><div class="l-content"><h1>Made for your listening</h1><div class="tileGallery"><div class="tileGallery__slider"><div class="tileGallery__sliderPanel"><div class="tileGallery__sliderPanelSlide"><div class="audibleTile"><div class="playableTile__artwork"><a href="#"><span class="image__full"></span></a></div><p style="height:80px">Visible title and artist</p></div></div></div></div></div></div></div><aside class="l-sidebar-right">Next listens</aside></div></div><div class="playControls"><div class="playControls__wrapper l-container"><div class="playControls__elements"><button class="playControl playControls__play">Play</button><div class="playControls__timeline"><div class="playbackTimeline"></div></div><div class="playControls__soundBadge"><div class="playbackSoundBadge"><div class="playbackSoundBadge__titleContextContainer">Current track</div><div class="playbackSoundBadge__actions"><button class="sc-button sc-button-icon">Like</button><button class="sc-button sc-button-icon">Follow</button><a class="playbackSoundBadge__showQueue sc-button sc-button-icon"><div><svg width="16" height="16"><path d="M0 8H16"/></svg></div></a></div></div></div></div><div class="playControls__queue"></div></div></div>`);
+ await page.addStyleTag({path:'src/site-theme.css'});
+ await page.evaluate(()=>document.documentElement.setAttribute('data-soundsky-theme',''));
+ for(const width of [1680,1280]){
+  await page.setViewportSize({width,height:780});
+  const layout=await page.evaluate(()=>{const rect=s=>{const r=document.querySelector(s).getBoundingClientRect();return {x:r.x,right:r.right,width:r.width,height:r.height,top:r.top,bottom:r.bottom};};return {container:rect('.l-container'),main:rect('.l-main'),content:rect('.l-main>.l-content'),sidebar:rect('.l-sidebar-right'),bar:rect('.playControls'),button:rect('.playControl'),queue:rect('.playbackSoundBadge__showQueue'),icon:rect('.playbackSoundBadge__showQueue svg'),gallery:rect('.tileGallery__slider'),caption:rect('.audibleTile p'),overflow:document.documentElement.scrollWidth>innerWidth};});
+  if(layout.container.width!==width-80||layout.main.right>layout.sidebar.x||layout.content.right>layout.sidebar.x||layout.bar.height!==72||layout.button.top<layout.bar.top||layout.button.bottom>layout.bar.bottom||layout.overflow||layout.icon.x<layout.queue.x||layout.icon.right>layout.queue.right||layout.queue.right>layout.container.right||layout.caption.bottom>layout.gallery.bottom)throw new Error(JSON.stringify(layout));
+ }
+ await page.locator('.audibleTile').hover();await page.waitForTimeout(350);
+ if(await page.locator('.image__full').evaluate(e=>getComputedStyle(e).transform)==='none')throw new Error('Artwork hover missing');
+ await page.emulateMedia({reducedMotion:'reduce'});
+ if(await page.locator('.image__full').evaluate(e=>getComputedStyle(e).transform)!=='none')throw new Error('Reduced motion still scales artwork');
+ await page.emulateMedia({reducedMotion:'no-preference'});
+ await page.evaluate(()=>document.documentElement.removeAttribute('data-soundsky-theme'));
+ if(await page.locator('.playControls').evaluate(e=>e.getBoundingClientRect().height)!==48)throw new Error('Native geometry not restored');
+ return {fluidWidths:[1680,1280],transportHeight:72,sidebarNoOverlap:true,queueIconFits:true,galleryCaptionsFit:true,hover:true,reducedMotion:true,restoresNativeGeometry:true};
+}

@@ -13,5 +13,5 @@ for (const [name, directory] of [['paper-shaders-react', '@paper-design/shaders-
   await cp(`node_modules/${directory}/LICENSE`, `dist/licenses/${name}/LICENSE`);
   if (name === 'paper-shaders-react') await cp(`node_modules/${directory}/NOTICE`, `dist/licenses/${name}/NOTICE`);
 }
-await build({ entryPoints: ['src/content.ts', 'src/background.ts', 'src/audio.ts'], outdir: 'dist', bundle: true, target: 'chrome120', format: 'iife', loader: { '.css': 'text' }, legalComments: 'none', sourcemap: true, define: { 'process.env.NODE_ENV': '"production"' } });
+await build({ entryPoints: ['src/content.ts', 'src/background.ts', 'src/audio.ts', 'src/theme-frame.ts'], outdir: 'dist', bundle: true, target: 'chrome120', format: 'iife', loader: { '.css': 'text' }, legalComments: 'none', sourcemap: true, define: { 'process.env.NODE_ENV': '"production"' } });
 console.log('SoundSky built → dist/');

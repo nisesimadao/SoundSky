@@ -2,6 +2,7 @@ import { SoundCloudAdapter, artworkURL } from './adapter';
 import { NativeQueue } from './queue';
 import { Ambient } from './ambient';
 import { Atmosphere } from './atmosphere';
+import { SiteTheme } from './site-theme';
 import { loadSavedSettings } from './settings';
 import { CoverPulse } from './cover-pulse';
 import { SceneFlow } from './scene-flow';
@@ -11,14 +12,14 @@ import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.2.25';
+const VERSION = '1.3.2';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
   return s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2,'0')}`;
 };
 
-type NumericSetting = Exclude<keyof SoundSkySettings, 'heatEnabled'>;
+type NumericSetting = Exclude<keyof SoundSkySettings, 'heatEnabled' | 'modernSoundCloud'>;
 const settingValue = (key: NumericSetting, value: number) => {
   if (key === 'sceneSway') return value === 0 ? 'オフ' : `${Math.round(value * 100)}%`;
   if (value === 0) return key === 'pulseMax' ? 'なし' : key === 'ambientGlow' ? '消灯' : key === 'heatResponse' ? '反応なし' : '停止';
@@ -43,6 +44,7 @@ class SoundSky {
   private atmosphere: Atmosphere;
   private materials: Materials;
   private accent: ArtworkAccent;
+  private siteTheme = new SiteTheme();
   private active = false;
   private disposed = false;
   private state: PlayerState = this.adapter.read();
@@ -107,6 +109,7 @@ class SoundSky {
               <button class="settings-tab" role="tab" id="tab-light" aria-controls="settings-light" aria-selected="false" tabindex="-1" data-settings-tab="light">周囲の光</button>
               <button class="settings-tab" role="tab" id="tab-background" aria-controls="settings-background" aria-selected="false" tabindex="-1" data-settings-tab="background">背景</button>
               <button class="settings-tab" role="tab" id="tab-controls" aria-controls="settings-controls" aria-selected="false" tabindex="-1" data-settings-tab="controls">操作部分</button>
+              <button class="settings-tab" role="tab" id="tab-site" aria-controls="settings-site" aria-selected="false" tabindex="-1" data-settings-tab="site">SoundCloud</button>
             </div>
             <div class="settings-section" role="tabpanel" id="settings-cover" aria-labelledby="tab-cover">
               <p class="settings-section-note">音に合わせたジャケットの動きを調整します。</p>
@@ -128,6 +131,12 @@ class SoundSky {
               ${settingControl('ambientSpeed', '背景の動く速さ', 0, 8, .1, '画面全体に広がる模様の動き。0で止まります。', '停止', '速く')}
               ${settingControl('sceneSway', '画面のゆらぎ', 0, 1, .05, 'ランダムな地点へ約5秒で移動し、キックで加速して徐々に元の速さへ戻ります。停止中は止まります。', 'オフ', '最大 約14px')}
               ${settingControl('ambientGlow', '背景の明るさ', 0, 2, .05, '音に反応する背景の光量。0で光を消します。', '消灯', '明るく')}
+            </div>
+            <div class="settings-section" role="tabpanel" id="settings-site" aria-labelledby="tab-site" hidden>
+              <div class="settings-effect-toggle">
+                <div class="settings-label-row settings-toggle"><label for="setting-modernSoundCloud">SoundCloudの見た目を整える</label><input id="setting-modernSoundCloud" type="checkbox" role="switch" aria-describedby="hint-modernSoundCloud"><output id="val-modernSoundCloud"></output></div>
+                <p class="settings-hint" id="hint-modernSoundCloud">通常のページも、暗い配色・柔らかい角丸・整った文字へ。アクセントは再生中のカバーの色に合わせます。SoundSkyを閉じても有効です。</p>
+              </div>
             </div>
             <div class="settings-section" role="tabpanel" id="settings-controls" aria-labelledby="tab-controls" hidden>
               <p class="settings-section-note">再生ボタンやバーの質感を調整します。</p>
@@ -176,8 +185,8 @@ class SoundSky {
     this.accent = new ArtworkAccent(hue => {
       this.host.style.setProperty('--accent', accentColor(hue));
       this.queue.setAccent(accentColor(hue));
-      this.atmosphere.setAccent(hue);
-    }, colors => this.atmosphere.setPalette(colors));
+      this.atmosphere.setAccent(hue); this.siteTheme.setAccent(hue);
+    }, colors => { this.atmosphere.setPalette(colors); this.siteTheme.setPalette(colors); });
     this.adapter.onRootChange = () => {
       if (!this.active) return;
       this.queue.bind();
@@ -251,7 +260,7 @@ class SoundSky {
     });
     this.shadow.querySelectorAll<HTMLInputElement>('.settings-slider').forEach(slider => {
       slider.addEventListener('input', () => {
-        const key = slider.dataset.setting as Exclude<keyof SoundSkySettings, 'heatEnabled'> | undefined;
+        const key = slider.dataset.setting as Exclude<keyof SoundSkySettings, 'heatEnabled' | 'modernSoundCloud'> | undefined;
         if (!key) return;
         const val = Number(slider.value);
         this.settings[key] = val;
@@ -264,6 +273,10 @@ class SoundSky {
       this.settings.heatEnabled = (event.target as HTMLInputElement).checked;
       this.updateSettingsUI(); this.applySettings(); this.saveSettings();
     }, { signal });
+    this.el<HTMLInputElement>('#setting-modernSoundCloud').addEventListener('change',event=>{
+      this.settings.modernSoundCloud=(event.target as HTMLInputElement).checked;
+      this.updateSettingsUI();this.applySettings();this.saveSettings();
+    },{signal});
     const seek = this.el<HTMLInputElement>('.seek');
     seek.addEventListener('pointerdown', () => { this.scrubbing = true; this.scrubKey = this.state.track.key; }, { signal });
     seek.addEventListener('input', () => {
@@ -499,7 +512,7 @@ class SoundSky {
     this.focusBefore = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.previousOverflow = document.documentElement.style.overflow;
     document.documentElement.style.overflow = 'hidden';
-    document.body.setAttribute('data-soundsky-open', '');
+    document.body.setAttribute('data-soundsky-open', ''); this.siteTheme.setPlayerOpen(true);
     this.el('.launcher').hidden = true;
     const player = this.el('.player'); player.hidden = false;
     // Inert only the page's main surface, never the native player or its live queue.
@@ -524,7 +537,7 @@ class SoundSky {
     player?.classList.remove('is-open');
     this.adapter.dismissMenu();
     this.queue.close(); this.ambient.setActive(false); this.materials.setActive(false); this.adapter.setActive(false);
-    document.body.removeAttribute('data-soundsky-open');
+    document.body.removeAttribute('data-soundsky-open'); this.siteTheme.setPlayerOpen(false);
     document.documentElement.style.overflow = this.previousOverflow;
     for (const [element, inert] of this.backgroundInert) if (element.isConnected) element.inert = inert;
     this.backgroundInert.clear();
@@ -585,6 +598,8 @@ class SoundSky {
         slider?.setAttribute('aria-valuetext', valEl.textContent);
       }
     }
+    this.el<HTMLInputElement>('#setting-modernSoundCloud').checked=this.settings.modernSoundCloud;
+    this.el('#val-modernSoundCloud').textContent=this.settings.modernSoundCloud?'オン':'オフ';
     this.el<HTMLInputElement>('#setting-heatEnabled').checked = this.settings.heatEnabled;
     this.el('#val-heatEnabled').textContent = this.settings.heatEnabled ? 'オン' : 'オフ';
     this.el('.settings-heat-controls').classList.toggle('is-disabled', !this.settings.heatEnabled);
@@ -594,6 +609,7 @@ class SoundSky {
     }
   }
   private applySettings() {
+    this.siteTheme.setEnabled(this.settings.modernSoundCloud);
     this.ambient.setFlowSpeed(this.settings.ambientSpeed);
     this.atmosphere.setSettings(this.settings.ambientSpeed, this.settings.ambientGlow, this.settings.consoleSpeed, this.settings.seekSpeed);
     this.materials.setSettings(this.settings.materialSpeed, this.settings.heatSpeed, this.settings.heatEnabled, this.settings.heatResponse);
@@ -639,7 +655,7 @@ class SoundSky {
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.toastTimer) clearTimeout(this.toastTimer);
     this.artworkGeneration++; this.events.abort(); this.unsubscribe();
-    this.nativeModalObserver.disconnect(); this.queue.destroy(); this.ambient.destroy(); this.atmosphere.destroy(); this.materials.destroy(); this.accent.destroy(); this.adapter.destroy();
+    this.nativeModalObserver.disconnect(); this.queue.destroy(); this.ambient.destroy(); this.atmosphere.destroy(); this.materials.destroy(); this.accent.destroy(); this.siteTheme.destroy(); this.adapter.destroy();
     try { if (globalThis.chrome?.runtime?.id) chrome.runtime.onMessage.removeListener(this.message); } catch { /* extension was reloaded */ }
     this.host.remove();
   }

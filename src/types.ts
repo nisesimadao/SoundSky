@@ -34,6 +34,7 @@ export interface SoundSkySettings {
   /** Official Heatmap animation speed multiplier (0–8, default 1). */
   heatSpeed: number;
   heatEnabled: boolean;
+  modernSoundCloud: boolean;
   /** How far sound drives the red thermal front (0–3, default 1). */
   heatResponse: number;
   /** Audio-reactive backdrop light multiplier (0–2). */
@@ -53,6 +54,7 @@ export const defaultSettings: SoundSkySettings = {
   materialSpeed: 2.8,
   heatSpeed: 1,
   heatEnabled: true,
+  modernSoundCloud: false,
   heatResponse: 1,
   ambientGlow: 1,
   consoleSpeed: .2,
