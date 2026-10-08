@@ -77,7 +77,7 @@ html[data-soundsky-theme] :is(.sc-button-icon,.playControls__control,.volume__bu
 /* Lift the artwork inside its existing hit area; don't move rows or clip neighbours. */
 html[data-soundsky-theme] :is(.playableTile__artwork,.sound__artwork,.playlist__artwork,.trackItem__artwork) .image__full { transition: transform 280ms cubic-bezier(.2,.7,.2,1),filter 280ms ease; transform-origin: center; }
 @media (hover:hover) and (prefers-reduced-motion:no-preference) {
-  html[data-soundsky-theme] :is(.audibleTile,.sound,.playlist,.trackItem):is(:hover,:focus-within) :is(.playableTile__artwork,.sound__artwork,.playlist__artwork,.trackItem__artwork) .image__full { transform: scale(1.035); filter: brightness(1.07); }
+  html[data-soundsky-theme] :is(.playableTile,.audibleTile,.sound,.playlist,.trackItem):is(:hover,:focus-within) :is(.playableTile__artwork,.sound__artwork,.playlist__artwork,.trackItem__artwork) .image__full { transform: scale(1.035); filter: brightness(1.07); }
 }
 
 @media (prefers-reduced-motion: reduce) { html[data-soundsky-theme] .image__full { transition: none !important; transform: none !important; } }
