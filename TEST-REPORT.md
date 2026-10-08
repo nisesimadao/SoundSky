@@ -152,3 +152,6 @@ CIで以前からlockfileのhar-formatのバージョンと実際のパッケー
 ## 1.3.3 — 2026-10-08 JST
 
 1.3.2の実Discover画面で、キューボタン32×36pxと16pxのSVGが操作部内に収まり、クリックでQueueが画面内に開くことを確認。元の灰色レイヤーも透明になった。一方でgalleryのcaptionがまだ切れていた。実DOMでsliderPanelのmax-height:208pxを確認し、height:autoだけでは解除できないことが分かった。1.3.3でgallery各層のmax-heightも解除した。ローカル検証の構造に同じ最大高さを追加し、1680/1280pxでcaptionが表示領域内に収まることを確認。型検証・配布ビルド成功。実ページの最終確認はリロード待ち。
+
+
+ユーザーの1.3.3リロード後、実Discover画面で先頭3つのgalleryのcaption下端がsliderの表示領域内に収まること、sliderPanelのmax-heightがnoneであることを確認。スクリーンショットでもMixの説明が切れずに表示されることを確認。操作部72px、キューボタン32px、ミックス画像のホバー用transition 280msが読み込まれていることを確認。1.3.3のコードコミットd37c057に対するGitHub Checks（型検証、51件のテスト、配布ビルド）は成功。今回の実画面確認はDiscoverに限定し、全ページの検証完了を意味しない。
