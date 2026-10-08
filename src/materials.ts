@@ -1,3 +1,4 @@
+import { unmountShader } from './shader-lifecycle';
 import { createElement, Fragment } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { Heatmap, LiquidMetal } from '@paper-design/shaders-react';
@@ -6,7 +7,7 @@ const coverShape = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://
 
 /** Official Paper components own sizing, mask preprocessing and GL lifecycles. */
 export class Materials {
-  private roots: { metal: Root; heat: Root } | null = null;
+  private roots: { metal: Root; heat: Root | null } | null = null;
   private active = false;
   private playing = false;
   private level = 0;
@@ -44,7 +45,7 @@ export class Materials {
   private render() {
     if (this.disposed) return;
     if (!this.roots && this.active && typeof WebGL2RenderingContext !== 'undefined') {
-      this.roots = { metal: createRoot(this.metal), heat: createRoot(this.heat) };
+      this.roots = { metal: createRoot(this.metal), heat: null };
     }
     if (!this.roots) return;
     // Linear raw RMS + spectral attack mapping: no normalization, compression, envelope smoothing or ceiling.
@@ -57,6 +58,8 @@ export class Materials {
     }));
     const showHeat = this.heatEnabled && !!this.artwork;
     this.heat.hidden = !showHeat;
+    if (!showHeat) { unmountShader(this.roots.heat, this.heat); this.roots.heat = null; return; }
+    this.roots.heat ??= createRoot(this.heat);
     const moving = this.active && this.playing && !document.hidden && !this.motion.matches;
     // Restore the small, filled backing surface. The jacket is no longer a shader input.
     const common = {
@@ -85,6 +88,6 @@ export class Materials {
     this.disposed = true;
     this.motion.removeEventListener('change', this.changed);
     document.removeEventListener('visibilitychange', this.changed);
-    this.roots?.metal.unmount(); this.roots?.heat.unmount(); this.roots = null;
+    if (this.roots) { unmountShader(this.roots.metal, this.metal); unmountShader(this.roots.heat, this.heat); } this.roots = null;
   }
 }

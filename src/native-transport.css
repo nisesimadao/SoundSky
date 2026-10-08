@@ -8,7 +8,7 @@ html[data-soundsky-theme] [data-soundsky-control]::before { display: none !impor
 html[data-soundsky-theme] [data-soundsky-control] > div { opacity: 0 !important; }
 html[data-soundsky-theme] [data-soundsky-glyph] { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 2; }
 html[data-soundsky-theme] [data-soundsky-glyph] svg { width: 20px; height: 20px; display: block; }
-html[data-soundsky-theme] [data-soundsky-control="play"] { isolation: isolate; overflow: hidden; background: #b4b5b8 !important; border: 1px solid #d4eafc70; box-shadow: inset 0 1px 0 #fff9,0 3px 14px #0007; transition: transform .18s ease; }
+html[data-soundsky-theme] [data-soundsky-control="play"] { isolation: isolate; overflow: hidden; background: #b4b5b8 !important; border: 0 !important; box-shadow: 0 3px 14px #0007; transition: transform .18s ease; }
 html[data-soundsky-theme] [data-soundsky-control="play"]:hover { transform: scale(1.055); }
 html[data-soundsky-theme] [data-soundsky-control="play"]:active { transform: scale(.96); }
 html[data-soundsky-theme] [data-soundsky-control="play"] [data-soundsky-glyph] { color: white; mix-blend-mode: difference; }
@@ -32,3 +32,15 @@ html[data-soundsky-theme] [data-soundsky-glyph] [fill="currentColor"] { fill: cu
 html[data-soundsky-theme] [data-soundsky-glyph] [stroke="none"] { stroke: none !important; }
 html[data-soundsky-theme] [data-soundsky-glyph] [stroke-width="4"] { stroke-width: 4px !important; }
 html[data-soundsky-theme] [data-soundsky-control="play"] { width: 40px !important; height: 40px !important; flex: 0 0 40px; }
+
+html[data-soundsky-theme] [data-soundsky-control="play"] { border: 0 !important; box-shadow: 0 3px 14px #0007 !important; }
+html[data-soundsky-theme] :is(.playControls__shuffle,.playControls__repeat) { display: grid; place-items: center; }
+html[data-soundsky-theme] :is(.playControls__shuffle,.playControls__repeat) button { width: 36px !important; height: 40px !important; margin: 0 !important; border: 0 !important; }
+/* Match SoundSky's 5px material, 9px thumb and 24px hit area. Keep the shader full width while clipping progress. */
+html[data-soundsky-theme] .playbackTimeline__progressWrapper { height: 24px !important; position: relative !important; }
+html[data-soundsky-theme] .playbackTimeline__progressBackground { height: 5px !important; top: 9.5px !important; border-radius: 1px !important; background: #c2d5db18 !important; }
+html[data-soundsky-theme] .playbackTimeline__progressBar { height: 5px !important; top: 9.5px !important; border-radius: 1px !important; }
+html[data-soundsky-theme] [data-soundsky-seek] { right: auto !important; width: var(--soundsky-seek-width,100%) !important; }
+html[data-soundsky-theme] .playbackTimeline__progressHandle { width: 9px !important; height: 9px !important; top: 7.5px !important; margin-left: -4.5px !important; border: 0 !important; border-radius: 50% !important; opacity: 1 !important; background: var(--sky-site-accent) !important; box-shadow: 0 0 0 4px color-mix(in srgb,var(--sky-site-accent) 8%,transparent) !important; }
+html[data-soundsky-theme] .playbackTimeline__progressWrapper:hover [data-soundsky-seek] { filter: brightness(1.15); }
+html[data-soundsky-theme] :is(.playbackSoundBadge__like,.playbackSoundBadge__follow,.playbackSoundBadge__showQueue)[data-soundsky-control] { display: inline-grid !important; width: 32px !important; height: 36px !important; min-width: 32px !important; }

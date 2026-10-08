@@ -266,3 +266,5 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .shell, .ambient, .ambient-fallback, .atmosphere, .veil { translate: none; } }
 
 :host([data-launcher-docked]) .launcher { display: none !important; }
+
+.artwork .art-transition-outgoing { position: absolute; inset: 0; pointer-events: none; z-index: 1; }

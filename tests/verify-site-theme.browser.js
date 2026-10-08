@@ -20,7 +20,8 @@ async page=>{
  await frame.waitForLoadState();
  await frame.evaluate(()=>{window.chrome={storage:{local:{get:async()=>({'soundsky:settings':{modernSoundCloud:true}})},onChanged:{addListener(){},removeListener(){}}}};});
  await frame.addScriptTag({path:'dist/theme-frame.js'});await page.waitForTimeout(300);
- const embedded=await frame.evaluate(()=>({theme:document.documentElement.hasAttribute('data-soundsky-theme'),accent:document.documentElement.style.getPropertyValue('--sky-site-accent')}));
+ const embedded=await frame.evaluate(()=>({theme:document.documentElement.hasAttribute('data-soundsky-theme'),accent:document.documentElement.style.getPropertyValue('--sky-site-accent'),shader:!!document.querySelector('[data-soundsky-site-shader] canvas')}));
+ if(embedded.shader)throw new Error('Embedded page allocates a duplicate WebGL background');
  if(!embedded.theme||embedded.accent!==await page.evaluate(()=>document.documentElement.style.getPropertyValue('--sky-site-accent')))throw new Error('Embedded page misses theme or current accent');
  await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();await page.getByRole('button',{name:'見た目の設定',exact:true}).click();await page.getByRole('tab',{name:'SoundCloud',exact:true}).click();
  await page.getByRole('switch',{name:'SoundCloudの見た目を整える',exact:true}).uncheck();await page.waitForTimeout(100);

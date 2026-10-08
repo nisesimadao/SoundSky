@@ -2,7 +2,7 @@ import { loadSavedSettings } from './settings';
 import { SiteTheme } from './site-theme';
 // Page frames get the skin, never a second SoundSky player or audio hook.
 if(window!==window.top && (!location.pathname.startsWith('/n/embeds/')||location.pathname==='/n/embeds/credit-tracker')){
- const theme=new SiteTheme(false,location.pathname!=='/n/embeds/credit-tracker');
+ const theme=new SiteTheme(false,false);
  const events=new AbortController();
  let disposed=false;
  const changed=(changes:Record<string,chrome.storage.StorageChange>,area:string)=>{

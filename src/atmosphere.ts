@@ -1,6 +1,7 @@
+import { unmountShader } from './shader-lifecycle';
 import { createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { accentShaderColor } from './accent';
+import { seekMaterial } from './seek-material';
 import { defaultPalette } from './artwork-palette';
 import { GemSmoke, MeshGradient } from '@paper-design/shaders-react';
 
@@ -79,18 +80,13 @@ export class Atmosphere {
     if (!this.roots || this.disposed) return;
     const moving = this.active && this.playing && !document.hidden && !this.motion.matches;
     const level = moving ? this.level : 0;
-    this.roots.seek.render(createElement(MeshGradient, {
-      width: '100%', height: '100%', colors: [-14, 0, 14, 0].map(offset => accentShaderColor((this.accentHue + offset + 360) % 360)),
-      distortion: .5, swirl: .1, grainMixer: 0, grainOverlay: 0,
-      speed: moving ? this.seekSpeed * (.5 + level) : 0, scale: 1,
-      minPixelRatio: 1, maxPixelCount: 8192,
-    }));
+    this.roots.seek.render(createElement(MeshGradient, seekMaterial(this.accentHue, moving ? this.seekSpeed * (.5 + level) : 0)));
   }
   destroy() {
     if (this.disposed) return;
     this.disposed = true;
     document.removeEventListener('visibilitychange', this.changed);
     this.motion.removeEventListener('change', this.changed);
-    this.roots?.background.unmount(); this.roots?.console.unmount(); this.roots?.seek.unmount(); this.roots = null;
+    if (this.roots) { unmountShader(this.roots.background, this.background); unmountShader(this.roots.console, this.console); unmountShader(this.roots.seek, this.seek); } this.roots = null;
   }
 }

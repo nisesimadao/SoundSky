@@ -13,7 +13,7 @@ import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.3.5';
+const VERSION = '1.3.6';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
@@ -56,6 +56,8 @@ class SoundSky {
   private lastArt = '';
   private lastPlaying: boolean | null = null;
   private artworkGeneration = 0;
+  private trackAnimations = new Set<Animation>();
+  private outgoingArtwork: HTMLImageElement | null = null;
   private animation = 0;
   private clockAt = performance.now();
   private clockCurrent = 0;
@@ -89,6 +91,8 @@ class SoundSky {
     // Old isolated worlds survive an extension reload until page navigation.
     // A DOM-only teardown signal allows their instance to release all resources.
     document.dispatchEvent(new CustomEvent('soundsky:dispose'));
+    this.reducedMotion.addEventListener('change', () => this.clearTrackAnimations(), { signal: this.events.signal });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) this.clearTrackAnimations(); }, { signal: this.events.signal });
     document.addEventListener('soundsky:dispose', () => this.destroy(), { signal: this.events.signal });
     this.shadow.innerHTML = `<style>${css}</style>
       <button class="launcher" title="Open SoundSky · Alt/Option + Shift + Y" aria-label="Open SoundSky">${icon('sky')}<span>SoundSky</span></button>
@@ -398,6 +402,10 @@ class SoundSky {
     this.setText('.artist', state.track.artist);
     this.el<HTMLButtonElement>('.artist').disabled = !state.track.artistKey;
     this.el('.artist').title = state.track.artist;
+    if (changedTrack && this.active && !document.hidden && !this.reducedMotion.matches) {
+      for (const selector of ['.title-link', '.artist']) this.trackAnimate(this.el(selector),
+        [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'translateY(0)' }], 280);
+    }
     this.setText('.now-label', state.track.key ? state.playing ? 'NOW PLAYING' : 'PAUSED' : 'SOUNDSKY');
     if (state.track.artwork !== this.lastArt) { this.lastArt = state.track.artwork; this.loadArtwork(state.track.artwork, state.track.title); }
     else if (changedTrack && state.track.artwork) this.el<HTMLImageElement>('.art-image').alt = `${state.track.title} artwork`;
@@ -492,19 +500,28 @@ class SoundSky {
     const generation = ++this.artworkGeneration;
     const display = this.el<HTMLImageElement>('.art-image');
     const placeholder = this.el('.artwork-placeholder');
-    display.hidden = true; placeholder.hidden = false;
-    this.materials.setArtwork('');
+    this.clearArtworkAnimations();
     this.ambient.setArtwork(url);
     this.accent.setArtwork(url);
-    if (!url) { display.removeAttribute('src'); this.el('.artwork-frame').style.removeProperty('--art-natural'); return; }
+    if (!url) { display.hidden = true; placeholder.hidden = false; this.materials.setArtwork(''); display.removeAttribute('src'); this.el('.artwork-frame').style.removeProperty('--art-natural'); return; }
     // SoundCloud offers an explicit 500px artwork rendition. Never assume "original" exists.
     const larger = artworkURL(url.replace(/-t\d+x\d+(?=\.)/, '-t500x500')) || url;
     const image = new Image();
     const commit = () => {
       if (this.disposed || generation !== this.artworkGeneration) return;
+      this.clearArtworkAnimations();
+      const animate = !display.hidden && !!display.getAttribute('src') && this.active && !document.hidden && !this.reducedMotion.matches;
+      if (animate) {
+        const outgoing = display.cloneNode() as HTMLImageElement;
+        outgoing.className = 'art-transition-outgoing'; outgoing.alt = ''; outgoing.setAttribute('aria-hidden', 'true');
+        display.parentElement!.append(outgoing); this.outgoingArtwork = outgoing;
+        const animation = this.trackAnimate(outgoing, [{ transform: 'translateY(0)' }, { transform: 'translateY(-100%)' }], 480);
+        animation.finished.then(() => { outgoing.remove(); if (this.outgoingArtwork === outgoing) this.outgoingArtwork = null; }).catch(() => {});
+      }
       display.src = image.src; display.alt = `${title} artwork`;
       this.materials.setArtwork(image.src);
       display.hidden = false; placeholder.hidden = true;
+      if (animate) this.trackAnimate(display, [{ transform: 'translateY(100%)' }, { transform: 'translateY(0)' }], 480);
       this.el('.artwork-frame').style.setProperty('--art-natural', `${Math.min(580, image.naturalWidth || 500)}px`);
       this.ambient.setArtwork(url);
     };
@@ -512,9 +529,27 @@ class SoundSky {
     image.onerror = () => {
       if (generation !== this.artworkGeneration) return;
       if (image.src !== url) image.src = url;
-      else { display.hidden = true; placeholder.hidden = false; }
+      else { this.clearTrackAnimations(); display.hidden = true; placeholder.hidden = false; this.materials.setArtwork(''); }
     };
     image.src = larger;
+  }
+  private trackAnimate(element: HTMLElement, keyframes: Keyframe[], duration: number) {
+    for (const animation of this.trackAnimations) if (animation.effect instanceof KeyframeEffect && animation.effect.target === element) { animation.cancel(); this.trackAnimations.delete(animation); }
+    const animation = element.animate(keyframes, { duration, easing: 'cubic-bezier(.22,.7,.2,1)' });
+    this.trackAnimations.add(animation);
+    animation.finished.then(() => this.trackAnimations.delete(animation), () => this.trackAnimations.delete(animation));
+    return animation;
+  }
+  private clearArtworkAnimations() {
+    for (const animation of this.trackAnimations) {
+      const target = animation.effect instanceof KeyframeEffect ? animation.effect.target : null;
+      if (target instanceof Element && target.matches('.art-image,.art-transition-outgoing')) { animation.cancel(); this.trackAnimations.delete(animation); }
+    }
+    this.outgoingArtwork?.remove(); this.outgoingArtwork = null;
+  }
+  private clearTrackAnimations() {
+    for (const animation of this.trackAnimations) animation.cancel();
+    this.trackAnimations.clear(); this.outgoingArtwork?.remove(); this.outgoingArtwork = null;
   }
   toggle() { if (this.active) this.close(); else this.open(); }
   private open() {
@@ -543,6 +578,7 @@ class SoundSky {
   private close() {
     if (!this.active) return;
     this.active = false;
+    this.clearTrackAnimations();
     this.toggleSettings(false);
     this.syncAnimation();
     const player = this.shadow.querySelector<HTMLElement>('.player');
@@ -670,7 +706,7 @@ class SoundSky {
     this.disposed = true; this.syncAnalysis(); this.close();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.toastTimer) clearTimeout(this.toastTimer);
-    this.artworkGeneration++; this.events.abort(); this.unsubscribe();
+    this.artworkGeneration++; this.clearTrackAnimations(); this.events.abort(); this.unsubscribe();
     this.nativeModalObserver.disconnect(); this.queue.destroy(); this.ambient.destroy(); this.atmosphere.destroy(); this.materials.destroy(); this.accent.destroy(); this.siteTheme.destroy(); this.transport.destroy(); this.adapter.destroy();
     try { if (globalThis.chrome?.runtime?.id) chrome.runtime.onMessage.removeListener(this.message); } catch { /* extension was reloaded */ }
     this.host.remove();

@@ -4,6 +4,7 @@ import { MeshGradient } from '@paper-design/shaders-react';
 import { accentColor } from './accent';
 import { defaultPalette } from './artwork-palette';
 import css from './site-theme.css';
+import { unmountShader } from './shader-lifecycle';
 import { SiteGallery } from './site-gallery';
 
 /** Reversible skin: a scoped stylesheet and one decorative, pointer-free canvas. */
@@ -58,7 +59,7 @@ export class SiteTheme {
   setEnabled(enabled:boolean){
     if(this.enabled===enabled)return;this.enabled=enabled;
     if(enabled){document.head.append(this.style);if(this.decorative){document.body.prepend(this.surface);this.observer?.observe(this.surface);}else document.documentElement.setAttribute('data-soundsky-embed','');document.documentElement.setAttribute('data-soundsky-theme','');this.applyAccent();}
-    else {this.observer?.unobserve(this.surface);document.documentElement.removeAttribute('data-soundsky-theme');document.documentElement.removeAttribute('data-soundsky-embed');document.documentElement.style.removeProperty('--sky-site-accent');this.root?.unmount();this.root=null;this.surface.remove();this.style.remove();}
+    else {this.observer?.unobserve(this.surface);document.documentElement.removeAttribute('data-soundsky-theme');document.documentElement.removeAttribute('data-soundsky-embed');document.documentElement.style.removeProperty('--sky-site-accent');unmountShader(this.root,this.surface);this.root=null;this.surface.remove();this.style.remove();}
     if(this.decorative){this.gallery??=new SiteGallery();this.gallery.setEnabled(enabled);}
     this.render();this.broadcast();
   }
@@ -73,5 +74,5 @@ export class SiteTheme {
     const moving=this.inView&&!this.open&&!document.hidden&&!this.motion.matches;
     this.root?.render(createElement(MeshGradient,{width:'100%',height:'100%',colors:this.colors,speed:moving?.22:0,distortion:.65,swirl:.25,grainMixer:.02,grainOverlay:.018,scale:1.25,minPixelRatio:1,maxPixelCount:60000,frame:18000}));
   }
-  destroy(){this.gallery?.destroy();this.observer?.disconnect();this.events.abort();this.setEnabled(false);this.root?.unmount();this.root=null;this.surface.remove();this.style.remove();}
+  destroy(){this.gallery?.destroy();this.observer?.disconnect();this.events.abort();this.setEnabled(false);unmountShader(this.root,this.surface);this.root=null;this.surface.remove();this.style.remove();}
 }

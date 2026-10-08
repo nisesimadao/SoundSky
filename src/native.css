@@ -14,9 +14,8 @@
   border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important;
   color: #f2f1f7 !important; pointer-events: auto !important; font-family: 'Avenir Next', Avenir, 'Helvetica Neue', sans-serif !important;
   opacity: 1;
-  animation: soundsky-queue-arrive .45s .16s ease-out both;
+  animation: none;
 }
-@keyframes soundsky-queue-arrive { from { opacity: 0; } to { opacity: 1; } }
 [data-soundsky-queue] .queue__panel { display: none !important; }
 [data-soundsky-queue] .queue__scrollable { top: 0 !important; height: 100% !important; max-height: none !important; background: transparent !important; }
 [data-soundsky-queue] .queue__scrollableInner { height: var(--sky-queue-height) !important; max-height: none !important; width: 100% !important; padding-right: 0 !important; overflow-y: auto !important; scrollbar-width: thin; scrollbar-color: #ffffff28 transparent; }
@@ -27,7 +26,7 @@
 [data-soundsky-queue] .queue__itemsContainer,
 [data-soundsky-queue] .queue__scrollableInner { background: transparent !important; box-shadow: none !important; }
 [data-soundsky-player] .volume__sliderWrapper { height: 142px !important; transition: none !important; }
-[data-soundsky-queue] .queueItemView { height: 56px !important; box-sizing: border-box !important; padding: 8px 8px !important; border: 0 !important; background: transparent !important; border-radius: 0 !important; border-bottom: 1px solid #c2d5db0b !important; transition: background .18s ease-out !important; opacity: 1 !important; }
+[data-soundsky-queue] .queueItemView { height: 56px !important; box-sizing: border-box !important; padding: 8px 8px !important; border: 0 !important; background: transparent !important; border-radius: 0 !important; border-bottom: 1px solid #c2d5db0b !important; transition: background .18s ease-out !important; opacity: 1; }
 [data-soundsky-queue] .queueItemView:hover { background: #ffffff08 !important; }
 [data-soundsky-queue] .queueItemView.m-active { background: #e2d8c908 !important; box-shadow: inset 2px 0 0 var(--sky-accent, #edb68e) !important; }
 [data-soundsky-queue] .queueItemView__dragHandle,

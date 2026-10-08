@@ -1,8 +1,10 @@
 import type { SoundCloudAdapter } from './adapter';
+import { QueueMotion } from './queue-motion';
 import nativeCSS from './native.css';
 
 /** Restyles the live native queue in place, retaining its virtual list and event owners. */
 export class NativeQueue {
+  private entrance = new QueueMotion();
   private style: HTMLStyleElement;
   private queue: HTMLElement | null = null;
   private root: HTMLElement | null = null;
@@ -129,5 +131,5 @@ export class NativeQueue {
     this.queue = null; this.root = null;
   }
   close() { this.active = false; this.release(); }
-  destroy() { this.close(); this.observer.disconnect(); this.style.remove(); this.onUpdate = null; }
+  destroy() { this.entrance.destroy(); this.close(); this.observer.disconnect(); this.style.remove(); this.onUpdate = null; }
 }

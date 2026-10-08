@@ -1,8 +1,9 @@
+import {unmountShader} from './shader-lifecycle';
 import {createElement} from 'react';
 import {createRoot,type Root} from 'react-dom/client';
 import {LiquidMetal,MeshGradient} from '@paper-design/shaders-react';
 import {icon} from './icons';
-import {accentShaderColor} from './accent';
+import {seekMaterial} from './seek-material';
 import type {SoundCloudAdapter} from './adapter';
 import type {PlayerState} from './types';
 import css from './native-transport.css';
@@ -51,7 +52,7 @@ export class NativeTransport {
   this.onDock(!!controls&&this.entry.isConnected);this.entry.hidden=this.open;
   if(!this.enabled)return;
   this.decorate('.playControl',state.playing?'pause':'play',true);
-  for(const [selector,glyph] of [['.skipControl__previous','previous'],['.skipControl__next','next'],['.volume__button',state.muted?'mute':'volume'],['.playbackSoundBadge__like','heart'],['.playbackSoundBadge__follow','follow'],['.playbackSoundBadge__showQueue','queue'],['.playControls__shuffle','shuffle'],['.playControls__repeat','repeat']])this.decorate(selector,glyph);
+  for(const [selector,glyph] of [['.skipControl__previous','previous'],['.skipControl__next','next'],['.volume__button',state.muted?'mute':'volume'],['.playbackSoundBadge__like','heart'],['.playbackSoundBadge__follow','follow'],['.playbackSoundBadge__showQueue','queue'],['.playControls__shuffle button','shuffle'],['.playControls__repeat button','repeat']])this.decorate(selector,glyph);
   const bar=this.adapter.query<HTMLElement>('.playbackTimeline__progressBar');
   if(bar!==this.bar||bar&&!bar.querySelector('[data-soundsky-seek]')){this.bar=bar;if(bar)this.shader(bar,'seek');}
   this.cleanupDetached();if(playingChanged)this.animateMaterials();this.start();
@@ -70,13 +71,13 @@ export class NativeTransport {
   if(this.roots.has(element))return;
   this.roots.set(element,createRoot(element));this.animateMaterials();
  }
- private cleanupDetached(){for(const [el,root]of this.roots)if(!el.isConnected){root.unmount();this.roots.delete(el);}for(const el of this.decorations)if(!el.isConnected)this.decorations.delete(el);}
+ private cleanupDetached(){for(const [el,root]of this.roots)if(!el.isConnected){unmountShader(root,el);this.roots.delete(el);}for(const el of this.decorations)if(!el.isConnected)this.decorations.delete(el);}
  private animateMaterials(){
   const moving=this.enabled&&!this.open&&!document.hidden&&!this.motion.matches&&this.state?.playing;
   const audible=moving&&!this.state?.muted&&performance.now()-this.audioAt<200;
   for(const [el,root]of this.roots){
    if(el.hasAttribute('data-soundsky-metal'))root.render(createElement(LiquidMetal,{width:'100%',height:'100%',colorBack:'#aaaaac',colorTint:'#ffffff',shape:'circle',repetition:2,softness:.1,shiftRed:.3,shiftBlue:.3,distortion:.07,contour:.4,angle:70,speed:moving?(.6+(audible?this.level*5+this.onset*12:0))*this.metalSpeed:0,scale:1.12,fit:'contain',minPixelRatio:1,maxPixelCount:4096}));
-   else root.render(createElement(MeshGradient,{width:'100%',height:'100%',colors:[-14,0,14,0].map(offset=>accentShaderColor((this.hue+offset+360)%360)),distortion:.5,swirl:.1,grainMixer:0,grainOverlay:0,speed:moving?this.seekSpeed*(.5+(audible?this.level:0)):0,scale:1,minPixelRatio:1,maxPixelCount:8192}));
+   else root.render(createElement(MeshGradient,seekMaterial(this.hue,moving?this.seekSpeed*(.5+(audible?this.level:0)):0)));
   }
  }
  setEnabled(enabled:boolean){if(this.enabled===enabled)return;this.enabled=enabled;if(!enabled)this.clear();else if(this.state)this.sync(this.state);}
@@ -92,15 +93,16 @@ export class NativeTransport {
    // Native aria values are authoritative; extrapolate only between updates, never beyond 1.25s.
    const current=Math.min(this.state.duration,this.current+(this.state.playing?Math.min(1.25,Math.max(0,now-this.at)/1000):0));
    const ratio=this.state.duration?Math.min(1,Math.max(0,current/this.state.duration)):0;
+   progress.style.setProperty('--soundsky-seek-width', `${progress.getBoundingClientRect().width}px`);
    progress.style.setProperty('--soundsky-progress',`${ratio*100}%`);progress.setAttribute('data-soundsky-progress','');
-  }else {progress?.removeAttribute('data-soundsky-progress');progress?.style.removeProperty('--soundsky-progress');}
+  }else {progress?.removeAttribute('data-soundsky-progress');progress?.style.removeProperty('--soundsky-progress');progress?.style.removeProperty('--soundsky-seek-width');}
   this.frame=requestAnimationFrame(this.tick);
  };
  private clear(){
   if(this.frame)cancelAnimationFrame(this.frame);this.frame=0;
-  for(const root of this.roots.values())root.unmount();this.roots.clear();for(const el of this.decorations)el.remove();this.decorations.clear();this.bar=null;
+  for(const [el,root] of this.roots)unmountShader(root,el);this.roots.clear();for(const el of this.decorations)el.remove();this.decorations.clear();this.bar=null;
   for(const el of this.adapter.root?.querySelectorAll('[data-soundsky-control]')??[])el.removeAttribute('data-soundsky-control');
-  for(const el of this.adapter.root?.querySelectorAll<HTMLElement>('[data-soundsky-progress]')??[]){el.removeAttribute('data-soundsky-progress');el.style.removeProperty('--soundsky-progress');}
+  for(const el of this.adapter.root?.querySelectorAll<HTMLElement>('[data-soundsky-progress]')??[]){el.removeAttribute('data-soundsky-progress');el.style.removeProperty('--soundsky-progress');el.style.removeProperty('--soundsky-seek-width');}
  }
  destroy(){this.events.abort();this.clear();this.entry.remove();this.style.remove();this.onDock(false);}
 }

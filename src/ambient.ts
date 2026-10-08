@@ -130,6 +130,6 @@ export class Ambient {
     document.removeEventListener('visibilitychange', this.visibility);
     this.motion.removeEventListener('change', this.motionChange);
     this.canvas.removeEventListener('webglcontextlost', this.lost);
-    if (this.gl) { this.gl.deleteTexture(this.texture); this.gl.deleteBuffer(this.buffer); this.gl.deleteProgram(this.program); }
+    if (this.gl) { this.gl.deleteTexture(this.texture); this.gl.deleteBuffer(this.buffer); this.gl.deleteProgram(this.program); this.gl.getExtension('WEBGL_lose_context')?.loseContext(); }
   }
 }
