@@ -264,3 +264,5 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
 .ambient-fallback { inset: calc(-10% - 24px); width: calc(120% + 48px); height: calc(120% + 48px); }
 .shell, .ambient, .ambient-fallback, .atmosphere, .veil { translate: var(--soundsky-scene-x, 0px) var(--soundsky-scene-y, 0px); }
 @media (prefers-reduced-motion: reduce) { .shell, .ambient, .ambient-fallback, .atmosphere, .veil { translate: none; } }
+
+:host([data-launcher-docked]) .launcher { display: none !important; }

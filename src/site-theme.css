@@ -91,3 +91,29 @@ html[data-soundsky-theme] .playControls__soundBadge { width: clamp(280px,24vw,40
 html[data-soundsky-theme] .playbackSoundBadge__titleContextContainer { min-width: 0 !important; }
 html[data-soundsky-theme] .playbackSoundBadge__actions { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
 html[data-soundsky-theme] .playbackSoundBadge__actions > .sc-button { width: 32px !important; height: 36px !important; margin: 0 !important; flex: 0 0 32px; }
+/* Scrolling stays pixel-based for trackpads; arrows remain visible over any artwork. */
+html[data-soundsky-theme] .tileGallery__slider { overflow-x: auto !important; overflow-y: hidden !important; scrollbar-width: none; overscroll-behavior-x: contain; }
+html[data-soundsky-theme] .tileGallery__slider::-webkit-scrollbar { display: none; }
+html[data-soundsky-theme] .tileGallery__sliderPanel { transform: none !important; transition: none !important; }
+html[data-soundsky-theme] .tileGallery__sliderPanelSlide { flex-shrink: 0; }
+html[data-soundsky-theme] .tileGallery__sliderPeek { display: block !important; opacity: 1 !important; z-index: 3; pointer-events: none; }
+html[data-soundsky-theme] .tileGallery__sliderButton { pointer-events: auto; width: 36px !important; height: 36px !important; padding: 0 !important; display: grid; place-items: center; color: #f5f6f7 !important; background: #10161ff2 !important; border: 1px solid #ffffff38 !important; border-radius: 50% !important; box-shadow: 0 3px 16px #000a,0 0 0 1px #0004; }
+html[data-soundsky-theme] .tileGallery__sliderButton svg { width: 22px; height: 22px; }
+html[data-soundsky-theme] .tileGallery__sliderButton:disabled { opacity: .25; pointer-events: none; }
+/* Artist identity remains circular; artwork keeps its own rounded square. */
+html[data-soundsky-theme] :is(.image__rounded,.image__rounded.image__full,.sc-avatar,.g-avatar-badge-avatar,.userBadge__avatar,.profileHeaderInfo__avatar) { border-radius: 50% !important; overflow: hidden; }
+html[data-soundsky-theme] :is(.g-avatar-badge-avatar,.userBadge__avatar,.profileHeaderInfo__avatar) :is(.image,.image__full,.sc-artwork,img) { border-radius: 50% !important; }
+html[data-soundsky-theme] .queue:not([data-soundsky-queue]) :is(.queue__itemWrapper,.queueItemView,.queueFallback,.queueFallback__stationMode,.queue__hide) { background-color: transparent !important; border-color: var(--sky-site-line) !important; }
+html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queueItemView.m-active { background-color: #ffffff05 !important; }
+html[data-soundsky-theme] .profileHeader { margin-top: 24px; border-radius: 16px; height: clamp(260px,21vw,340px) !important; isolation: isolate; }
+html[data-soundsky-theme] .profileHeaderBackground { width: 100% !important; height: 100% !important; background: #11171e !important; }
+html[data-soundsky-theme] .profileHeaderBackground__visual { width: 100% !important; height: 100% !important; background-size: cover !important; background-position: center !important; }
+html[data-soundsky-theme] .profileHeaderBackground::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg,#080c1580,transparent 75%); pointer-events: none; }
+html[data-soundsky-theme] .profileHeaderInfo { z-index: 1; overflow: visible; }
+html[data-soundsky-theme] :is(.profileHeaderInfo__userName,.profileHeaderInfo__additional).g-type-shrinkwrap-block { background: #10161dc9 !important; border-radius: 6px; padding: 6px 10px; }
+/* Artist Tools is a same-site embedded MUI component, not a page background. */
+html[data-soundsky-theme][data-soundsky-embed],html[data-soundsky-theme][data-soundsky-embed] body { background: transparent !important; }
+html[data-soundsky-embed] .MuiBox-root { background-color: transparent !important; }
+html[data-soundsky-embed] .MuiCard-root { background: #ffffff03 !important; border-color: var(--sky-site-line) !important; border-radius: 12px !important; }
+html[data-soundsky-embed] .MuiAlert-root { background: color-mix(in srgb,var(--sky-site-accent) 12%,transparent) !important; border-radius: 8px !important; }
+html[data-soundsky-embed] .MuiTypography-root { color: var(--sky-site-ink) !important; font-family: inherit !important; }

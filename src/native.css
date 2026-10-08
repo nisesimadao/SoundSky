@@ -105,3 +105,9 @@ body[data-soundsky-open] [data-soundsky-menu] .sc-button-repost { color: #e8e3ef
 
 [data-soundsky-queue].queue { translate: var(--soundsky-scene-x, 0px) var(--soundsky-scene-y, 0px) !important; }
 @media (prefers-reduced-motion: reduce) { [data-soundsky-queue].queue { translate: none !important; } }
+/* The native root is above the player only to host the live queue. Its transport
+   surface must stay transparent, including when the normal-page theme is on. */
+html body[data-soundsky-open] [data-soundsky-player],
+html body[data-soundsky-open] [data-soundsky-player] :is(.playControls__inner,.playControls__wrapper) {
+  background: transparent !important; backdrop-filter: none !important; box-shadow: none !important; border-color: transparent !important;
+}

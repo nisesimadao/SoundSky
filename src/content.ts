@@ -2,6 +2,7 @@ import { SoundCloudAdapter, artworkURL } from './adapter';
 import { NativeQueue } from './queue';
 import { Ambient } from './ambient';
 import { Atmosphere } from './atmosphere';
+import { NativeTransport } from './native-transport';
 import { SiteTheme } from './site-theme';
 import { loadSavedSettings } from './settings';
 import { CoverPulse } from './cover-pulse';
@@ -12,7 +13,7 @@ import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.3.3';
+const VERSION = '1.3.5';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
@@ -44,6 +45,7 @@ class SoundSky {
   private atmosphere: Atmosphere;
   private materials: Materials;
   private accent: ArtworkAccent;
+  private transport: NativeTransport;
   private siteTheme = new SiteTheme();
   private active = false;
   private disposed = false;
@@ -57,6 +59,7 @@ class SoundSky {
   private animation = 0;
   private clockAt = performance.now();
   private clockCurrent = 0;
+  private analysisActive: boolean | null = null;
   private audioLevel = 0;
   private audioOnset = 0;
   private audioAt = 0;
@@ -182,12 +185,14 @@ class SoundSky {
     this.ambient = new Ambient(this.el<HTMLCanvasElement>('.ambient'), this.el('.ambient-fallback'));
     this.atmosphere = new Atmosphere(this.el('.atmosphere'), this.el('.console-smoke'), this.el('.seek-shader'));
     this.materials = new Materials(this.el('.metal-surface'), this.el('.cover-heat'));
+    this.transport = new NativeTransport(this.adapter,()=>this.toggle(),docked=>this.host.toggleAttribute('data-launcher-docked',docked));
     this.accent = new ArtworkAccent(hue => {
       this.host.style.setProperty('--accent', accentColor(hue));
       this.queue.setAccent(accentColor(hue));
-      this.atmosphere.setAccent(hue); this.siteTheme.setAccent(hue);
+      this.atmosphere.setAccent(hue); this.siteTheme.setAccent(hue); this.transport.setAccent(hue);
     }, colors => { this.atmosphere.setPalette(colors); this.siteTheme.setPalette(colors); });
     this.adapter.onRootChange = () => {
+      this.transport.sync(this.adapter.read());
       if (!this.active) return;
       this.queue.bind();
       const controls = this.adapter.query<HTMLElement>('.playControls__elements');
@@ -217,6 +222,7 @@ class SoundSky {
         if (this.active && this.state.playing && !this.state.muted && !this.reducedMotion.matches && this.settings.sceneSway > 0) this.sceneFlow.sample(event.data.bassOnset, this.audioAt);
         this.materials.setLevel(this.state.muted ? 0 : this.audioLevel, this.state.muted ? 0 : this.audioOnset);
         this.atmosphere.setLevel(this.state.muted ? 0 : this.audioLevel, this.state.muted ? 0 : this.audioOnset);
+        this.transport.setAudio(this.state.muted?0:this.audioLevel,this.state.muted?0:this.audioOnset);
 
       }
     }, { signal });
@@ -375,6 +381,8 @@ class SoundSky {
       this.clockCurrent = state.current; this.clockAt = performance.now();
     }
     this.state = state;
+    this.transport.sync(state);
+    this.syncAnalysis();
     this.el('.player').dataset.playing = String(state.playing);
     this.atmosphere.setPlaying(state.playing);
     if (this.active && state.track.key && !state.actions.repost.available) void this.adapter.probeRepost();
@@ -467,11 +475,16 @@ class SoundSky {
       else if (style.getPropertyValue(key) !== next) style.setProperty(key, next);
     }
   }
+  private syncAnalysis() {
+    const active=!this.disposed&&(this.active||this.settings.modernSoundCloud)&&!document.hidden&&this.state.playing&&!this.state.muted;
+    if(active===this.analysisActive)return;this.analysisActive=active;
+    window.postMessage({type:'soundsky:analysis',active},location.origin);
+  }
   private syncAnimation() {
     cancelAnimationFrame(this.animation);
     const active = this.active && !document.hidden;
     this.atmosphere.setActive(active);
-    window.postMessage({ type: 'soundsky:analysis', active }, location.origin);
+    this.syncAnalysis();
     if (active) this.animation = requestAnimationFrame(this.animate);
     else { this.setSceneOffset(0, 0); this.swayAmplitude = 0; this.coverPulse.reset(); this.sceneFlow.reset(); this.pulseFrameAt = 0; this.audioLevel = 0; this.audioOnset = 0; this.materials.setLevel(0); this.atmosphere.setLevel(0); this.artScale = 1; const artwork = this.shadow.querySelector<HTMLElement>('.artwork'); if (artwork) { artwork.style.setProperty('--beat-scale', '1'); artwork.style.borderRadius = '6px'; } }
   }
@@ -512,7 +525,7 @@ class SoundSky {
     this.focusBefore = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.previousOverflow = document.documentElement.style.overflow;
     document.documentElement.style.overflow = 'hidden';
-    document.body.setAttribute('data-soundsky-open', ''); this.siteTheme.setPlayerOpen(true);
+    document.body.setAttribute('data-soundsky-open', ''); this.siteTheme.setPlayerOpen(true); this.transport.setOpen(true);
     this.el('.launcher').hidden = true;
     const player = this.el('.player'); player.hidden = false;
     // Inert only the page's main surface, never the native player or its live queue.
@@ -537,7 +550,7 @@ class SoundSky {
     player?.classList.remove('is-open');
     this.adapter.dismissMenu();
     this.queue.close(); this.ambient.setActive(false); this.materials.setActive(false); this.adapter.setActive(false);
-    document.body.removeAttribute('data-soundsky-open'); this.siteTheme.setPlayerOpen(false);
+    document.body.removeAttribute('data-soundsky-open'); this.siteTheme.setPlayerOpen(false); this.transport.setOpen(false);
     document.documentElement.style.overflow = this.previousOverflow;
     for (const [element, inert] of this.backgroundInert) if (element.isConnected) element.inert = inert;
     this.backgroundInert.clear();
@@ -610,6 +623,9 @@ class SoundSky {
   }
   private applySettings() {
     this.siteTheme.setEnabled(this.settings.modernSoundCloud);
+    this.transport.setEnabled(this.settings.modernSoundCloud);
+    this.transport.setSpeeds(this.settings.materialSpeed,this.settings.seekSpeed);
+    this.syncAnalysis();
     this.ambient.setFlowSpeed(this.settings.ambientSpeed);
     this.atmosphere.setSettings(this.settings.ambientSpeed, this.settings.ambientGlow, this.settings.consoleSpeed, this.settings.seekSpeed);
     this.materials.setSettings(this.settings.materialSpeed, this.settings.heatSpeed, this.settings.heatEnabled, this.settings.heatResponse);
@@ -651,11 +667,11 @@ class SoundSky {
   }
   destroy() {
     if (this.disposed) return;
-    this.disposed = true; this.close();
+    this.disposed = true; this.syncAnalysis(); this.close();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.toastTimer) clearTimeout(this.toastTimer);
     this.artworkGeneration++; this.events.abort(); this.unsubscribe();
-    this.nativeModalObserver.disconnect(); this.queue.destroy(); this.ambient.destroy(); this.atmosphere.destroy(); this.materials.destroy(); this.accent.destroy(); this.siteTheme.destroy(); this.adapter.destroy();
+    this.nativeModalObserver.disconnect(); this.queue.destroy(); this.ambient.destroy(); this.atmosphere.destroy(); this.materials.destroy(); this.accent.destroy(); this.siteTheme.destroy(); this.transport.destroy(); this.adapter.destroy();
     try { if (globalThis.chrome?.runtime?.id) chrome.runtime.onMessage.removeListener(this.message); } catch { /* extension was reloaded */ }
     this.host.remove();
   }

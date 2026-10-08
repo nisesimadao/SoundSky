@@ -1,0 +1,34 @@
+[data-soundsky-entry] { appearance: none; border: 0; border-left: 1px solid #ffffff18; background: transparent; color: inherit; display: grid; place-items: center; padding: 0 0 0 14px; margin: 0 0 0 12px; width: 44px; height: 32px; flex: 0 0 44px; cursor: pointer; }
+[data-soundsky-entry] svg { width: 24px; height: 24px; transition: transform .2s ease; }
+[data-soundsky-entry]:hover svg { transform: scale(1.08); }
+[data-soundsky-entry]:focus-visible { outline: 2px solid var(--sky-site-accent,#b7c8e5); outline-offset: 3px; }
+[data-soundsky-entry][hidden] { display: none !important; }
+html[data-soundsky-theme] [data-soundsky-control] { position: relative !important; font-size: 0 !important; }
+html[data-soundsky-theme] [data-soundsky-control]::before { display: none !important; }
+html[data-soundsky-theme] [data-soundsky-control] > div { opacity: 0 !important; }
+html[data-soundsky-theme] [data-soundsky-glyph] { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 2; }
+html[data-soundsky-theme] [data-soundsky-glyph] svg { width: 20px; height: 20px; display: block; }
+html[data-soundsky-theme] [data-soundsky-control="play"] { isolation: isolate; overflow: hidden; background: #b4b5b8 !important; border: 1px solid #d4eafc70; box-shadow: inset 0 1px 0 #fff9,0 3px 14px #0007; transition: transform .18s ease; }
+html[data-soundsky-theme] [data-soundsky-control="play"]:hover { transform: scale(1.055); }
+html[data-soundsky-theme] [data-soundsky-control="play"]:active { transform: scale(.96); }
+html[data-soundsky-theme] [data-soundsky-control="play"] [data-soundsky-glyph] { color: white; mix-blend-mode: difference; }
+html[data-soundsky-theme] [data-soundsky-metal],html[data-soundsky-theme] [data-soundsky-seek] { position: absolute; inset: 0; pointer-events: none; display: block; overflow: hidden; }
+html[data-soundsky-theme] :is([data-soundsky-metal],[data-soundsky-seek]) > div { position: absolute !important; inset: 0; }
+html[data-soundsky-theme] :is([data-soundsky-metal],[data-soundsky-seek]) canvas { display: block; width: 100%; height: 100%; }
+html[data-soundsky-theme] [data-soundsky-progress] .playbackTimeline__progressBar { width: var(--soundsky-progress) !important; border-radius: 4px; overflow: hidden; }
+html[data-soundsky-theme] [data-soundsky-progress] .playbackTimeline__progressHandle { left: var(--soundsky-progress) !important; }
+@media (prefers-reduced-motion: reduce) { [data-soundsky-entry] svg,html[data-soundsky-theme] [data-soundsky-control="play"] { transition: none; transform: none !important; } }
+/* Reset native icon positioning before applying shared SoundSky glyphs. */
+html[data-soundsky-theme] [data-soundsky-control] { background-image: none !important; text-indent: 0 !important; padding: 0 !important; }
+html[data-soundsky-theme] [data-soundsky-control]::after { display: none !important; }
+html[data-soundsky-theme] :is([data-soundsky-glyph],[data-soundsky-metal]) { margin: 0 !important; padding: 0 !important; width: auto !important; min-width: 0 !important; inset: 0 !important; text-indent: 0 !important; line-height: 1 !important; }
+html[data-soundsky-theme] [data-soundsky-glyph] svg { margin: 0 !important; width: 20px !important; height: 20px !important; text-indent: 0 !important; }
+html[data-soundsky-theme] [data-soundsky-control="play"] [data-soundsky-glyph] { color: #fff !important; }
+html[data-soundsky-theme] :is(.playControls__prev,.playControls__next,.playControls__shuffle,.playControls__repeat) { width: 36px !important; height: 40px !important; margin-right: 8px !important; }
+html[data-soundsky-theme] .playControls__play { margin-right: 8px !important; }
+html[data-soundsky-theme] [data-soundsky-glyph] svg { color: inherit !important; fill: none !important; stroke: currentColor; }
+html[data-soundsky-theme] [data-soundsky-glyph] :is(path,circle,ellipse) { color: inherit !important; fill: none !important; stroke: currentColor !important; }
+html[data-soundsky-theme] [data-soundsky-glyph] [fill="currentColor"] { fill: currentColor !important; }
+html[data-soundsky-theme] [data-soundsky-glyph] [stroke="none"] { stroke: none !important; }
+html[data-soundsky-theme] [data-soundsky-glyph] [stroke-width="4"] { stroke-width: 4px !important; }
+html[data-soundsky-theme] [data-soundsky-control="play"] { width: 40px !important; height: 40px !important; flex: 0 0 40px; }

@@ -15,7 +15,8 @@ async page=>{
  await page.screenshot({path:'output/playwright/site-theme-fixture.png'});
  await page.route('**/site-theme-frame-test',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><main class="bg-white"><h1>Track page</h1><button>Play</button></main>'}));
  await page.evaluate(()=>{const f=document.createElement('iframe');f.id='site-theme-frame-test';f.src='/site-theme-frame-test';document.body.append(f);});
- const frame=page.frames().find(f=>f.parentFrame());
+ const frame=await (await page.locator('#site-theme-frame-test').elementHandle()).contentFrame();
+ await frame.waitForURL('**/site-theme-frame-test');
  await frame.waitForLoadState();
  await frame.evaluate(()=>{window.chrome={storage:{local:{get:async()=>({'soundsky:settings':{modernSoundCloud:true}})},onChanged:{addListener(){},removeListener(){}}}};});
  await frame.addScriptTag({path:'dist/theme-frame.js'});await page.waitForTimeout(300);
@@ -27,6 +28,12 @@ async page=>{
  await page.getByRole('switch',{name:'SoundCloudの見た目を整える',exact:true}).check();
  await page.getByRole('button',{name:'Back to SoundCloud',exact:true}).click();
 
+ await page.route('**/n/embeds/credit-tracker',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><div class="MuiBox-root" style="background:#121212"><div class="MuiCard-root" style="background:#121212">Artist Tools</div></div>'}));
+ await page.evaluate(()=>{const f=document.createElement('iframe');f.src='/n/embeds/credit-tracker';document.body.append(f);});
+ const toolsFrame=await (await page.locator('iframe[src="/n/embeds/credit-tracker"]').elementHandle()).contentFrame();await toolsFrame.waitForURL('**/n/embeds/credit-tracker');await toolsFrame.waitForLoadState();
+ await toolsFrame.evaluate(()=>{window.chrome={storage:{local:{get:async()=>({'soundsky:settings':{modernSoundCloud:true}})},onChanged:{addListener(){},removeListener(){}}}};});
+ await toolsFrame.addScriptTag({path:'dist/theme-frame.js'});await page.waitForTimeout(150);
+ if(!await toolsFrame.evaluate(()=>document.documentElement.hasAttribute('data-soundsky-embed')&&!document.querySelector('[data-soundsky-site-shader]')&&getComputedStyle(document.body).backgroundColor==='rgba(0, 0, 0, 0)'&&getComputedStyle(document.querySelector('.MuiBox-root')).backgroundColor==='rgba(0, 0, 0, 0)'))throw new Error('Artist Tools keeps its old background or adds a duplicate shader');
  await page.reload();await page.waitForTimeout(300);
  if(!await page.evaluate(()=>document.documentElement.hasAttribute('data-soundsky-theme')))throw new Error('Site theme preference lost');
  await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();await page.getByRole('button',{name:'見た目の設定',exact:true}).click();await page.getByRole('tab',{name:'SoundCloud',exact:true}).click();
@@ -35,5 +42,5 @@ async page=>{
  await page.getByRole('switch',{name:'SoundCloudの見た目を整える',exact:true}).uncheck();
  await page.getByRole('button',{name:'Back to SoundCloud',exact:true}).click();
  if(await page.evaluate(()=>document.querySelector('[data-soundsky-site-style]')||document.querySelector('[data-soundsky-site-shader]')||getComputedStyle(document.body).backgroundColor!== 'rgb(236, 236, 236)'))throw new Error('Theme fails to restore native appearance');
- return {embeddedPage:true,themeOutsidePlayer:true,artworkAccent:true,shader:true,nativePlayWorks:true,persists:true,mobileFits:true,restores:true};
+ return {embeddedPage:true,artistTools:true,themeOutsidePlayer:true,artworkAccent:true,shader:true,nativePlayWorks:true,persists:true,mobileFits:true,restores:true};
 }
