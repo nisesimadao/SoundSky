@@ -41,6 +41,10 @@ html[data-soundsky-theme] .playbackTimeline__progressWrapper { height: 24px !imp
 html[data-soundsky-theme] .playbackTimeline__progressBackground { height: 5px !important; top: 9.5px !important; border-radius: 1px !important; background: #c2d5db18 !important; }
 html[data-soundsky-theme] .playbackTimeline__progressBar { height: 5px !important; top: 9.5px !important; border-radius: 1px !important; }
 html[data-soundsky-theme] [data-soundsky-seek] { right: auto !important; width: var(--soundsky-seek-width,100%) !important; }
-html[data-soundsky-theme] .playbackTimeline__progressHandle { width: 9px !important; height: 9px !important; top: 7.5px !important; margin-left: -4.5px !important; border: 0 !important; border-radius: 50% !important; opacity: 1 !important; background: var(--sky-site-accent) !important; box-shadow: 0 0 0 4px color-mix(in srgb,var(--sky-site-accent) 8%,transparent) !important; }
+html[data-soundsky-theme] .playbackTimeline__progressHandle { width: 9px !important; height: 9px !important; top: 7.5px !important; margin-top: 0 !important; margin-left: -4.5px !important; border: 0 !important; border-radius: 50% !important; opacity: 1 !important; background: var(--sky-site-accent) !important; box-shadow: 0 0 0 4px color-mix(in srgb,var(--sky-site-accent) 8%,transparent) !important; }
 html[data-soundsky-theme] .playbackTimeline__progressWrapper:hover [data-soundsky-seek] { filter: brightness(1.15); }
 html[data-soundsky-theme] :is(.playbackSoundBadge__like,.playbackSoundBadge__follow,.playbackSoundBadge__showQueue)[data-soundsky-control] { display: inline-grid !important; width: 32px !important; height: 36px !important; min-width: 32px !important; }
+/* Keep metal visible through native play/pause, pointer and keyboard states. */
+html[data-soundsky-theme] .playControls .playControl[data-soundsky-control="play"],
+html[data-soundsky-theme] .playControls .playControl[data-soundsky-control="play"]:is(:hover,:active,:focus,.playing,.sc-button-pause,.sc-button-active,.sc-button-selected,[aria-pressed="true"]) { background: #b4b5b8 !important; border: 0 !important; box-shadow: 0 3px 14px #0007 !important; }
+html[data-soundsky-theme] .playControls .playControl[data-soundsky-control="play"] > [data-soundsky-metal] { opacity: 1 !important; visibility: visible !important; }

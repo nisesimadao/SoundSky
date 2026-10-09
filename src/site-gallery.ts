@@ -5,13 +5,16 @@ export class SiteGallery {
  private queued=0;
  private sliders=new Map<HTMLElement,number>();
  private buttons=new Map<HTMLButtonElement,boolean>();
+ private loading=new Set<HTMLElement>();
+ private requested=new WeakMap<HTMLElement,string>();
  setEnabled(enabled:boolean){
-  if(!enabled){this.events?.abort();this.events=null;this.observer?.disconnect();this.observer=null;if(this.queued)cancelAnimationFrame(this.queued);this.queued=0;for(const [button,disabled]of this.buttons)button.disabled=disabled;this.buttons.clear();for(const [slider,left]of this.sliders)slider.scrollLeft=left;this.sliders.clear();return;}
+  if(!enabled){this.events?.abort();this.events=null;this.observer?.disconnect();this.observer=null;if(this.queued)cancelAnimationFrame(this.queued);this.queued=0;for(const [button,disabled]of this.buttons)button.disabled=disabled;this.buttons.clear();for(const [slider,left]of this.sliders)slider.scrollLeft=left;this.sliders.clear();this.loading.clear();this.requested=new WeakMap();return;}
   if(this.events)return;this.events=new AbortController();const signal=this.events.signal;
   document.addEventListener('click',event=>{
    const button=(event.target as Element)?.closest<HTMLButtonElement>('.tileGallery__sliderButton');
    const slider=button?.closest('.tileGallery')?.querySelector<HTMLElement>('.tileGallery__slider');
-   if(!button||!slider)return;event.preventDefault();event.stopImmediatePropagation();
+   if(!button||!slider||this.loading.has(slider))return;
+   // Native handlers populate lazy album slots; keep them attached to the real button.
    slider.scrollBy({left:(button.classList.contains('tileGallery__slideBackwardButton')?-1:1)*slider.clientWidth*.85,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
   },{signal,capture:true});
   document.addEventListener('wheel',event=>{
@@ -28,6 +31,7 @@ export class SiteGallery {
  private refresh(){
   for(const gallery of document.querySelectorAll('.tileGallery')){
    const slider=gallery.querySelector<HTMLElement>('.tileGallery__slider');if(!slider)continue;if(!this.sliders.has(slider))this.sliders.set(slider,slider.scrollLeft);
+   this.populateVisible(gallery,slider);
    for(const direction of ['Backward','Forward']){
     const button=gallery.querySelector<HTMLButtonElement>(`.tileGallery__slide${direction}Button`);if(!button)continue;
     if(!this.buttons.has(button))this.buttons.set(button,button.disabled);
@@ -36,6 +40,21 @@ export class SiteGallery {
   }
   for(const slider of this.sliders.keys())if(!slider.isConnected)this.sliders.delete(slider);
   for(const button of this.buttons.keys())if(!button.isConnected)this.buttons.delete(button);
+ }
+ private populateVisible(gallery:Element,slider:HTMLElement){
+  const slides=[...gallery.querySelectorAll<HTMLElement>('.tileGallery__sliderPanelSlide')];
+  const bounds=slider.getBoundingClientRect();
+  const missing=slides.findIndex(slide=>!slide.children.length&&!slide.textContent?.trim()&&slide.getBoundingClientRect().right>bounds.left&&slide.getBoundingClientRect().left<bounds.right+1);
+  if(missing<0)return;
+  const forward=gallery.querySelector<HTMLButtonElement>('.tileGallery__slideForwardButton');if(!forward)return;
+  const request=`${missing}:${slides.filter(slide=>slide.children.length||slide.textContent?.trim()).length}`;
+  // No repeated clicks if native rendering cannot populate this slot.
+  if(this.requested.get(slider)===request)return;this.requested.set(slider,request);
+  this.loading.add(slider);
+  const disabled=forward.disabled;
+  if(!this.buttons.has(forward))this.buttons.set(forward,disabled);
+  forward.disabled=false;
+  try{forward.click();}finally{forward.disabled=disabled;this.loading.delete(slider);}
  }
  destroy(){this.setEnabled(false);}
 }
