@@ -142,8 +142,8 @@ input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.25); }
 /* A hollow 0.6px outline stays black while the symbol inverts the metal. */
 .play-glyph-outline { position: absolute; z-index: 1; width: 24px; height: 24px; background: #000; mask-image: var(--glyph-outline); mask-position: center; mask-size: contain; mask-repeat: no-repeat; pointer-events: none; }
 
-/* A compact instrument panel, in the same cool metal as the player. */
-.settings-panel { position: fixed; margin: 0; left: auto; bottom: auto; top: 66px; right: clamp(30px, 5vw, 100px); width: min(380px, calc(100vw - 32px)); max-height: calc(100dvh - 86px); overflow-y: auto; background: #15191d; border: 1px solid #a5c2d326; border-radius: 8px; padding: 22px 24px 0; z-index: 10; box-shadow: 0 18px 60px #0008; animation: arrive .18s ease-out; scrollbar-width: thin; }
+/* A roomy instrument panel with readable descriptions and full-width controls. */
+.settings-panel { position: fixed; margin: 0; left: auto; bottom: auto; top: 66px; right: clamp(30px, 5vw, 100px); width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 86px); overflow-y: auto; background: #15191d; border: 1px solid #a5c2d326; border-radius: 8px; padding: 28px 32px 0; z-index: 10; box-shadow: 0 18px 60px #0008; animation: arrive .18s ease-out; scrollbar-width: thin; }
 .settings-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .settings-kicker { font-size: 9px; font-weight: 500; letter-spacing: .16em; color: #8297a1; margin: 0 0 8px; }
 .settings-title { font-family: 'Avenir Next', Avenir, 'Helvetica Neue', sans-serif; font-size: 24px; font-weight: 500; color: #e7eff2; letter-spacing: -.035em; margin: 0; line-height: 1.2; }
@@ -201,8 +201,8 @@ input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.25); }
 .seek-surface input.seek::-webkit-slider-thumb { margin-top: -2px; }
 @media (max-width: 620px) { .atmosphere { opacity: calc(var(--ambient-intensity, .14) * .85); } }
 
-.settings-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 20px; padding-bottom: 10px; border-bottom: 1px solid #a5c2d31c; }
-.settings-tab { padding: 9px 2px; font-size: 11px; color: #8b9da5; border-radius: 4px; }
+.settings-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-top: 24px; padding-bottom: 10px; border-bottom: 1px solid #a5c2d31c; }
+.settings-tab { min-height: 44px; padding: 10px 4px; font-size: 12px; white-space: nowrap; color: #8b9da5; border-radius: 4px; }
 .settings-tab:hover { color: #dce9ee; background: #c7dfe908; }
 .settings-tab[aria-selected="true"] { color: #e8d4be; background: #c7dfe910; box-shadow: inset 0 -1px #dfc5ab; }
 .settings-section { padding-top: 2px; }
@@ -240,14 +240,14 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
 .settings-panel { font-family: 'Avenir Next', 'Hiragino Sans', 'Yu Gothic', sans-serif; }
 .settings-title { font-size: 21px; letter-spacing: .01em; }
 .settings-header { padding-bottom: 2px; }
-.settings-section-note { margin: 18px 0 4px; font-size: 11px; line-height: 1.8; color: #8e9fa8; }
-.settings-group { padding: 20px 0 17px; }
-.settings-label-row { font-size: 13px; align-items: center; }
+.settings-section-note { margin: 22px 0 6px; font-size: 12px; line-height: 1.8; color: #8e9fa8; }
+.settings-group { padding: 24px 0 21px; }
+.settings-label-row { font-size: 14px; align-items: center; }
 .settings-val { font-size: 12px; color: var(--accent); }
-.settings-hint { margin-top: 7px; font-size: 11px; line-height: 1.8; }
-.settings-range-wrap { position: relative; margin-top: 9px; }
+.settings-hint { margin-top: 9px; font-size: 12px; line-height: 1.8; }
+.settings-range-wrap { position: relative; margin-top: 12px; }
 .settings-default-tick { position: absolute; left: clamp(7px, var(--default-position), calc(100% - 7px)); top: 27px; width: 1px; height: 4px; background: #aab7bc60; pointer-events: none; }
-.settings-scale { display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #7c8c96; }
+.settings-scale { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #7c8c96; }
 .settings-scale button { font-size: 10px; color: #a8b8c0; padding: 3px 6px; border-radius: 3px; }
 .settings-scale button:hover { color: var(--accent); background: #ffffff08; }
 .settings-effect-toggle { margin-top: 18px; padding: 14px 0 17px; border-bottom: 1px solid var(--line); }
@@ -256,7 +256,7 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
 .settings-toggle input { order: 3; }
 .settings-toggle output { order: 2; font-size: 10px; min-width: 24px; color: #92a1a9; }
 .settings-heat-controls.is-disabled .settings-hint, .settings-heat-controls.is-disabled .settings-label-row, .settings-heat-controls.is-disabled .settings-scale { opacity: .4; }
-.settings-footer { font-size: 10px; padding: 20px 0; }
+.settings-footer { font-size: 11px; padding: 24px 0; }
 .settings-reset { font-size: 11px; }
 
 /* Overscan beyond the 14px scene travel so moving layers always cover the viewport. */
@@ -268,3 +268,9 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
 :host([data-launcher-docked]) .launcher { display: none !important; }
 
 .artwork .art-transition-outgoing { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+
+@media (max-width: 600px) {
+  .settings-panel { padding: 24px 20px 0; }
+  .settings-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 20px; }
+  .settings-group { padding: 22px 0 19px; }
+}
