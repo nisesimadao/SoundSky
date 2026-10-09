@@ -1,0 +1,20 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+import {JSDOM} from 'jsdom';
+const bundle=await build({entryPoints:['src/theme-frame.ts'],bundle:true,write:false,format:'iife',loader:{'.css':'text'},define:{'process.env.NODE_ENV':'"production"'}});
+for(const chromeValue of [undefined,{}])test(`frame without ${chromeValue?'storage':'chrome'} inherits parent theme and disposes safely`,()=>{
+ const dom=new JSDOM('<!doctype html><iframe src="/artists"></iframe>',{url:'https://soundcloud.com/discover',runScripts:'outside-only'});
+ const frame=dom.window.document.querySelector('iframe'),w=frame.contentWindow;
+ w.document.open();w.document.write('<!doctype html><html><head></head><body>Artist Studio</body></html>');w.document.close();
+ w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
+ w.chrome=chromeValue;
+ assert.doesNotThrow(()=>w.eval(bundle.outputFiles[0].text));
+ w.dispatchEvent(new w.MessageEvent('message',{origin:'https://soundcloud.com',source:dom.window,data:{type:'soundsky:site-theme',enabled:true,hue:140,open:false}}));
+ assert.ok(w.document.documentElement.hasAttribute('data-soundsky-theme'));
+ assert.match(w.document.documentElement.style.getPropertyValue('--sky-site-accent'),/140/);
+ assert.equal(w.document.querySelectorAll('canvas').length,0);
+ assert.doesNotThrow(()=>w.document.dispatchEvent(new w.Event('soundsky:theme-dispose')));
+ assert.equal(w.document.documentElement.hasAttribute('data-soundsky-theme'),false);
+ dom.window.close();
+});

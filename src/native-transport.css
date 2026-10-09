@@ -8,7 +8,7 @@ html[data-soundsky-theme] [data-soundsky-control]::before { display: none !impor
 html[data-soundsky-theme] [data-soundsky-control] > div { opacity: 0 !important; }
 html[data-soundsky-theme] [data-soundsky-glyph] { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 2; }
 html[data-soundsky-theme] [data-soundsky-glyph] svg { width: 20px; height: 20px; display: block; }
-html[data-soundsky-theme] [data-soundsky-control="play"] { isolation: isolate; overflow: hidden; background: #b4b5b8 !important; border: 0 !important; box-shadow: 0 3px 14px #0007; transition: transform .18s ease; }
+html[data-soundsky-theme] [data-soundsky-control="play"] { isolation: isolate; overflow: hidden; background: conic-gradient(from 35deg,#a2b5c6,#f0f8ff,#697f91,#dcebf4,#536778,#e8f4fc,#a2b5c6) !important; border: 0 !important; box-shadow: 0 3px 14px #0007; transition: transform .18s ease; }
 html[data-soundsky-theme] [data-soundsky-control="play"]:hover { transform: scale(1.055); }
 html[data-soundsky-theme] [data-soundsky-control="play"]:active { transform: scale(.96); }
 html[data-soundsky-theme] [data-soundsky-control="play"] [data-soundsky-glyph] { color: white; mix-blend-mode: difference; }
@@ -37,7 +37,7 @@ html[data-soundsky-theme] [data-soundsky-control="play"] { border: 0 !important;
 html[data-soundsky-theme] :is(.playControls__shuffle,.playControls__repeat) { display: grid; place-items: center; }
 html[data-soundsky-theme] :is(.playControls__shuffle,.playControls__repeat) button { width: 36px !important; height: 40px !important; margin: 0 !important; border: 0 !important; }
 /* Match SoundSky's 5px material, 9px thumb and 24px hit area. Keep the shader full width while clipping progress. */
-html[data-soundsky-theme] .playbackTimeline__progressWrapper { height: 24px !important; position: relative !important; }
+html[data-soundsky-theme] .playbackTimeline__progressWrapper { height: 24px !important; position: relative !important; padding: 0 !important; box-sizing: border-box !important; align-self: center !important; }
 html[data-soundsky-theme] .playbackTimeline__progressBackground { height: 5px !important; top: 9.5px !important; border-radius: 1px !important; background: #c2d5db18 !important; }
 html[data-soundsky-theme] .playbackTimeline__progressBar { height: 5px !important; top: 9.5px !important; border-radius: 1px !important; }
 html[data-soundsky-theme] [data-soundsky-seek] { right: auto !important; width: var(--soundsky-seek-width,100%) !important; }
@@ -46,5 +46,10 @@ html[data-soundsky-theme] .playbackTimeline__progressWrapper:hover [data-soundsk
 html[data-soundsky-theme] :is(.playbackSoundBadge__like,.playbackSoundBadge__follow,.playbackSoundBadge__showQueue)[data-soundsky-control] { display: inline-grid !important; width: 32px !important; height: 36px !important; min-width: 32px !important; }
 /* Keep metal visible through native play/pause, pointer and keyboard states. */
 html[data-soundsky-theme] .playControls .playControl[data-soundsky-control="play"],
-html[data-soundsky-theme] .playControls .playControl[data-soundsky-control="play"]:is(:hover,:active,:focus,.playing,.sc-button-pause,.sc-button-active,.sc-button-selected,[aria-pressed="true"]) { background: #b4b5b8 !important; border: 0 !important; box-shadow: 0 3px 14px #0007 !important; }
+html[data-soundsky-theme] .playControls .playControl[data-soundsky-control="play"]:is(:hover,:active,:focus,.playing,.sc-button-pause,.sc-button-active,.sc-button-selected,[aria-pressed="true"]) { background: conic-gradient(from 35deg,#a2b5c6,#f0f8ff,#697f91,#dcebf4,#536778,#e8f4fc,#a2b5c6) !important; border: 0 !important; box-shadow: 0 3px 14px #0007 !important; }
 html[data-soundsky-theme] .playControls .playControl[data-soundsky-control="play"] > [data-soundsky-metal] { opacity: 1 !important; visibility: visible !important; }
+
+html[data-soundsky-theme] .playbackTimeline { align-items: center !important; }
+html[data-soundsky-theme] .playControls .playControl[data-soundsky-control="play"] { background: conic-gradient(from 35deg,#a2b5c6,#f0f8ff,#697f91,#dcebf4,#536778,#e8f4fc,#a2b5c6) !important; }
+html[data-soundsky-theme] .playControls .playControl[data-soundsky-control="play"] > [data-soundsky-metal] { z-index: 1 !important; isolation: isolate; }
+html[data-soundsky-theme] .playControls .playControl[data-soundsky-control="play"] [data-soundsky-metal] canvas { z-index: 0 !important; }
