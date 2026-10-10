@@ -1,13 +1,15 @@
+import { Turntable } from './turntable';
 import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-analysis';
 
 /** Observe the final output in parallel; never replace SoundCloud's output path. */
 (() => {
-  const version = '1.3.11';
+  const version = '1.3.12';
   const bridgeKey = Symbol.for('soundsky:audio-bridge');
   const previousBridge = Reflect.get(window, bridgeKey) as { version: string; destroy(): void } | undefined;
   if (previousBridge?.version === version) return;
   previousBridge?.destroy();
 
+  const turntable = new Turntable();
   let active = false, disposed = false;
   let frame = 0, last = 0;
   let media: HTMLMediaElement | null = null;
@@ -98,6 +100,7 @@ import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-an
     } catch { detachFallback(); }
   }
   const playHook = function(this: HTMLMediaElement) {
+    turntable.startMedia(this);
     const result = play.call(this);
     if (!disposed) {
       media = this;
@@ -150,7 +153,9 @@ import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-an
     if (active && event.target === media) attachFallback();
   }, { capture: true, signal: events.signal });
   window.addEventListener('message', event => {
-    if (event.source !== window || event.origin !== location.origin || event.data?.type !== 'soundsky:analysis') return;
+    if (event.source !== window || event.origin !== location.origin) return;
+    if (event.data?.type === 'soundsky:turntable') { if (typeof event.data.enabled === 'boolean') turntable.setEnabled(event.data.enabled); return; }
+    if (event.data?.type !== 'soundsky:analysis') return;
     if (event.data.active !== true) { deactivate(); return; }
     if (active) return;
     active = true; last = 0;
@@ -161,7 +166,7 @@ import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-an
   window.addEventListener('pagehide', event => { if (!event.persisted) destroy(); }, { signal: events.signal });
   function destroy() {
     if (disposed) return;
-    deactivate(); disposed = true; events.abort(); outputs.clear();
+    turntable.destroy(); deactivate(); disposed = true; events.abort(); outputs.clear();
     if (AudioNode.prototype.connect === connectHook) AudioNode.prototype.connect = connect;
     if (AudioNode.prototype.disconnect === disconnectHook) AudioNode.prototype.disconnect = disconnect;
     if (HTMLMediaElement.prototype.play === playHook) HTMLMediaElement.prototype.play = play;

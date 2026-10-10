@@ -17,5 +17,6 @@ export function loadSavedSettings(saved: unknown): SoundSkySettings {
   }
   if (typeof values.heatEnabled === 'boolean') settings.heatEnabled = values.heatEnabled;
   if (typeof values.modernSoundCloud === 'boolean') settings.modernSoundCloud = values.modernSoundCloud;
+  if (typeof values.turntable === 'boolean') settings.turntable = values.turntable;
   return settings;
 }

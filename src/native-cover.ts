@@ -88,7 +88,7 @@ export class NativeCover {
     this.scale += (target - this.scale) * (1 - Math.exp(-dt / (target > this.scale ? 20 : 45)));
     for (const element of this.targets.keys()) {
       element.style.setProperty('scale', String(this.scale), 'important');
-      element.style.setProperty('border-radius', `${6 + element.clientWidth * Math.max(0, this.scale - 1) * .3}px`, 'important');
+      element.style.setProperty('border-radius', `${element.clientWidth * (.03 + Math.max(0, this.scale - 1) * .3)}px`, 'important');
     }
     if (this.state.playing && !this.state.muted || Math.abs(this.scale - 1) > .0001) this.start();
     else { for (const element of this.targets.keys()) element.style.setProperty('scale', '1', 'important'); this.at = 0; }

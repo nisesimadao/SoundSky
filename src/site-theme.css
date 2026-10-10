@@ -22,7 +22,7 @@ html[data-soundsky-theme] :is(.sc-button-selected,.sc-button-active,.sc-button-p
 html[data-soundsky-theme] :is(.sc-button-play,.playButton,.playControl) { border-radius: 50% !important; background-color: var(--sky-site-accent) !important; color: #101214 !important; }
 html[data-soundsky-theme] :is(.soundList__item,.chartTrack,.searchItem,.userBadgeListItem,.commentItem,.trackList__item) { border-color: var(--sky-site-line) !important; }
 html[data-soundsky-theme] :is(.sound,.userBadge,.playlist,.compactTrackList,.sidebarModule) { border-radius: 14px; border-color: var(--sky-site-line) !important; }
-html[data-soundsky-theme] :is(.sound__artwork,.image__full,.sc-artwork,.playlist__artwork,.playableTile__artwork,.trackItem__artwork) { border-radius: 12px !important; overflow: hidden; }
+html[data-soundsky-theme] :is(.sound__artwork,.image__full,.sc-artwork,.playlist__artwork,.playableTile__artwork,.trackItem__artwork) { border-radius: 3% !important; overflow: hidden; }
 html[data-soundsky-theme] :is(.profileHeaderBackground,.fullHero__artwork) { border-radius: 0 !important; }
 html[data-soundsky-theme] :is(.commentForm__inputWrapper,.commentForm__input) { border-radius: 12px !important; border-color: var(--sky-site-line) !important; background-color: #1c2228 !important; color: var(--sky-site-ink) !important; }
 html[data-soundsky-theme] :is(.g-tabs,.g-tabs-item,.sc-border-light,.sidebarModule,.userInfoBar) { border-color: var(--sky-site-line) !important; }
@@ -32,7 +32,7 @@ html[data-soundsky-theme] :is(.dropdownMenu__item,.moreActions__button) { color:
 html[data-soundsky-theme] :is(.playControls,.playControls__inner) { background-color: #11161bea !important; color: var(--sky-site-ink) !important; border-color: #dce5e51c !important; backdrop-filter: blur(20px); }
 html[data-soundsky-theme] .playControls { box-shadow: 0 -8px 32px #0003; }
 html[data-soundsky-theme] :is(.playbackTimeline__progressBar,.volume__sliderProgress,.volume__sliderHandle,.playbackTimeline__progressHandle) { background-color: var(--sky-site-accent) !important; }
-html[data-soundsky-theme] :is(.playbackSoundBadge__avatar,.playbackSoundBadge__avatar span) { border-radius: 8px !important; }
+html[data-soundsky-theme] :is(.playbackSoundBadge__avatar,.playbackSoundBadge__avatar span) { border-radius: 3% !important; }
 html[data-soundsky-theme] .queue:not([data-soundsky-queue]) { border: 1px solid #c6d9e126 !important; border-radius: 16px !important; background-color: #181c20 !important; color: var(--sky-site-ink) !important; box-shadow: 0 18px 60px #0005; overflow: hidden; }
 html[data-soundsky-theme] .queue:not([data-soundsky-queue]) :is(.queue__panel,.queue__scrollableInner,.queueFallback) { background-color: #181c20 !important; border-color: var(--sky-site-line) !important; }
 html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queueItemView { border-color: var(--sky-site-line) !important; }
@@ -123,3 +123,7 @@ html[data-soundsky-theme] .queue:not([data-soundsky-queue]) { background: #20262
 html[data-soundsky-theme] .queue:not([data-soundsky-queue]) :is(.queue__panel,.queue__scrollable,.queue__scrollableInner,.queue__itemsHeight,.queue__itemsContainer,.queue__itemWrapper,.queueFallback) { background: transparent !important; box-shadow: none !important; }
 html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queueItemView { border: 0 !important; border-bottom: 1px solid #c2d5db0b !important; border-radius: 0 !important; outline: 0 !important; box-shadow: none !important; }
 html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queueItemView.m-active { background: #e2d8c908 !important; box-shadow: inset 2px 0 var(--sky-site-accent) !important; }
+
+/* Artwork curvature follows size; artist identity remains circular. */
+html[data-soundsky-theme] .trackItem__image .image,
+html[data-soundsky-embed] :is(img[src*="sndcdn.com/artworks-"],.MuiBox-root:has(> img[src*="sndcdn.com/artworks-"])) { border-radius: 3% !important; }

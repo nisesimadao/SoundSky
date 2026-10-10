@@ -46,3 +46,9 @@ test('tag, home and playlist lists animate every matching cover while leaving ot
 test('modern cover with native loading overlay expands its clipping box',()=>{
  const t=setup('/n/artist/track',true);t.art.insertAdjacentHTML('beforeend','<div class="loading-overlay"></div>');t.cover.setEnabled(true);t.cover.setState(t.state);t.audio();assert.ok(Number(t.art.style.scale)>1.05);assert.equal(t.art.querySelector('img').style.scale,'');t.cover.destroy();t.dom.window.close();
 });
+test('pulse curvature is proportional to artwork width, including 40px list covers',()=>{
+ const small=setup(),large=setup();Object.defineProperty(small.art,'clientWidth',{value:40});Object.defineProperty(large.art,'clientWidth',{value:200});
+ for(const t of [small,large]){t.cover.setEnabled(true);t.cover.setState(t.state);t.audio();}
+ const a=parseFloat(small.art.style.borderRadius),b=parseFloat(large.art.style.borderRadius);assert.ok(a<2);assert.ok(Math.abs(b/a-5)<.001);
+ for(const t of [small,large]){t.cover.destroy();t.dom.window.close();}
+});

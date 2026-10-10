@@ -13,14 +13,14 @@ import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.3.11';
+const VERSION = '1.3.12';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
   return s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2,'0')}`;
 };
 
-type NumericSetting = Exclude<keyof SoundSkySettings, 'heatEnabled' | 'modernSoundCloud'>;
+type NumericSetting = Exclude<keyof SoundSkySettings, 'heatEnabled' | 'modernSoundCloud' | 'turntable'>;
 const settingValue = (key: NumericSetting, value: number) => {
   if (key === 'sceneSway') return value === 0 ? 'オフ' : `${Math.round(value * 100)}%`;
   if (value === 0) return key === 'pulseMax' ? 'なし' : key === 'ambientGlow' ? '消灯' : key === 'heatResponse' ? '反応なし' : '停止';
@@ -146,9 +146,10 @@ class SoundSky {
               </div>
             </div>
             <div class="settings-section" role="tabpanel" id="settings-controls" aria-labelledby="tab-controls" hidden>
-              <p class="settings-section-note">再生ボタンやバーの質感を調整します。</p>
+              <p class="settings-section-note">再生・停止の音と、操作部分の見た目を調整します。</p>
               ${settingControl('materialSpeed', '再生ボタンの動く速さ', 0, 8, .1, '金属のような表面の流れ。音が強いと速く動きます。', '停止', '速く')}
               ${settingControl('consoleSpeed', '操作パネルの煙の速さ', 0, 2, .1, '再生ボタンの土台にある、薄い煙の動き。', '停止', '速く')}
+              <div class="settings-group"><div class="settings-label-row settings-toggle"><label for="setting-turntable">レコードのように再生・停止</label><input id="setting-turntable" type="checkbox" role="switch" aria-describedby="hint-turntable"><output id="val-turntable"></output></div><p class="settings-hint" id="hint-turntable">停止時は約0.4秒かけて音程と速度が下がり、再生時は約0.24秒で戻ります。SoundSky・下部の再生ボタン・Spaceに適用します。</p></div>
               ${settingControl('seekSpeed', 'シークバーの色の流れ', 0, 3, .1, '再生済みの部分を流れる色。曲の再生速度は変わりません。', '停止', '速く')}
             </div>
             <div class="settings-footer"><span>すぐ反映・自動保存</span><button class="settings-reset" data-command="settings-reset">すべて標準に戻す</button></div>
@@ -271,7 +272,7 @@ class SoundSky {
     });
     this.shadow.querySelectorAll<HTMLInputElement>('.settings-slider').forEach(slider => {
       slider.addEventListener('input', () => {
-        const key = slider.dataset.setting as Exclude<keyof SoundSkySettings, 'heatEnabled' | 'modernSoundCloud'> | undefined;
+        const key = slider.dataset.setting as Exclude<keyof SoundSkySettings, 'heatEnabled' | 'modernSoundCloud' | 'turntable'> | undefined;
         if (!key) return;
         const val = Number(slider.value);
         this.settings[key] = val;
@@ -288,6 +289,10 @@ class SoundSky {
       this.settings.modernSoundCloud=(event.target as HTMLInputElement).checked;
       this.updateSettingsUI();this.applySettings();this.saveSettings();
     },{signal});
+    this.el<HTMLInputElement>('#setting-turntable').addEventListener('change', event => {
+      this.settings.turntable = (event.target as HTMLInputElement).checked;
+      this.updateSettingsUI(); this.applySettings(); this.saveSettings();
+    }, { signal });
     const seek = this.el<HTMLInputElement>('.seek');
     seek.addEventListener('pointerdown', () => { this.scrubbing = true; this.scrubKey = this.state.track.key; }, { signal });
     seek.addEventListener('input', () => {
@@ -650,6 +655,8 @@ class SoundSky {
       }
     }
     this.el<HTMLInputElement>('#setting-modernSoundCloud').checked=this.settings.modernSoundCloud;
+    this.el<HTMLInputElement>('#setting-turntable').checked=this.settings.turntable;
+    this.el('#val-turntable').textContent=this.settings.turntable?'オン':'オフ';
     this.el('#val-modernSoundCloud').textContent=this.settings.modernSoundCloud?'オン':'オフ';
     this.el<HTMLInputElement>('#setting-heatEnabled').checked = this.settings.heatEnabled;
     this.el('#val-heatEnabled').textContent = this.settings.heatEnabled ? 'オン' : 'オフ';
@@ -671,6 +678,7 @@ class SoundSky {
     this.siteTheme.setCoverState({trackKey:this.state.track.key,contextKey,playing:this.state.playing,muted:this.state.muted,maximum:this.settings.pulseMax,sensitivity:this.settings.pulseSensitivity});
   }
   private applySettings() {
+    window.postMessage({type:'soundsky:turntable',enabled:!this.disposed&&this.settings.turntable},location.origin);
     this.siteTheme.setEnabled(this.settings.modernSoundCloud);
     this.transport.setEnabled(this.settings.modernSoundCloud);
     this.transport.setSpeeds(this.settings.materialSpeed,this.settings.seekSpeed);
@@ -717,7 +725,7 @@ class SoundSky {
   }
   destroy() {
     if (this.disposed) return;
-    this.disposed = true; this.syncAnalysis(); this.close();
+    this.disposed = true; window.postMessage({type:'soundsky:turntable',enabled:false},location.origin); this.syncAnalysis(); this.close();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.toastTimer) clearTimeout(this.toastTimer);
     this.artworkGeneration++; this.clearTrackAnimations(); this.events.abort(); this.unsubscribe();

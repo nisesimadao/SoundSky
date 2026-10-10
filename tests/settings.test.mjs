@@ -23,3 +23,6 @@ test('the native site theme is opt-in and only accepts a boolean preference',()=
  assert.equal(loadSavedSettings({modernSoundCloud:'true'}).modernSoundCloud,false);
  assert.equal(loadSavedSettings({modernSoundCloud:true}).modernSoundCloud,true);
 });
+test('record-style playback is off by default and accepts only a boolean toggle',()=>{
+ assert.equal(loadSavedSettings({}).turntable,false);assert.equal(loadSavedSettings({turntable:'true'}).turntable,false);assert.equal(loadSavedSettings({turntable:true}).turntable,true);
+});

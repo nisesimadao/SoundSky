@@ -35,6 +35,8 @@ export interface SoundSkySettings {
   heatSpeed: number;
   heatEnabled: boolean;
   modernSoundCloud: boolean;
+  /** Record-style pitch glide on manual play/pause, opt-in. */
+  turntable: boolean;
   /** How far sound drives the red thermal front (0–3, default 1). */
   heatResponse: number;
   /** Audio-reactive backdrop light multiplier (0–2). */
@@ -55,6 +57,7 @@ export const defaultSettings: SoundSkySettings = {
   heatSpeed: 1,
   heatEnabled: true,
   modernSoundCloud: false,
+  turntable: false,
   heatResponse: 1,
   ambientGlow: 1,
   consoleSpeed: .2,

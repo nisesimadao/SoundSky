@@ -221,3 +221,13 @@ theme-frameの保存APIを存在確認とtry/catchで扱い、APIなしでも親
 61件のNodeテスト、型検証、配布ビルド成功。ローカルブラウザで、タグ・ホームの同じ曲のカードと再生元アルバム、プレイリスト内の兄弟画像、システムプレイリストの照合、親からiframeへの音の転送、停止・reduced motion・SoundSky表示時の復元、エラーなしを検証。生の音量.2とonset 0でscale 1.06。ボタンの内部と全体の再生成を再現し、クリック／Spaceでも同じcanvasとPaper mount、9000ms以上の時間位置を保持し、更新直後の背景が金属グラデーションのままなことを確認。既存のシーク中央揃え・進捗補間・ドラッグ・テーマ解除の検証も成功。
 
 新ビルドをユーザーのChrome拡張機能に適用した後の実曲確認は未実施。実DOMの調査とローカルの回帰検証を、適用後の確認と区別する。
+
+## 1.3.12 — 2026-10-10 JST、選択式のレコード再生・停止と角丸
+
+操作部分の設定にレコード効果の保存可能なスイッチを追加し、既存ユーザーを含め初期値はオフ。MAIN worldの既存audio bridgeからオプションを受信。ネイティブの下部再生ボタンのクリックとSpaceを扱い、SoundSkyは既存のネイティブボタンクリック経由で共通化する。再生元や出力経路の作り直しはせず、AudioBufferSourceのplaybackRateに0.24秒の加速／0.42秒の減速を適用し、減速後にネイティブの停止操作を行う。HTMLMediaElementでは一時的にpreservesPitchをfalseにし、元の速度とピッチ補正を保存・復元。AudioBufferSourceの終了、曲変更、シーク、効果オフ、破棄に対応し、減速中の連打は加速へ反転。読み込みが遅い場合と予約されたstart時刻にも対応し、後続のストリーミング用sourceは再加速しない。公式仕様の確認: [AudioBufferSourceNode.playbackRate](https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/playbackRate)、[HTMLMediaElement.preservesPitch](https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/preservesPitch)。
+
+実Web Audioのローカルブラウザ検証で、スイッチの初期値・保存・Space・ネイティブの遅延停止・連打での反転・オフでの即時停止を確認。再生開始のrate約0.08、通常時1、減速途中約0.61を測定。OfflineAudioContextで440Hzの波形を減速して描画し、初期区間約420Hz、末尾区間約40Hzを確認。これはローカル音声による検証であり、新ビルドでの実SoundCloud音源の聴感確認は再読み込み後に必要。
+
+通常ページの固定12px角丸を3%に、下部の小さなカバーとSoundSkyのNext Upも3%に変更。modern iframeの画像枠も対象とし、アバターは円形のまま。再生中の角丸は幅×(0.03＋拡大率×0.3)とし、40pxの小さな画像は約1.92px、200px画像は約9.6pxになる。単体テストで幅に比例することを確認し、ブラウザ回帰テストにも小さいカバーの角丸確認を追加。
+
+型検証・69件のNodeテスト・1.3.12の配布パッケージ生成が成功。通常操作部の既存ブラウザ検証も成功し、アイコン・金属描画・停止／再開時の同一canvas保持・アクセント色のちらつき防止・シーク中央揃え・進捗補間・ドラッグ・テーマ解除を維持。減速途中のオフでもAudioParamの進行中のカーブを解除してrate 1へ戻り、遅延停止が実行されないことを実Web Audioで確認。カバーのブラウザ検証では40pxの角丸が2px未満となり、ホーム・タグ・プレイリスト行・iframeの反応、アバターの保持、停止とreduced motionでの復元、エラーなしを確認。
