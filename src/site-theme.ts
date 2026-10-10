@@ -5,6 +5,7 @@ import { accentColor } from './accent';
 import { defaultPalette } from './artwork-palette';
 import css from './site-theme.css';
 import { unmountShader } from './shader-lifecycle';
+import { NativeCover, type CoverPlayback } from './native-cover';
 import { SiteGallery } from './site-gallery';
 
 /** Reversible skin: a scoped stylesheet and one decorative, pointer-free canvas. */
@@ -13,6 +14,8 @@ export class SiteTheme {
   private surface = document.createElement('div');
   private root: Root | null = null;
   private enabled = false;
+  private cover = new NativeCover();
+  private coverState: CoverPlayback | null = null;
   private open = false;
   private hue = 210;
   private colors = [...defaultPalette];
@@ -40,11 +43,16 @@ export class SiteTheme {
         if(typeof data.hue==='number'&&Number.isFinite(data.hue))this.setAccent(data.hue);
         if(Array.isArray(data.colors)&&data.colors.length===4&&data.colors.every((c:unknown)=>typeof c==='string'&&/^#[0-9a-f]{6}$/i.test(c)))this.setPalette(data.colors);
         this.setPlayerOpen(data.open===true);
+        const cover=data.cover;
+        if(cover&&typeof cover.trackKey==='string'&&typeof cover.contextKey==='string'&&typeof cover.playing==='boolean'&&typeof cover.muted==='boolean'&&Number.isFinite(cover.maximum)&&cover.maximum>=0&&cover.maximum<=.3&&Number.isFinite(cover.sensitivity)&&cover.sensitivity>=.2&&cover.sensitivity<=12)this.setCoverState(cover);
+      } else if(!this.top && event.source===window.parent && event.data?.type==='soundsky:cover-audio'){
+        const {level,onset}=event.data;
+        if(typeof level==='number'&&Number.isFinite(level)&&level>=0&&typeof onset==='number'&&Number.isFinite(onset)&&onset>=0)this.cover.setAudio(level,onset);
       }
     },{signal:this.events.signal});
     if(!this.top)window.parent.postMessage({type:'soundsky:theme-ready'},location.origin);
   }
-  private packet(){return {type:'soundsky:site-theme',enabled:this.enabled,hue:this.hue,colors:this.colors,open:this.open};}
+  private packet(){return {type:'soundsky:site-theme',enabled:this.enabled,hue:this.hue,colors:this.colors,open:this.open,cover:this.coverState};}
   private sameOriginFrame(frame:HTMLIFrameElement){
     // src alone is insufficient: sandboxed frames and redirects can have opaque origins.
     try{return frame.isConnected&&frame.contentWindow?.location.origin===location.origin;}catch{return false;}
@@ -57,7 +65,7 @@ export class SiteTheme {
     }
   }
   setEnabled(enabled:boolean){
-    if(this.enabled===enabled)return;this.enabled=enabled;
+    if(this.enabled===enabled)return;this.enabled=enabled;this.cover.setEnabled(enabled);
     if(enabled){document.head.append(this.style);if(this.decorative){document.body.prepend(this.surface);this.observer?.observe(this.surface);}else document.documentElement.setAttribute('data-soundsky-embed','');document.documentElement.setAttribute('data-soundsky-theme','');this.applyAccent();}
     else {this.observer?.unobserve(this.surface);document.documentElement.removeAttribute('data-soundsky-theme');document.documentElement.removeAttribute('data-soundsky-embed');document.documentElement.style.removeProperty('--sky-site-accent');unmountShader(this.root,this.surface);this.root=null;this.surface.remove();this.style.remove();}
     if(this.decorative){this.gallery??=new SiteGallery();this.gallery.setEnabled(enabled);}
@@ -66,7 +74,14 @@ export class SiteTheme {
   private applyAccent(){if(this.enabled)document.documentElement.style.setProperty('--sky-site-accent',accentColor(this.hue));}
   setAccent(hue:number){this.hue=hue;this.applyAccent();this.broadcast();}
   setPalette(colors:string[]){this.colors=[...colors];this.render();this.broadcast();}
-  setPlayerOpen(open:boolean){this.open=open;this.render();this.broadcast();}
+  setPlayerOpen(open:boolean){this.open=open;this.cover.setOpen(open);this.render();this.broadcast();}
+  setCoverState(state:CoverPlayback){this.coverState=state;this.cover.setState(state);this.broadcast();}
+  setCoverAudio(level:number,onset:number){
+    this.cover.setAudio(level,onset);
+    if(this.top&&this.enabled&&!this.open)for(const frame of this.frames){
+      if(this.sameOriginFrame(frame))frame.contentWindow?.postMessage({type:'soundsky:cover-audio',level,onset},location.origin);else this.frames.delete(frame);
+    }
+  }
   private render(){
     if(!this.enabled||!this.decorative)return;
     this.surface.hidden=this.open;
@@ -74,5 +89,5 @@ export class SiteTheme {
     const moving=this.inView&&!this.open&&!document.hidden&&!this.motion.matches;
     this.root?.render(createElement(MeshGradient,{width:'100%',height:'100%',colors:this.colors,speed:moving?.22:0,distortion:.65,swirl:.25,grainMixer:.02,grainOverlay:.018,scale:1.25,minPixelRatio:1,maxPixelCount:60000,frame:18000}));
   }
-  destroy(){this.gallery?.destroy();this.observer?.disconnect();this.events.abort();this.setEnabled(false);unmountShader(this.root,this.surface);this.root=null;this.surface.remove();this.style.remove();}
+  destroy(){this.cover.destroy();this.gallery?.destroy();this.observer?.disconnect();this.events.abort();this.setEnabled(false);unmountShader(this.root,this.surface);this.root=null;this.surface.remove();this.style.remove();}
 }

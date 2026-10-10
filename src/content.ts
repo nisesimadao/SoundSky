@@ -1,4 +1,4 @@
-import { SoundCloudAdapter, artworkURL } from './adapter';
+import { SoundCloudAdapter, artworkURL, canonical } from './adapter';
 import { NativeQueue } from './queue';
 import { Ambient } from './ambient';
 import { Atmosphere } from './atmosphere';
@@ -13,7 +13,7 @@ import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.3.9';
+const VERSION = '1.3.10';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
@@ -119,7 +119,7 @@ class SoundSky {
               <button class="settings-tab" role="tab" id="tab-site" aria-controls="settings-site" aria-selected="false" tabindex="-1" data-settings-tab="site">SoundCloud</button>
             </div>
             <div class="settings-section" role="tabpanel" id="settings-cover" aria-labelledby="tab-cover">
-              <p class="settings-section-note">音に合わせたジャケットの動きを調整します。</p>
+              <p class="settings-section-note">音に合わせたジャケットの動きを調整します。SoundCloudの見た目を整える設定がオンなら、再生中の曲・プレイリストのページにも反映されます。</p>
               ${settingControl('pulseMax', '拡大の上限', 0, .3, .005, '音が強いとき、元の大きさからどこまで拡大するか。', '拡大なし', '最大 +30%')}
               ${settingControl('pulseSensitivity', '音への反応', .2, 12, .1, '音量と音の変化に合わせて動きます。上げるほど反応が強くなります。', '控えめ', '強く')}
             </div>
@@ -226,6 +226,7 @@ class SoundSky {
         if (this.active && this.state.playing && !this.state.muted && !this.reducedMotion.matches && this.settings.sceneSway > 0) this.sceneFlow.sample(event.data.bassOnset, this.audioAt);
         this.materials.setLevel(this.state.muted ? 0 : this.audioLevel, this.state.muted ? 0 : this.audioOnset);
         this.atmosphere.setLevel(this.state.muted ? 0 : this.audioLevel, this.state.muted ? 0 : this.audioOnset);
+        this.siteTheme.setCoverAudio(this.state.muted?0:this.audioLevel,this.state.muted?0:this.audioOnset);
         this.transport.setAudio(this.state.muted?0:this.audioLevel,this.state.muted?0:this.audioOnset);
 
       }
@@ -387,6 +388,7 @@ class SoundSky {
     this.state = state;
     this.transport.sync(state);
     this.syncAnalysis();
+    this.syncNativeCover();
     this.el('.player').dataset.playing = String(state.playing);
     this.atmosphere.setPlaying(state.playing);
     if (this.active && state.track.key && !state.actions.repost.available) void this.adapter.probeRepost();
@@ -657,10 +659,17 @@ class SoundSky {
       this.el<HTMLButtonElement>(`[data-setting-key="${key}"]`).disabled = !this.settings.heatEnabled;
     }
   }
+  private syncNativeCover() {
+    const href=this.adapter.query<HTMLAnchorElement>('.playbackSoundBadge__titleLink')?.href;
+    let contextKey='';
+    try{const context=href?new URL(href).searchParams.get('in'):null;if(context)contextKey=canonical(`https://soundcloud.com/${context.replace(/^\//,'')}`);}catch{/* no playlist context */}
+    this.siteTheme.setCoverState({trackKey:this.state.track.key,contextKey,playing:this.state.playing,muted:this.state.muted,maximum:this.settings.pulseMax,sensitivity:this.settings.pulseSensitivity});
+  }
   private applySettings() {
     this.siteTheme.setEnabled(this.settings.modernSoundCloud);
     this.transport.setEnabled(this.settings.modernSoundCloud);
     this.transport.setSpeeds(this.settings.materialSpeed,this.settings.seekSpeed);
+    this.syncNativeCover();
     this.syncAnalysis();
     this.ambient.setFlowSpeed(this.settings.ambientSpeed);
     this.atmosphere.setSettings(this.settings.ambientSpeed, this.settings.ambientGlow, this.settings.consoleSpeed, this.settings.seekSpeed);

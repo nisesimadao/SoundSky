@@ -2,7 +2,7 @@ import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-an
 
 /** Observe the final output in parallel; never replace SoundCloud's output path. */
 (() => {
-  const version = '1.3.9';
+  const version = '1.3.10';
   const bridgeKey = Symbol.for('soundsky:audio-bridge');
   const previousBridge = Reflect.get(window, bridgeKey) as { version: string; destroy(): void } | undefined;
   if (previousBridge?.version === version) return;
