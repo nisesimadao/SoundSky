@@ -31,3 +31,9 @@ test('docked entry and decorative icons preserve native handlers and release on 
  const next=t.adapter.root.cloneNode(true);t.adapter.root.replaceWith(next);t.adapter.root=next;t.setState({});assert.equal(t.w.document.querySelectorAll('[data-soundsky-entry]').length,1);
  t.transport.destroy();assert.equal(t.docked,false);assert.equal(t.frames.size,0);assert.equal(t.w.document.querySelector('[data-soundsky-entry]'),null);assert.equal(t.w.document.querySelector('[data-soundsky-transport-style]'),null);t.dom.window.close();
 });
+test('native button redraw and replacement reuse the metal surface before the next frame',async()=>{
+ const t=setup();t.setState({});t.transport.setEnabled(true);const play=t.adapter.query('.playControl');const metal=play.querySelector('[data-soundsky-metal]');
+ play.replaceChildren(t.w.document.createElement('div'));play.title='Pause current';await Promise.resolve();assert.equal(play.querySelector('[data-soundsky-metal]'),metal);assert.equal(play.querySelector('[data-soundsky-glyph]').dataset.icon,'pause');
+ const next=play.cloneNode(false);next.title='Play current';play.replaceWith(next);await Promise.resolve();assert.equal(next.querySelector('[data-soundsky-metal]'),metal);assert.equal(next.querySelector('[data-soundsky-glyph]').dataset.icon,'play');
+ t.transport.destroy();next.replaceChildren(t.w.document.createElement('div'));await Promise.resolve();assert.equal(next.querySelector('[data-soundsky-metal]'),null);t.dom.window.close();
+});

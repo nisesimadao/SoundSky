@@ -31,3 +31,18 @@ test('embedded modern header animates the artwork frame, preserves avatars and r
  t.cover.setOpen(true);assert.equal(t.art.style.scale,'1.02');assert.equal(t.art.style.getPropertyPriority('scale'),'important');assert.equal(t.art.style.borderRadius,'12px');assert.equal(t.frames.size,0);
  t.cover.setOpen(false);t.audio();t.motion.matches=true;t.cover.setState(t.state);assert.equal(t.art.style.scale,'1.02');t.cover.destroy();t.dom.window.close();
 });
+test('tag, home and playlist lists animate every matching cover while leaving other songs and avatars alone',async()=>{
+ const t=setup('/tags/garage');
+ t.w.document.body.insertAdjacentHTML('beforeend',`<div class="sound__artwork" id="tag"><a class="sound__coverArt" href="/artist/track"><div class="image"><span class="image__full" style="background-image:url(https://i1.sndcdn.com/artworks-track.jpg)"></span></div></a></div><div class="playableTile__artwork" id="album"><a href="/artist/sets/album"><img src="https://i1.sndcdn.com/artworks-album.jpg"></a></div><div class="sound__artwork" id="other"><a href="/artist/other"><img src="https://i1.sndcdn.com/artworks-other.jpg"></a></div><div class="trackItem"><div class="trackItem__image"><div class="image" id="row-art"><span class="image__full"></span></div></div><div class="trackItem__content"><a href="/artist/track?in=artist/sets/album">Song</a></div></div><a href="/artist/track" id="avatar"><img class="sc-avatar" src="https://i1.sndcdn.com/avatars-user.jpg"></a>`);
+ t.cover.setEnabled(true);t.cover.setState(t.state);t.audio();
+ for(const id of ['tag','album','row-art'])assert.ok(Number(t.w.document.getElementById(id).style.scale)>1.05);
+ for(const id of ['other','avatar'])assert.equal(t.w.document.getElementById(id).style.scale,'');
+ assert.equal(t.art.style.scale,'');
+ // A lazy-loaded duplicate cover should join the existing envelope.
+ t.w.document.body.insertAdjacentHTML('beforeend','<a id="lazy" href="/artist/track"><img src="https://i1.sndcdn.com/artworks-track.jpg"></a>');await Promise.resolve();t.audio();assert.ok(Number(t.w.document.getElementById('lazy').style.scale)>1.05);
+ t.cover.setState({...t.state,trackKey:'/artist/other',contextKey:''});t.audio();assert.equal(t.w.document.getElementById('tag').style.scale,'');assert.equal(t.w.document.getElementById('album').style.scale,'');assert.ok(Number(t.w.document.getElementById('other').style.scale)>1.05);
+ t.cover.setEnabled(false);assert.equal(t.w.document.getElementById('other').style.scale,'');t.cover.destroy();t.dom.window.close();
+});
+test('modern cover with native loading overlay expands its clipping box',()=>{
+ const t=setup('/n/artist/track',true);t.art.insertAdjacentHTML('beforeend','<div class="loading-overlay"></div>');t.cover.setEnabled(true);t.cover.setState(t.state);t.audio();assert.ok(Number(t.art.style.scale)>1.05);assert.equal(t.art.querySelector('img').style.scale,'');t.cover.destroy();t.dom.window.close();
+});

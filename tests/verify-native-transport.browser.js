@@ -30,6 +30,18 @@ async page=>{
  await page.locator('.playControl').press('Space');await page.waitForTimeout(100);
  const metalDrawn=await page.locator('.playControl [data-soundsky-metal]').evaluate(e=>{const mount=e.querySelector('[data-paper-shader]').paperShaderMount,gl=mount.gl;if(gl.isContextLost())return false;mount.setFrame(9000);const pixels=new Uint8Array(gl.canvas.width*gl.canvas.height*4);gl.readPixels(0,0,gl.canvas.width,gl.canvas.height,gl.RGBA,gl.UNSIGNED_BYTE,pixels);let min=255,max=0;for(let i=0;i<pixels.length;i+=4){if(pixels[i+3]>0){min=Math.min(min,pixels[i]);max=Math.max(max,pixels[i]);}}return max-min>30;});
  if(!metalDrawn)throw new Error('Play/pause state loses the rendered metal texture');
+ // Native rerenders must not recreate the GPU canvas or jump back to frame zero.
+ await page.evaluate(()=>{
+  const control=document.querySelector('.playControl');window.savedMetal=control.querySelector('[data-soundsky-metal]');window.savedCanvas=window.savedMetal.querySelector('canvas');window.savedMount=window.savedMetal.querySelector('[data-paper-shader]').paperShaderMount;
+  const native=control.onclick;control.onclick=function(event){native.call(this,event);this.replaceChildren(document.createElement('div'));this.removeAttribute('data-soundsky-control');window.immediatePlayBackground=getComputedStyle(this).backgroundImage;};
+ });
+ await page.locator('.playControl').click();await page.waitForTimeout(180);
+ const retained=await page.evaluate(()=>({sameCanvas:document.querySelector('.playControl canvas')===window.savedCanvas,sameMount:document.querySelector('.playControl [data-paper-shader]').paperShaderMount===window.savedMount,immediateBackground:window.immediatePlayBackground,phase:window.savedMount.getCurrentFrame?.()}));
+ if(!retained.sameCanvas||!retained.sameMount||retained.phase<9000||!retained.immediateBackground.includes('conic-gradient'))throw new Error('Pause rebuilds shader or flashes accent: '+JSON.stringify(retained));
+ await page.evaluate(()=>{const play=document.querySelector('.playControl');const handler=play.onclick;play.onclick=function(e){handler.call(this,e);const replacement=this.cloneNode(false);replacement.onclick=this.onclick;this.replaceWith(replacement);};});
+ await page.locator('.playControl').press('Space');await page.waitForTimeout(180);
+ if(!await page.evaluate(()=>document.querySelector('.playControl canvas')===window.savedCanvas&&document.querySelector('.playControl [data-paper-shader]').paperShaderMount===window.savedMount))throw new Error('Resume resets shader');
+
  if(await page.locator('.playControl').getAttribute('title')!=='Pause current')throw new Error('Native playback handler lost');
  const before=await page.evaluate(()=>({native:Number(document.querySelector('.playbackTimeline__progressWrapper').getAttribute('aria-valuenow')),visual:parseFloat(document.querySelector('.playbackTimeline__progressWrapper').style.getPropertyValue('--soundsky-progress')),playing:document.querySelector('.playControl [data-soundsky-glyph]').dataset.icon,metal:!!document.querySelector('[data-soundsky-metal] canvas'),seek:!!document.querySelector('[data-soundsky-seek] canvas')}));
  await page.waitForTimeout(120);
@@ -47,5 +59,5 @@ async page=>{
  if(await page.locator('[data-soundsky-control],[data-soundsky-metal],[data-soundsky-seek],[data-soundsky-progress]').count())throw new Error('Theme leaves native overrides');
  if(await entry.count()!==1)throw new Error('Entry duplicated');
  await page.locator('.playControl').click();if(await page.locator('.playControl').getAttribute('title')!=='Pause current')throw new Error('Native handler lost after restoring');
- return {entryDocked:true,floatingEntryHidden:true,soundSkyControlsUnobscured:true,nativePlayPreserved:true,icons:true,metal:true,shaderSeek:true,progressBetweenNativeTicks:true,pauseStable:true,dragPreserved:true,themeOffRestores:true};
+ return {entryDocked:true,floatingEntryHidden:true,soundSkyControlsUnobscured:true,nativePlayPreserved:true,icons:true,metal:true,shaderSeek:true,progressBetweenNativeTicks:true,pauseStable:true,shaderInstancePreserved:true,noAccentFlashDuringRedraw:true,dragPreserved:true,themeOffRestores:true};
 }

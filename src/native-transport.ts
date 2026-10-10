@@ -28,6 +28,16 @@ export class NativeTransport {
  private roots=new Map<HTMLElement,Root>();
  private decorations=new Set<HTMLElement>();
  private bar:HTMLElement|null=null;
+ private metal:HTMLElement|null=null;
+ private observedRoot:HTMLElement|null=null;
+ private observer=new MutationObserver(()=>{
+  if(!this.enabled)return;
+  const play=this.adapter.query<HTMLElement>('.playControl');
+  if(play&&(!play.contains(this.metal)||!play.querySelector('[data-soundsky-glyph]')||play.querySelector('[data-soundsky-glyph]')?.getAttribute('data-icon')!==this.playGlyph(play))) {
+   this.decorate('.playControl',this.playGlyph(play),true);
+  }
+ });
+ private playGlyph(play:HTMLElement){return play.classList.contains('playing')||/pause/i.test(play.getAttribute('title')||play.getAttribute('aria-label')||'')?'pause':'play';}
  private events=new AbortController();
  private motion=matchMedia('(prefers-reduced-motion: reduce)');
  constructor(private adapter:SoundCloudAdapter,onOpen:()=>void,private onDock:(docked:boolean)=>void){
@@ -51,6 +61,7 @@ export class NativeTransport {
   if(controls&&!controls.contains(this.entry)){for(const stale of controls.querySelectorAll('[data-soundsky-entry]'))stale.remove();controls.append(this.entry);}
   this.onDock(!!controls&&this.entry.isConnected);this.entry.hidden=this.open;
   if(!this.enabled)return;
+  if(this.observedRoot!==this.adapter.root){this.observer.disconnect();this.observedRoot=this.adapter.root;if(this.observedRoot)this.observer.observe(this.observedRoot,{subtree:true,childList:true,attributes:true,attributeFilter:['class','title','aria-label']});}
   this.decorate('.playControl',state.playing?'pause':'play',true);
   for(const [selector,glyph] of [['.skipControl__previous','previous'],['.skipControl__next','next'],['.volume__button',state.muted?'mute':'volume'],['.playbackSoundBadge__like','heart'],['.playbackSoundBadge__follow','follow'],['.playbackSoundBadge__showQueue','queue'],['.playControls__shuffle button','shuffle'],['.playControls__repeat button','repeat']])this.decorate(selector,glyph);
   const bar=this.adapter.query<HTMLElement>('.playbackTimeline__progressBar');
@@ -63,7 +74,13 @@ export class NativeTransport {
   let overlay=control.querySelector<HTMLElement>(':scope > [data-soundsky-glyph]');
   if(!overlay){overlay=document.createElement('span');overlay.dataset.soundskyGlyph='';overlay.setAttribute('aria-hidden','true');control.append(overlay);this.decorations.add(overlay);}
   if(overlay.dataset.icon!==glyph){overlay.dataset.icon=glyph;overlay.innerHTML=icon(glyph);}
-  if(metal){let surface=control.querySelector<HTMLElement>(':scope > [data-soundsky-metal]');if(!surface){surface=document.createElement('span');surface.dataset.soundskyMetal='';surface.setAttribute('aria-hidden','true');control.append(surface);this.decorations.add(surface);this.shader(surface,'metal');}}
+  if(metal){
+   // SoundCloud rewrites the button's children on play/pause. Reattach our existing
+   // surface before paint, keeping the React root, GPU context and shader phase.
+   if(!this.metal){this.metal=document.createElement('span');this.metal.dataset.soundskyMetal='';this.metal.setAttribute('aria-hidden','true');this.decorations.add(this.metal);}
+   if(this.metal.parentElement!==control)control.append(this.metal);
+   this.shader(this.metal,'metal');
+  }
  }
  private shader(element:HTMLElement,kind:'metal'|'seek'){
   if(typeof WebGL2RenderingContext==='undefined'||this.roots.has(element))return;
@@ -99,8 +116,9 @@ export class NativeTransport {
   this.frame=requestAnimationFrame(this.tick);
  };
  private clear(){
+  this.observer.disconnect();this.observedRoot=null;
   if(this.frame)cancelAnimationFrame(this.frame);this.frame=0;
-  for(const [el,root] of this.roots)unmountShader(root,el);this.roots.clear();for(const el of this.decorations)el.remove();this.decorations.clear();this.bar=null;
+  for(const [el,root] of this.roots)unmountShader(root,el);this.roots.clear();for(const el of this.decorations)el.remove();this.decorations.clear();this.bar=null;this.metal=null;
   for(const el of this.adapter.root?.querySelectorAll('[data-soundsky-control]')??[])el.removeAttribute('data-soundsky-control');
   for(const el of this.adapter.root?.querySelectorAll<HTMLElement>('[data-soundsky-progress]')??[]){el.removeAttribute('data-soundsky-progress');el.style.removeProperty('--soundsky-progress');el.style.removeProperty('--soundsky-seek-width');}
  }

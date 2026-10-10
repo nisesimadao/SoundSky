@@ -53,3 +53,13 @@ html[data-soundsky-theme] .playbackTimeline { align-items: center !important; }
 html[data-soundsky-theme] .playControls .playControl[data-soundsky-control="play"] { background: conic-gradient(from 35deg,#a2b5c6,#f0f8ff,#697f91,#dcebf4,#536778,#e8f4fc,#a2b5c6) !important; }
 html[data-soundsky-theme] .playControls .playControl[data-soundsky-control="play"] > [data-soundsky-metal] { z-index: 1 !important; isolation: isolate; }
 html[data-soundsky-theme] .playControls .playControl[data-soundsky-control="play"] [data-soundsky-metal] canvas { z-index: 0 !important; }
+
+/* This selector must survive native button replacement, before decoration returns. */
+html[data-soundsky-theme] .playControls .playControl,
+html[data-soundsky-theme] .playControls .playControl:is(:hover,:active,:focus,:focus-visible,.playing,.sc-button-active,.sc-button-selected,[aria-pressed="true"]) {
+  background: conic-gradient(from 35deg,#a2b5c6,#f0f8ff,#697f91,#dcebf4,#536778,#e8f4fc,#a2b5c6) !important;
+  border: 0 !important; box-shadow: 0 3px 14px #0007 !important;
+}
+html[data-soundsky-theme] .playControls .playControl::before,
+html[data-soundsky-theme] .playControls .playControl::after { display: none !important; }
+html[data-soundsky-theme] .playControls .playControl > div { opacity: 0 !important; }

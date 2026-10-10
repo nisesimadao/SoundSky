@@ -1,10 +1,10 @@
 async page=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const response=await page.request.get('http://127.0.0.1:4173');
- const html=(await response.text()).replace(/<script[^>]*>.*?<\/script>/gs,'').replace('<main>','<main><div class="fullHero"><div id="page-art" class="fullHero__artwork" style="width:200px;height:200px;background:#345;transform:translateX(2px)"></div></div><iframe id="cover-frame" src="/n/artist/track" width="500" height="420"></iframe>');
+ const html=(await response.text()).replace(/<script[^>]*>.*?<\/script>/gs,'').replace('<main>','<main><div class="trackItem"><div class="trackItem__image"><div class="image" id="row-art"><span class="image__full" style="background-image:url(https://i1.sndcdn.com/artworks-track.jpg);display:block;width:40px;height:40px"></span></div></div><a class="trackItem__trackTitle" href="/artist/track?in=artist/sets/album">Track</a></div><div class="sound__artwork" id="list-art"><a href="/artist/track"><span class="image__full" style="background-image:url(https://i1.sndcdn.com/artworks-track.jpg);display:block;width:150px;height:150px"></span></a></div><div class="playableTile__artwork" id="album-art"><a href="/artist/sets/album"><img src="https://i1.sndcdn.com/artworks-album.jpg" width="150" height="150"></a></div><div class="fullHero"><div id="page-art" class="fullHero__artwork" style="width:200px;height:200px;background:#345;transform:translateX(2px)"></div></div><iframe id="cover-frame" src="/n/artist/track" width="500" height="420"></iframe>');
  await page.route('https://soundcloud.com/**',async route=>{
   const path=new URL(route.request().url()).pathname;
-  await route.fulfill({contentType:'text/html',body:path.startsWith('/n/')?'<!doctype html><section aria-label="Track header"><img id="avatar" src="https://i1.sndcdn.com/avatars-user.jpg" width="24" height="24"><div id="frame-art" style="width:300px;height:300px;overflow:hidden"><img src="https://i1.sndcdn.com/artworks-track.jpg" width="300" height="300"></div></section>':html});
+  await route.fulfill({contentType:'text/html',body:path.startsWith('/n/')?'<!doctype html><section aria-label="Track header"><img id="avatar" src="https://i1.sndcdn.com/avatars-user.jpg" width="24" height="24"><div id="frame-art" style="width:300px;height:300px;overflow:hidden"><img src="https://i1.sndcdn.com/artworks-track.jpg" width="300" height="300"><div class="loading-overlay"></div></div></section>':html});
  });
  await page.route('https://i1.sndcdn.com/**',async route=>{const r=await page.request.get('http://127.0.0.1:4173/artwork.jpg');await route.fulfill({contentType:'image/jpeg',body:await r.body()});});
  await page.goto('https://soundcloud.com/artist/track');
@@ -27,6 +27,15 @@ async page=>{
  if(await page.locator('#page-art').evaluate(e=>!!e.style.scale))throw new Error('Unrelated playlist pulses');
  await page.evaluate(()=>document.querySelector('.playbackSoundBadge__titleLink').href='/artist/track?in=artist/sets/album');await send();
  if(await page.locator('#page-art').evaluate(e=>Number(e.style.scale)<1.05))throw new Error('Current playlist cover does not pulse');
+ await page.evaluate(()=>history.pushState({},'', '/tags/garage'));await send();
+ const listScale=await page.locator('#list-art').evaluate(e=>Number(e.style.scale));const albumScale=await page.locator('#album-art').evaluate(e=>Number(e.style.scale));
+ if(listScale<1.05||albumScale<1.05||await page.locator('#row-art').evaluate(e=>Number(e.style.scale)<1.05)||await page.locator('#page-art').evaluate(e=>!!e.style.scale))throw new Error('List covers depend on the current page URL');
+ await page.evaluate(()=>history.pushState({},'', '/discover'));await send();
+ if(await page.locator('#list-art').evaluate(e=>Number(e.style.scale)<1.05))throw new Error('Home cover does not pulse');
+ await page.evaluate(()=>{document.querySelector('#album-art a').href='/discover/sets/personalized-tracks::artist:123';document.querySelector('.playbackSoundBadge__titleLink').href='/artist/track?in_system_playlist=personalized-tracks::artist:123';});await send();
+ if(await page.locator('#album-art').evaluate(e=>Number(e.style.scale)<1.05))throw new Error('Home system playlist is not matched to the playback context');
+
+
  await page.emulateMedia({reducedMotion:'reduce'});await page.waitForTimeout(60);
  if(await page.locator('#page-art').evaluate(e=>!!e.style.scale))throw new Error('Reduced motion still pulses');
  await page.emulateMedia({reducedMotion:'no-preference'});
@@ -34,5 +43,5 @@ async page=>{
  if(await page.locator('#page-art').evaluate(e=>!!e.style.scale))throw new Error('Native cover animates underneath SoundSky');
  if(errors.length)throw new Error(errors.join('\n'));
  await page.unroute('https://soundcloud.com/**');await page.unroute('https://i1.sndcdn.com/**');
- return {track,embedded,sharedRawResponse:true,playlistIdentity:true,avatarPreserved:true,pauseReturns:true,reducedMotion:true,soundSkyRestores:true,noRuntimeErrors:true};
+ return {track,embedded,sharedRawResponse:true,playlistIdentity:true,listAndHomeCovers:true,playlistRows:true,systemPlaylistContext:true,avatarPreserved:true,pauseReturns:true,reducedMotion:true,soundSkyRestores:true,noRuntimeErrors:true};
 }

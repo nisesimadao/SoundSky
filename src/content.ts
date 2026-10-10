@@ -13,7 +13,7 @@ import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.3.10';
+const VERSION = '1.3.11';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
@@ -662,7 +662,12 @@ class SoundSky {
   private syncNativeCover() {
     const href=this.adapter.query<HTMLAnchorElement>('.playbackSoundBadge__titleLink')?.href;
     let contextKey='';
-    try{const context=href?new URL(href).searchParams.get('in'):null;if(context)contextKey=canonical(`https://soundcloud.com/${context.replace(/^\//,'')}`);}catch{/* no playlist context */}
+    try{
+      const params=href?new URL(href).searchParams:null;
+      const context=params?.get('in');const system=params?.get('in_system_playlist');
+      if(context)contextKey=canonical(`https://soundcloud.com/${context.replace(/^\//,'')}`);
+      else if(system)contextKey=canonical(`https://soundcloud.com/discover/sets/${system}`);
+    }catch{/* no playlist context */}
     this.siteTheme.setCoverState({trackKey:this.state.track.key,contextKey,playing:this.state.playing,muted:this.state.muted,maximum:this.settings.pulseMax,sensitivity:this.settings.pulseSensitivity});
   }
   private applySettings() {
