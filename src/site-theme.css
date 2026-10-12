@@ -173,8 +173,21 @@ html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queueFallback { bor
 @media (prefers-reduced-motion: no-preference) {
   html[data-soundsky-theme] .queue:not([data-soundsky-queue]).m-visible { animation: soundsky-queue-reveal 240ms cubic-bezier(.2,.7,.2,1) both; }
   html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queueItemView { transition: background-color 180ms ease-out; }
+  /* Reveal the first visible tracks in sequence; native queue geometry and controls stay intact. */
+  html[data-soundsky-theme] .queue:not([data-soundsky-queue]).m-visible .queue__itemsContainer > .queue__itemWrapper:nth-child(-n+8) .queueItemView {
+    animation: soundsky-queue-row-reveal 300ms cubic-bezier(.2,.72,.28,1) both;
+    animation-delay: calc(35ms + var(--sky-queue-row,0) * 29ms);
+  }
+  html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queue__itemWrapper:nth-child(2) { --sky-queue-row: 1; }
+  html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queue__itemWrapper:nth-child(3) { --sky-queue-row: 2; }
+  html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queue__itemWrapper:nth-child(4) { --sky-queue-row: 3; }
+  html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queue__itemWrapper:nth-child(5) { --sky-queue-row: 4; }
+  html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queue__itemWrapper:nth-child(6) { --sky-queue-row: 5; }
+  html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queue__itemWrapper:nth-child(7) { --sky-queue-row: 6; }
+  html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queue__itemWrapper:nth-child(8) { --sky-queue-row: 7; }
 }
 @keyframes soundsky-queue-reveal { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes soundsky-queue-row-reveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Artwork curvature follows size; artist identity remains circular. */
 html[data-soundsky-theme] .trackItem__image .image,
