@@ -14,7 +14,7 @@ import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.3.13';
+const VERSION = '1.3.14';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
@@ -224,8 +224,12 @@ class SoundSky {
     const signal = this.events.signal;
     window.addEventListener('message', event => {
       if(event.source!==window||event.origin!==location.origin||event.data?.type!=='soundsky:prefetch-status')return;
-      const {ready,total,seconds}=event.data;
-      if(seconds===this.settings.prefetchSeconds&&Number.isInteger(ready)&&Number.isInteger(total)&&ready>=0&&ready<=total&&total<=3)this.el('#prefetch-status').textContent=total?`${total}曲中${ready}曲の${seconds?`冒頭${seconds}秒まで`:'音声'}を準備済み`:'次の曲が未確定のため待機中';
+      const {ready,total,seconds,phase}=event.data;
+      if(seconds!==this.settings.prefetchSeconds||!Number.isInteger(ready)||!Number.isInteger(total)||ready<0||ready>total||total>3)return;
+      const range=seconds?`冒頭${seconds>=60?`${seconds/60}分`:`${seconds}秒`}まで`:'音声';
+      const progress=`${total}曲中${ready}曲の${range}を準備済み`;
+      const text=!total?'次の曲が未確定のため待機中':ready===total?progress:phase==='loading'?`${total}曲の${range}を先読み中（${ready}曲完了）`:phase==='capacity'?`${progress}。保存上限に達しました`:phase==='unavailable'?`${progress}。残りの音声を取得できませんでした`:phase==='offline'?'通信が戻るまで先読みを待機中':phase==='playback'?'現在の曲の通信が落ち着くまで待機中':phase==='metadata'?'SoundCloudの再生情報を取得するまで待機中':`${total}曲の先読みを待機中`;
+      this.el('#prefetch-status').textContent=text;
     }, {signal});
     window.addEventListener('message', event => {
       if (event.source !== window || event.origin !== location.origin || event.data?.type !== 'soundsky:audio') return;

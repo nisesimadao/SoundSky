@@ -3,7 +3,7 @@ interface Transcoding { url: string; format: { protocol: string; mime_type: stri
 interface Metadata { permalink_url: string; streamable: boolean; policy: string; track_authorization?: string; media: { transcodings: Transcoding[] }; }
 const CAP = 24 * 1024 * 1024, TTL = 15 * 60 * 1000;
 const apiURL = (value: string) => { try { const u=new URL(value);return u.origin==='https://api-v2.soundcloud.com'&&!u.username&&!u.password ? u : null; } catch { return null; } };
-const mediaURL = (value: string) => { try { const u=new URL(value);return u.protocol==='https:'&&!u.port&&!u.username&&!u.password&&/(^|\.)sndcdn\.com$/.test(u.hostname) ? u : null; } catch { return null; } };
+const mediaURL = (value: string) => { try { const u=new URL(value);return u.protocol==='https:'&&!u.port&&!u.username&&!u.password&&(/(^|\.)sndcdn\.com$/.test(u.hostname)||u.hostname==='playback.media-streaming.soundcloud.cloud') ? u : null; } catch { return null; } };
 const trackKey = (value: string) => { try { const u=new URL(value,'https://soundcloud.com');return u.protocol==='https:'&&/^(www\.)?soundcloud\.com$/.test(u.hostname)&&/^\/[^/]+\/[^/]+\/?$/.test(u.pathname)?u.pathname.replace(/\/$/,''):''; } catch { return ''; } };
 export class AudioPrefetch {
   private nativeFetch = window.fetch;
@@ -28,6 +28,7 @@ export class AudioPrefetch {
   private disposed = false;
   private revision = 0;
   private retryAt = 0;
+  private issue: 'capacity'|'unavailable'|null = null;
   private xhrOpen = XMLHttpRequest.prototype.open;
   private xhrSend = XMLHttpRequest.prototype.send;
   private xhrHeader = XMLHttpRequest.prototype.setRequestHeader;
@@ -50,7 +51,7 @@ export class AudioPrefetch {
         return owner.copy(cached.response);
       }
       const audio = !!mediaURL(request.url) || !!apiURL(request.url)?.pathname.startsWith('/media/');
-      if (audio) { owner.foreground++; if(owner.controller)owner.stop(); }
+      if (audio) { owner.foreground++; if(owner.controller)owner.stop(); owner.status(); }
       try {
         const response = await owner.nativeFetch.call(window,input,init);
         if (apiURL(request.url))try {
@@ -59,7 +60,7 @@ export class AudioPrefetch {
           if(apiURL(request.url)!.pathname.startsWith('/media/'))await inspection;else void inspection;
         } catch { /* a third-party fetch wrapper may already have consumed it */ }
         return response;
-      } finally { if(audio){owner.foreground--;owner.schedule();} }
+      } finally { if(audio){owner.foreground--;owner.schedule();owner.status();} }
     };
     window.fetch = this.hook;
     this.openHook = function(this: XMLHttpRequest, ...args: unknown[]) {
@@ -154,30 +155,45 @@ export class AudioPrefetch {
     const scopeChanged=seconds!==this.seconds;
     const changed=scopeChanged||current!==this.current||count!==this.count||playing!==this.playing||JSON.stringify(next)!==JSON.stringify(this.next);
     if(!changed){if(expired){this.retryAt=0;this.status();this.schedule();}return;}
-    this.retryAt=0;this.seconds=seconds;if(scopeChanged)this.ready.clear();this.current=current;this.count=count;this.playing=playing;this.next=[...new Set(next)].slice(0,count);this.stop();
+    this.retryAt=0;this.issue=null;this.seconds=seconds;if(scopeChanged)this.ready.clear();this.current=current;this.count=count;this.playing=playing;this.next=[...new Set(next)].slice(0,count);this.stop();
     for(const key of this.ready)if(!this.next.includes(key))this.ready.delete(key);
     for(const [key,item]of this.cache)if(this.next.length&&item.owner!==current&&!this.next.includes(item.owner)){this.bytes-=item.bytes;this.cache.delete(key);}
     if(!count){this.cache.clear();this.aliases.clear();this.ready.clear();this.bytes=0;}
     this.status();this.schedule();
   }
-  private status() { if(!this.disposed)window.postMessage({type:'soundsky:prefetch-status',ready:[...this.ready].filter(key=>this.next.includes(key)).length,total:this.next.length,seconds:this.seconds},location.origin); }
+  private status() {
+    if(this.disposed)return;
+    const ready=[...this.ready].filter(key=>this.next.includes(key)).length,total=this.next.length;
+    const phase=!navigator.onLine?'offline':this.foreground?'playback':total&&ready===total?'ready':this.controller?'loading':this.issue||(!this.params.has('client_id')?'metadata':'waiting');
+    window.postMessage({type:'soundsky:prefetch-status',ready,total,seconds:this.seconds,phase},location.origin);
+  }
+
   private stop() { this.revision++;this.controller?.abort();this.controller=null;if(this.timer)clearTimeout(this.timer);this.timer=null; }
   private schedule() {
-    if(this.disposed||Date.now()<this.retryAt||this.timer||this.controller||!this.count||!this.playing||!navigator.onLine||!this.next.some(key=>!this.ready.has(key))||!this.params.has('client_id'))return;
+    if(this.disposed||Date.now()<this.retryAt||this.timer||this.controller||!this.count||!navigator.onLine||!this.next.some(key=>!this.ready.has(key))||!this.params.has('client_id'))return;
     this.timer=setTimeout(()=>{this.timer=null;void this.run();},1500);
   }
   private async run() {
     if(this.foreground){this.schedule();return;}
     const generation=this.revision,controller=new AbortController();this.controller=controller;
+    this.issue=null;this.status();
     try {
       for(const key of this.next) {
         if(this.ready.has(key))continue;
-        await this.prepare(key,controller.signal);
-        if(this.disposed||generation!==this.revision)return;
-        this.ready.add(key);this.status();
+        try {
+          await this.prepare(key,controller.signal);
+          if(this.disposed||generation!==this.revision)return;
+          this.ready.add(key);this.status();
+        } catch(error) {
+          if(controller.signal.aborted)throw error;
+          this.retryAt=Date.now()+60000;
+          this.issue=error instanceof Error&&error.message==='Cache full'?'capacity':'unavailable';
+          this.status();if(this.issue==='capacity')break;
+        }
       }
-    } catch { if(!controller.signal.aborted)this.retryAt=Date.now()+60000; /* bounded backoff; native playback stays unchanged */ }
-    finally { if(this.controller===controller)this.controller=null; }
+    } catch (error) {
+      if(!controller.signal.aborted){this.retryAt=Date.now()+60000;this.issue=error instanceof Error&&error.message==='Cache full'?'capacity':'unavailable';}
+    } finally { if(this.controller===controller)this.controller=null;this.status(); }
   }
   private async get(url: string, owner: string, signal: AbortSignal, headers=new Headers()): Promise<Response> {
     if(!mediaURL(url)&&!apiURL(url)?.pathname.startsWith('/media/'))throw new Error('Unsupported stream');

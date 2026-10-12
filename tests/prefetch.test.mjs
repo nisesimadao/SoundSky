@@ -36,9 +36,9 @@ test('upcoming audio, manifests and init segments are cached and survive promoti
  h.preload.configure(3,true,['/artist/track-2','/artist/track-3'],'/artist/track-1');assert.equal(await (await h.w.fetch('https://cf-hls-media.sndcdn.com/1/audio.m4s')).text(),'audio-bytes');assert.equal(h.requests.length,before);
  h.preload.configure(0,true,[],'/artist/track-1');await assert.rejects(h.w.fetch('https://cf-hls-media.sndcdn.com/1/audio.m4s'),/Offline/);
 });
-test('no upcoming tracks, pause and disabled lookahead produce no additional requests',async t=>{
+test('no upcoming tracks and disabled lookahead produce no additional requests',async t=>{
  const h=setup(t);await h.seed();const before=h.requests.length;
- for(const [count,playing,next]of [[3,true,[]],[0,true,['/artist/track-1']],[3,false,['/artist/track-1']]]){h.preload.configure(count,playing,next);await h.tick();assert.equal(h.requests.length,before);}
+ for(const [count,playing,next]of [[3,true,[]],[0,true,['/artist/track-1']],[3,false,[]]]){h.preload.configure(count,playing,next);await h.tick();assert.equal(h.requests.length,before);}
 });
 test('native POST bodies and Range requests are not replaced by cached full responses',async t=>{
  const h=setup(t);await h.seed();h.preload.configure(1,true,['/artist/track-1']);await h.tick();
@@ -93,4 +93,18 @@ test('per-track duration limits fetch only the needed segments and reuse them wh
  h.preload.configure(1,true,['/artist/track-1'],'',15);await h.tick();assert.equal(audioCount(),3);assert.equal(h.messages.at(-1).ready,1);assert.equal(h.messages.at(-1).seconds,15);
  h.preload.configure(1,true,['/artist/track-1'],'',30);await h.tick();assert.equal(audioCount(),6);assert.equal(h.messages.at(-1).ready,1);
  h.preload.configure(1,true,['/artist/track-1'],'',0);await h.tick();assert.equal(audioCount(),8);assert.equal(h.messages.at(-1).ready,1);
+});
+
+test('known queued tracks prepare while paused, including the current SoundCloud delivery host',async t=>{
+ const h=setup(t);await h.seed();
+ h.preload.nativeFetch=async(input,options)=>{
+  const response=await h.native(input,options);
+  if(String(input).includes('/stream/hls'))return new FakeResponse(JSON.stringify({url:'https://playback.media-streaming.soundcloud.cloud/1/list.m3u8'}),String(input));
+  return response;
+ };
+ h.preload.configure(1,false,['/artist/track-1'],'/artist/current');await h.tick();assert.equal(h.messages.at(-1).ready,1);assert.ok(h.requests.some(r=>r.url==='https://playback.media-streaming.soundcloud.cloud/1/audio.m4s'));
+});
+
+test('one unavailable queued song does not block preparation of the other known songs',async t=>{
+ const h=setup(t);await h.seed();h.preload.metadata.delete('/artist/track-1');h.preload.configure(3,false,['/artist/track-1','/artist/track-2','/artist/track-3'],'/artist/current');await h.tick();assert.equal(h.messages.at(-1).ready,2);assert.equal(h.messages.at(-1).phase,'unavailable');
 });
