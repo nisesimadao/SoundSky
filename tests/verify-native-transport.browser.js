@@ -1,6 +1,7 @@
 async page=>{
  await page.setViewportSize({width:1440,height:900});await page.goto('http://127.0.0.1:4173');
  await page.evaluate(()=>localStorage.removeItem('soundsky:settings'));await page.reload();
+ const nativeTypography=await page.evaluate(()=>({queueDecoration:getComputedStyle(document.querySelector('.queueItemView__title a')).textDecorationLine,badgeDecoration:getComputedStyle(document.querySelector('.playbackSoundBadge__titleLink')).textDecorationLine}));
  const entry=page.locator('[data-soundsky-entry]');
  if(await entry.count()!==1||!await entry.isVisible())throw new Error('Entry is not docked');
  if(await page.locator('soundsky-player').locator('.launcher').isVisible())throw new Error('Floating entry remains');
@@ -16,6 +17,8 @@ async page=>{
  await page.locator('.playbackSoundBadge__showQueue').click();
  const nativeQueue=await page.locator('.queue').evaluate(q=>({visible:q.classList.contains('m-visible'),background:getComputedStyle(q).backgroundColor,animation:getComputedStyle(q).animationName,title:getComputedStyle(q.querySelector('.queue__panel')).color,link:getComputedStyle(q.querySelector('.queueItemView__title a')).color}));
  if(!nativeQueue.visible||!nativeQueue.background.includes('24, 28, 32')||nativeQueue.link!==nativeQueue.title)throw new Error('Next Up retains native light surfaces: '+JSON.stringify(nativeQueue));
+ const queueTypography=await page.evaluate(()=>{const row=document.querySelector('.queueItemView'),title=row.querySelector('.queueItemView__title'),meta=row.querySelector('.queueItemView__meta'),link=title.querySelector('a'),user=meta.querySelector('a'),cover=row.querySelector('.queueItemView__artworkImage'),badge=document.querySelector('.playbackSoundBadge');return {rowHeight:row.getBoundingClientRect().height,layout:getComputedStyle(row.querySelector('.queueItemView__details')).display,titleOrder:getComputedStyle(title).order,metaOrder:getComputedStyle(meta).order,linkDecoration:getComputedStyle(link).textDecorationLine,userDecoration:getComputedStyle(user).textDecorationLine,linkSize:getComputedStyle(link).fontSize,userSize:getComputedStyle(user).fontSize,coverRadius:getComputedStyle(cover).borderRadius,badgeTitleDecoration:getComputedStyle(badge.querySelector('.playbackSoundBadge__titleLink')).textDecorationLine,badgeArtistDecoration:getComputedStyle(badge.querySelector('.playbackSoundBadge__lightLink')).textDecorationLine};});
+ if(queueTypography.rowHeight!==56||queueTypography.layout!=='flex'||queueTypography.titleOrder!=='0'||queueTypography.metaOrder!=='1'||queueTypography.linkDecoration!=='none'||queueTypography.userDecoration!=='none'||queueTypography.linkSize!=='13px'||queueTypography.userSize!=='11px'||queueTypography.coverRadius==='0px'||queueTypography.badgeTitleDecoration!=='none'||queueTypography.badgeArtistDecoration!=='none')throw new Error('Native queue hierarchy differs from SoundSky: '+JSON.stringify(queueTypography));
  await page.emulateMedia({reducedMotion:'reduce'});
  if(!await page.locator('.queue').evaluate(q=>getComputedStyle(q).animationName==='none')||!await entry.evaluate(e=>getComputedStyle(e.querySelector('svg')).transitionDuration==='0s'))throw new Error('Reduced-motion preference still animates native UI');
  await page.emulateMedia({reducedMotion:'no-preference'});
@@ -69,7 +72,9 @@ async page=>{
  if(!await page.locator('[data-soundsky-progress]').count())throw new Error('Smoothing fails to resume');
  await entry.click();await page.getByRole('button',{name:'見た目の設定',exact:true}).click();await page.getByRole('tab',{name:'SoundCloud',exact:true}).click();await page.getByRole('switch',{name:'SoundCloudの見た目を整える',exact:true}).uncheck();await page.getByRole('button',{name:'Back to SoundCloud',exact:true}).click();
  if(await page.locator('[data-soundsky-control],[data-soundsky-metal],[data-soundsky-seek],[data-soundsky-progress]').count())throw new Error('Theme leaves native overrides');
+ const restoredTypography=await page.evaluate(()=>({queueDecoration:getComputedStyle(document.querySelector('.queueItemView__title a')).textDecorationLine,badgeDecoration:getComputedStyle(document.querySelector('.playbackSoundBadge__titleLink')).textDecorationLine}));
+ if(JSON.stringify(restoredTypography)!==JSON.stringify(nativeTypography))throw new Error('Theme leaves native typography overrides: '+JSON.stringify({nativeTypography,restoredTypography}));
  if(await entry.count()!==1)throw new Error('Entry duplicated');
  await page.locator('.playControl').click();if(await page.locator('.playControl').getAttribute('title')!=='Pause current')throw new Error('Native handler lost after restoring');
- return {entryDocked:true,floatingEntryHidden:true,soundSkyControlsUnobscured:true,nativePlayPreserved:true,icons:true,metal:true,shaderSeek:true,progressBetweenNativeTicks:true,pauseStable:true,shaderInstancePreserved:true,noAccentFlashDuringRedraw:true,dragPreserved:true,themeOffRestores:true};
+ return {entryDocked:true,floatingEntryHidden:true,soundSkyControlsUnobscured:true,nativeQueueTypography:true,nativePlayPreserved:true,icons:true,metal:true,shaderSeek:true,progressBetweenNativeTicks:true,pauseStable:true,shaderInstancePreserved:true,noAccentFlashDuringRedraw:true,dragPreserved:true,themeOffRestores:true};
 }
