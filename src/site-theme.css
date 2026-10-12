@@ -118,11 +118,32 @@ html[data-soundsky-embed] .MuiCard-root { background: #ffffff03 !important; bord
 html[data-soundsky-embed] .MuiAlert-root { background: color-mix(in srgb,var(--sky-site-accent) 12%,transparent) !important; border-radius: 8px !important; }
 html[data-soundsky-embed] .MuiTypography-root { color: var(--sky-site-ink) !important; font-family: inherit !important; }
 
-/* The selected track uses one straight edge, matching the SoundSky queue. */
-html[data-soundsky-theme] .queue:not([data-soundsky-queue]) { background: #20262bed !important; backdrop-filter: blur(18px); }
+/* Next Up belongs to the same dark material system as the SoundSky transport. */
+html[data-soundsky-theme] .queue:not([data-soundsky-queue]) { background: #181c20f7 !important; backdrop-filter: blur(18px); }
 html[data-soundsky-theme] .queue:not([data-soundsky-queue]) :is(.queue__panel,.queue__scrollable,.queue__scrollableInner,.queue__itemsHeight,.queue__itemsContainer,.queue__itemWrapper,.queueFallback) { background: transparent !important; box-shadow: none !important; }
+html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queue__panel {
+  border-bottom: 1px solid var(--sky-site-line) !important;
+  color: var(--sky-site-ink) !important;
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
 html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queueItemView { border: 0 !important; border-bottom: 1px solid #c2d5db0b !important; border-radius: 0 !important; outline: 0 !important; box-shadow: none !important; }
 html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queueItemView.m-active { background: #e2d8c908 !important; box-shadow: inset 2px 0 var(--sky-site-accent) !important; }
+html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queueItemView:not(.m-active):hover { background: #ffffff09 !important; }
+html[data-soundsky-theme] .queue:not([data-soundsky-queue]) :is(.queueItemView__username,.queueItemView__duration,.queueFallback__subheading) { color: var(--sky-site-muted) !important; }
+html[data-soundsky-theme] .queue:not([data-soundsky-queue]) :is(.queueItemView__title a,.queueFallback__heading) { color: var(--sky-site-ink) !important; }
+html[data-soundsky-theme] .queue:not([data-soundsky-queue]) :is(.queueItemView__more,.queue__hide) {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--sky-site-muted) !important;
+}
+html[data-soundsky-theme] .queue:not([data-soundsky-queue]) :is(.queueItemView__more,.queue__hide):hover { color: var(--sky-site-ink) !important; background: #ffffff0a !important; }
+html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queueFallback { border-top: 1px solid var(--sky-site-line) !important; }
+@media (prefers-reduced-motion: no-preference) {
+  html[data-soundsky-theme] .queue:not([data-soundsky-queue]).m-visible { animation: soundsky-queue-reveal 240ms cubic-bezier(.2,.7,.2,1) both; }
+  html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queueItemView { transition: background-color 180ms ease-out; }
+}
+@keyframes soundsky-queue-reveal { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Artwork curvature follows size; artist identity remains circular. */
 html[data-soundsky-theme] .trackItem__image .image,

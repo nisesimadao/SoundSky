@@ -8,6 +8,18 @@ async page=>{
  const overlay=await page.evaluate(()=>Array.from(document.querySelectorAll('.playControls,.playControls__inner')).map(e=>({background:getComputedStyle(e).backgroundColor,blur:getComputedStyle(e).backdropFilter})));
  if(overlay.some(s=>s.background!=='rgba(0, 0, 0, 0)'||s.blur!=='none'))throw new Error('Native transport obscures SoundSky: '+JSON.stringify(overlay));
  await page.getByRole('button',{name:'Back to SoundCloud',exact:true}).click();
+ const launcher=await entry.evaluate(e=>{const r=e.getBoundingClientRect(),logo=e.querySelector('svg').getBoundingClientRect(),styles=getComputedStyle(e);return {width:r.width,height:r.height,logoWidth:logo.width,logoFits:logo.left>=r.left&&logo.right<=r.right&&logo.top>=r.top&&logo.bottom<=r.bottom,border:styles.borderWidth,background:styles.backgroundColor};});
+ if(launcher.width!==48||launcher.height!==44||launcher.logoWidth!==30||!launcher.logoFits||launcher.border!=='0px'||launcher.background!=='rgba(0, 0, 0, 0)')throw new Error('Themed Now Playing entry is misaligned or boxed: '+JSON.stringify(launcher));
+ await entry.hover();
+ await page.waitForTimeout(120);
+ if(!await entry.evaluate(e=>getComputedStyle(e).backgroundColor!=='rgba(0, 0, 0, 0)'))throw new Error('Now Playing entry has no hover feedback');
+ await page.locator('.playbackSoundBadge__showQueue').click();
+ const nativeQueue=await page.locator('.queue').evaluate(q=>({visible:q.classList.contains('m-visible'),background:getComputedStyle(q).backgroundColor,animation:getComputedStyle(q).animationName,title:getComputedStyle(q.querySelector('.queue__panel')).color,link:getComputedStyle(q.querySelector('.queueItemView__title a')).color}));
+ if(!nativeQueue.visible||!nativeQueue.background.includes('24, 28, 32')||nativeQueue.link!==nativeQueue.title)throw new Error('Next Up retains native light surfaces: '+JSON.stringify(nativeQueue));
+ await page.emulateMedia({reducedMotion:'reduce'});
+ if(!await page.locator('.queue').evaluate(q=>getComputedStyle(q).animationName==='none')||!await entry.evaluate(e=>getComputedStyle(e.querySelector('svg')).transitionDuration==='0s'))throw new Error('Reduced-motion preference still animates native UI');
+ await page.emulateMedia({reducedMotion:'no-preference'});
+ await page.locator('.queue__hide').click();
  // Match native timeline children; test the visuals without replacing native event owners.
  await page.evaluate(()=>{document.querySelector('.playControls__elements').insertAdjacentHTML('afterbegin','<div class="playControls__shuffle"><button class="shuffleControl"><div><svg></svg></div>Shuffle</button></div><div class="playControls__repeat"><button class="repeatControl"><div><svg></svg></div>Repeat</button></div>');const p=document.querySelector('.playbackTimeline__progressWrapper');p.insertAdjacentHTML('beforeend','<div class="playbackTimeline__progressBar"></div><div class="playbackTimeline__progressHandle"></div>');});
  await page.evaluate(()=>{const style=document.createElement('style');style.textContent='.playbackTimeline{display:flex;height:48px;align-items:stretch}.playbackTimeline__progressWrapper{padding:12px 0;box-sizing:content-box}.playbackTimeline__progressBar,.playbackTimeline__progressHandle{position:absolute}.playbackTimeline__progressHandle{margin-top:-3px}html[data-soundsky-theme] .playControl:focus,html[data-soundsky-theme] .playControl:active,html[data-soundsky-theme] .playControl.playing{background:var(--sky-site-accent)!important}.playControl>span{margin-left:8px;text-indent:-99999px}.playControl{background-image:linear-gradient(red,blue)}.playControl svg{color:#121212}.playControl path{stroke:none;fill:#121212}';document.head.append(style);});

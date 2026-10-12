@@ -3,6 +3,52 @@
 [data-soundsky-entry]:hover svg { transform: scale(1.08); }
 [data-soundsky-entry]:focus-visible { outline: 2px solid var(--sky-site-accent,#b7c8e5); outline-offset: 3px; }
 [data-soundsky-entry][hidden] { display: none !important; }
+/* The Now Playing entry uses the actual SoundSky mark, not a second button tile. */
+html[data-soundsky-theme] .playControls__elements > button[data-soundsky-entry] {
+  position: relative;
+  box-sizing: border-box !important;
+  width: 48px !important;
+  min-width: 48px !important;
+  height: 44px !important;
+  flex: 0 0 48px !important;
+  margin: 0 2px 0 14px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 11px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transition: background-color 200ms ease-out;
+}
+html[data-soundsky-theme] .playControls__elements > button[data-soundsky-entry]::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 11px;
+  width: 1px;
+  height: 22px;
+  background: var(--sky-site-line);
+  pointer-events: none;
+}
+html[data-soundsky-theme] .playControls__elements > button[data-soundsky-entry] svg {
+  display: block;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  filter: drop-shadow(0 2px 5px #0005);
+  transition: transform 220ms cubic-bezier(.18,.72,.27,1), filter 220ms ease-out;
+}
+html[data-soundsky-theme] .playControls__elements > button[data-soundsky-entry]:hover {
+  background: #ffffff0a !important;
+}
+html[data-soundsky-theme] .playControls__elements > button[data-soundsky-entry]:hover svg {
+  transform: scale(1.07);
+  filter: drop-shadow(0 3px 8px #0009);
+}
+html[data-soundsky-theme] .playControls__elements > button[data-soundsky-entry]:active svg { transform: scale(.96); }
+html[data-soundsky-theme] .playControls__elements > button[data-soundsky-entry]:focus-visible {
+  outline: 2px solid var(--sky-site-accent);
+  outline-offset: 2px;
+}
 html[data-soundsky-theme] [data-soundsky-control] { position: relative !important; font-size: 0 !important; }
 html[data-soundsky-theme] [data-soundsky-control]::before { display: none !important; }
 html[data-soundsky-theme] [data-soundsky-control] > div { opacity: 0 !important; }
@@ -17,7 +63,11 @@ html[data-soundsky-theme] :is([data-soundsky-metal],[data-soundsky-seek]) > div 
 html[data-soundsky-theme] :is([data-soundsky-metal],[data-soundsky-seek]) canvas { display: block; width: 100%; height: 100%; }
 html[data-soundsky-theme] [data-soundsky-progress] .playbackTimeline__progressBar { width: var(--soundsky-progress) !important; border-radius: 4px; overflow: hidden; }
 html[data-soundsky-theme] [data-soundsky-progress] .playbackTimeline__progressHandle { left: var(--soundsky-progress) !important; }
-@media (prefers-reduced-motion: reduce) { [data-soundsky-entry] svg,html[data-soundsky-theme] [data-soundsky-control="play"] { transition: none; transform: none !important; } }
+@media (prefers-reduced-motion: reduce) {
+  [data-soundsky-entry] svg,html[data-soundsky-theme] [data-soundsky-control="play"] { transition: none; transform: none !important; }
+  html[data-soundsky-theme] .playControls__elements > button[data-soundsky-entry],
+  html[data-soundsky-theme] .playControls__elements > button[data-soundsky-entry] svg { transition: none !important; transform: none !important; }
+}
 /* Reset native icon positioning before applying shared SoundSky glyphs. */
 html[data-soundsky-theme] [data-soundsky-control] { background-image: none !important; text-indent: 0 !important; padding: 0 !important; }
 html[data-soundsky-theme] [data-soundsky-control]::after { display: none !important; }
