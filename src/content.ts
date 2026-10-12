@@ -1,5 +1,6 @@
 import { SoundCloudAdapter, artworkURL, canonical } from './adapter';
 import { NativeQueue } from './queue';
+import { QueuePrefetch } from './queue-prefetch';
 import { Ambient } from './ambient';
 import { Atmosphere } from './atmosphere';
 import { NativeTransport } from './native-transport';
@@ -14,7 +15,7 @@ import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.3.14';
+const VERSION = '1.3.15';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
@@ -43,6 +44,7 @@ class SoundSky {
   private shadow = this.host.attachShadow({ mode: 'open' });
   private adapter = new SoundCloudAdapter();
   private queue: NativeQueue;
+  private queuePrefetch = new QueuePrefetch();
   private ambient: Ambient;
   private atmosphere: Atmosphere;
   private materials: Materials;
@@ -224,8 +226,12 @@ class SoundSky {
     const signal = this.events.signal;
     window.addEventListener('message', event => {
       if(event.source!==window||event.origin!==location.origin||event.data?.type!=='soundsky:prefetch-status')return;
-      const {ready,total,seconds,phase}=event.data;
+      const {ready,readyKeys,total,seconds,phase}=event.data;
       if(seconds!==this.settings.prefetchSeconds||!Number.isInteger(ready)||!Number.isInteger(total)||ready<0||ready>total||total>3)return;
+      if (Array.isArray(readyKeys) && readyKeys.length === ready && new Set(readyKeys).size === ready && readyKeys.every(key => typeof key === 'string' && canonical(key) === key && /^\/[^/]+\/[^/]+$/.test(key))) {
+        const next = upcomingTracks(this.adapter.root, this.state.track.key, this.settings.prefetchCount);
+        this.queuePrefetch.setReady(readyKeys.filter(key => next.includes(key)));
+      }
       const range=seconds?`冒頭${seconds>=60?`${seconds/60}分`:`${seconds}秒`}まで`:'音声';
       const progress=`${total}曲中${ready}曲の${range}を準備済み`;
       const text=!total?'次の曲が未確定のため待機中':ready===total?progress:phase==='loading'?`${total}曲の${range}を先読み中（${ready}曲完了）`:phase==='capacity'?`${progress}。保存上限に達しました`:phase==='unavailable'?`${progress}。残りの音声を取得できませんでした`:phase==='offline'?'通信が戻るまで先読みを待機中':phase==='playback'?'現在の曲の通信が落ち着くまで待機中':phase==='metadata'?'SoundCloudの再生情報を取得するまで待機中':`${total}曲の先読みを待機中`;
@@ -687,6 +693,7 @@ class SoundSky {
     }
   }
   private syncPrefetch() {
+    this.queuePrefetch.sync(this.adapter.root,this.disposed?0:this.settings.prefetchCount,this.settings.prefetchSeconds);
     window.postMessage({type:'soundsky:prefetch',seconds:this.settings.prefetchSeconds,current:this.state.track.key,count:this.disposed?0:this.settings.prefetchCount,playing:!this.disposed&&this.state.playing,next:upcomingTracks(this.adapter.root,this.state.track.key,this.settings.prefetchCount)},location.origin);
   }
   private syncNativeCover() {
@@ -753,7 +760,7 @@ class SoundSky {
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.toastTimer) clearTimeout(this.toastTimer);
     this.artworkGeneration++; this.clearTrackAnimations(); this.events.abort(); this.unsubscribe();
-    this.nativeModalObserver.disconnect(); this.queue.destroy(); this.ambient.destroy(); this.atmosphere.destroy(); this.materials.destroy(); this.accent.destroy(); this.siteTheme.destroy(); this.transport.destroy(); this.adapter.destroy();
+    this.nativeModalObserver.disconnect(); this.queuePrefetch.destroy(); this.queue.destroy(); this.ambient.destroy(); this.atmosphere.destroy(); this.materials.destroy(); this.accent.destroy(); this.siteTheme.destroy(); this.transport.destroy(); this.adapter.destroy();
     try { if (globalThis.chrome?.runtime?.id) chrome.runtime.onMessage.removeListener(this.message); } catch { /* extension was reloaded */ }
     this.host.remove();
   }

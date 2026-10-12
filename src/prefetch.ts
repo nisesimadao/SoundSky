@@ -163,9 +163,9 @@ export class AudioPrefetch {
   }
   private status() {
     if(this.disposed)return;
-    const ready=[...this.ready].filter(key=>this.next.includes(key)).length,total=this.next.length;
+    const readyKeys=[...this.ready].filter(key=>this.next.includes(key)),ready=readyKeys.length,total=this.next.length;
     const phase=!navigator.onLine?'offline':this.foreground?'playback':total&&ready===total?'ready':this.controller?'loading':this.issue||(!this.params.has('client_id')?'metadata':'waiting');
-    window.postMessage({type:'soundsky:prefetch-status',ready,total,seconds:this.seconds,phase},location.origin);
+    window.postMessage({type:'soundsky:prefetch-status',ready,readyKeys,total,seconds:this.seconds,phase},location.origin);
   }
 
   private stop() { this.revision++;this.controller?.abort();this.controller=null;if(this.timer)clearTimeout(this.timer);this.timer=null; }

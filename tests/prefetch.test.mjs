@@ -30,11 +30,11 @@ function setup(t){
  return {w,preload,native,timers,requests,messages,flush,tick,seed,set offline(v){offline=v;},set encrypted(v){encrypted=v;},set large(v){large=v;}};
 }
 test('upcoming audio, manifests and init segments are cached and survive promotion to current track',async t=>{
- const h=setup(t);await h.seed();h.preload.configure(3,true,['/artist/track-1','/artist/track-2','/artist/track-3'],'/artist/current');await h.tick();assert.equal(h.messages.at(-1).ready,3);
+ const h=setup(t);await h.seed();h.preload.configure(3,true,['/artist/track-1','/artist/track-2','/artist/track-3'],'/artist/current');await h.tick();assert.equal(h.messages.at(-1).ready,3);assert.deepEqual([...h.messages.at(-1).readyKeys],['/artist/track-1','/artist/track-2','/artist/track-3']);
  const before=h.requests.length;h.offline=true;
  for(const i of [1,2,3])assert.equal(await (await h.w.fetch(`https://cf-hls-media.sndcdn.com/${i}/audio.m4s`)).text(),'audio-bytes');assert.equal(h.requests.length,before);
  h.preload.configure(3,true,['/artist/track-2','/artist/track-3'],'/artist/track-1');assert.equal(await (await h.w.fetch('https://cf-hls-media.sndcdn.com/1/audio.m4s')).text(),'audio-bytes');assert.equal(h.requests.length,before);
- h.preload.configure(0,true,[],'/artist/track-1');await assert.rejects(h.w.fetch('https://cf-hls-media.sndcdn.com/1/audio.m4s'),/Offline/);
+ h.preload.configure(0,true,[],'/artist/track-1');assert.deepEqual([...h.messages.at(-1).readyKeys],[]);await assert.rejects(h.w.fetch('https://cf-hls-media.sndcdn.com/1/audio.m4s'),/Offline/);
 });
 test('no upcoming tracks and disabled lookahead produce no additional requests',async t=>{
  const h=setup(t);await h.seed();const before=h.requests.length;
