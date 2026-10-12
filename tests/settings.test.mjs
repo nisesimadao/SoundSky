@@ -26,3 +26,11 @@ test('the native site theme is opt-in and only accepts a boolean preference',()=
 test('record-style playback is off by default and accepts only a boolean toggle',()=>{
  assert.equal(loadSavedSettings({}).turntable,false);assert.equal(loadSavedSettings({turntable:'true'}).turntable,false);assert.equal(loadSavedSettings({turntable:true}).turntable,true);
 });
+
+test('audio lookahead stores only a whole count between off and three tracks',()=>{
+ assert.equal(loadSavedSettings({}).prefetchCount,3);assert.equal(loadSavedSettings({prefetchCount:99}).prefetchCount,3);assert.equal(loadSavedSettings({prefetchCount:-2}).prefetchCount,0);assert.equal(loadSavedSettings({prefetchCount:1.6}).prefetchCount,2);assert.equal(loadSavedSettings({prefetchCount:'2'}).prefetchCount,3);
+});
+test('prepared duration accepts the offered scopes and defaults to whole tracks',()=>{
+ for(const seconds of [0,15,30,60,120])assert.equal(loadSavedSettings({prefetchSeconds:seconds}).prefetchSeconds,seconds);
+ for(const seconds of [7,NaN,Infinity,'30',-1])assert.equal(loadSavedSettings({prefetchSeconds:seconds}).prefetchSeconds,0);
+});

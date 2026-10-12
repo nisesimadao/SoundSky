@@ -1,15 +1,17 @@
+import { AudioPrefetch } from './prefetch';
 import { Turntable } from './turntable';
 import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-analysis';
 
 /** Observe the final output in parallel; never replace SoundCloud's output path. */
 (() => {
-  const version = '1.3.12';
+  const version = '1.3.13';
   const bridgeKey = Symbol.for('soundsky:audio-bridge');
   const previousBridge = Reflect.get(window, bridgeKey) as { version: string; destroy(): void } | undefined;
   if (previousBridge?.version === version) return;
   previousBridge?.destroy();
 
   const turntable = new Turntable();
+  const prefetch = typeof window.fetch==='function' && typeof Request!=='undefined' ? new AudioPrefetch() : null;
   let active = false, disposed = false;
   let frame = 0, last = 0;
   let media: HTMLMediaElement | null = null;
@@ -166,7 +168,7 @@ import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-an
   window.addEventListener('pagehide', event => { if (!event.persisted) destroy(); }, { signal: events.signal });
   function destroy() {
     if (disposed) return;
-    turntable.destroy(); deactivate(); disposed = true; events.abort(); outputs.clear();
+    prefetch?.destroy(); turntable.destroy(); deactivate(); disposed = true; events.abort(); outputs.clear();
     if (AudioNode.prototype.connect === connectHook) AudioNode.prototype.connect = connect;
     if (AudioNode.prototype.disconnect === disconnectHook) AudioNode.prototype.disconnect = disconnect;
     if (HTMLMediaElement.prototype.play === playHook) HTMLMediaElement.prototype.play = play;

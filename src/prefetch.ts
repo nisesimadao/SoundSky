@@ -1,0 +1,241 @@
+/** Session-only audio lookahead. Use only streams authorized by SoundCloud's own broker. */
+interface Transcoding { url: string; format: { protocol: string; mime_type: string }; quality: string; snipped?: boolean; }
+interface Metadata { permalink_url: string; streamable: boolean; policy: string; track_authorization?: string; media: { transcodings: Transcoding[] }; }
+const CAP = 24 * 1024 * 1024, TTL = 15 * 60 * 1000;
+const apiURL = (value: string) => { try { const u=new URL(value);return u.origin==='https://api-v2.soundcloud.com'&&!u.username&&!u.password ? u : null; } catch { return null; } };
+const mediaURL = (value: string) => { try { const u=new URL(value);return u.protocol==='https:'&&!u.port&&!u.username&&!u.password&&/(^|\.)sndcdn\.com$/.test(u.hostname) ? u : null; } catch { return null; } };
+const trackKey = (value: string) => { try { const u=new URL(value,'https://soundcloud.com');return u.protocol==='https:'&&/^(www\.)?soundcloud\.com$/.test(u.hostname)&&/^\/[^/]+\/[^/]+\/?$/.test(u.pathname)?u.pathname.replace(/\/$/,''):''; } catch { return ''; } };
+export class AudioPrefetch {
+  private nativeFetch = window.fetch;
+  private hook: typeof window.fetch;
+  private events = new AbortController();
+  private metadata = new Map<string, Metadata>();
+  private cache = new Map<string, { response: Response; bytes: number; at: number; owner: string }>();
+  private bytes = 0;
+  private headers = new Headers();
+  private params = new URLSearchParams();
+  private preferred: { protocol: string; mime: string; quality: string } | null = null;
+  private aliases = new Map<string, string>();
+  private current = '';
+  private count = 0;
+  private seconds = 0;
+  private playing = false;
+  private next: string[] = [];
+  private ready = new Set<string>();
+  private controller: AbortController | null = null;
+  private timer: ReturnType<typeof setTimeout> | null = null;
+  private foreground = 0;
+  private disposed = false;
+  private revision = 0;
+  private retryAt = 0;
+  private xhrOpen = XMLHttpRequest.prototype.open;
+  private xhrSend = XMLHttpRequest.prototype.send;
+  private xhrHeader = XMLHttpRequest.prototype.setRequestHeader;
+  private openHook: XMLHttpRequest['open'];
+  private sendHook: XMLHttpRequest['send'];
+  private headerHook: XMLHttpRequest['setRequestHeader'];
+  private requests = new WeakMap<XMLHttpRequest, { url: string; headers: Headers; listener?: EventListener }>();
+  constructor() {
+    const owner = this;
+    this.hook = async function(input, init) {
+      // Inspect request options without consuming or cloning a native POST body.
+      const original = input instanceof Request ? input : null;
+      const request = { url:new URL(original?.url || String(input),location.href).href, method:(init?.method || original?.method || 'GET').toUpperCase(), headers:new Headers(init?.headers || original?.headers), cache:init?.cache || original?.cache, signal:init?.signal || original?.signal };
+      if (owner.disposed) return owner.nativeFetch.call(window,input,init);
+      owner.observeRequest(request.url, request.headers);
+      const key = owner.key(request.url, request.headers);
+      const cached = request.method==='GET'&&request.cache!=='reload'&&request.cache!=='no-store' ? owner.cache.get(key) || (!request.headers.has('range') ? owner.cache.get(owner.aliases.get(request.url)||'') : undefined) : null;
+      if (cached && Date.now()-cached.at<TTL) {
+        if (request.signal?.aborted) throw new DOMException('Aborted','AbortError');
+        return owner.copy(cached.response);
+      }
+      const audio = !!mediaURL(request.url) || !!apiURL(request.url)?.pathname.startsWith('/media/');
+      if (audio) { owner.foreground++; if(owner.controller)owner.stop(); }
+      try {
+        const response = await owner.nativeFetch.call(window,input,init);
+        if (apiURL(request.url))try {
+          const inspection=owner.inspect(response.clone(),request.url);
+          // A broker's fresh signature must be mapped before native code requests its manifest.
+          if(apiURL(request.url)!.pathname.startsWith('/media/'))await inspection;else void inspection;
+        } catch { /* a third-party fetch wrapper may already have consumed it */ }
+        return response;
+      } finally { if(audio){owner.foreground--;owner.schedule();} }
+    };
+    window.fetch = this.hook;
+    this.openHook = function(this: XMLHttpRequest, ...args: unknown[]) {
+      const result=Reflect.apply(owner.xhrOpen,this,args);
+      const previous=owner.requests.get(this)?.listener;if(previous)this.removeEventListener('readystatechange',previous,true);
+      if (!owner.disposed) owner.requests.set(this,{url:new URL(String(args[1]),location.href).href,headers:new Headers()});
+      return result;
+    } as XMLHttpRequest['open'];
+    this.headerHook = function(this: XMLHttpRequest,name,value) {
+      const result=owner.xhrHeader.call(this,name,value);owner.requests.get(this)?.headers.append(name,value);return result;
+    };
+    this.sendHook = function(this: XMLHttpRequest,...args) {
+      const info=owner.requests.get(this);
+      if (!owner.disposed&&info&&apiURL(info.url)) {
+        owner.observeRequest(info.url,info.headers);
+        const listener:EventListener=()=>{
+          if(this.readyState!==4)return;
+          this.removeEventListener('readystatechange',listener,true);info.listener=undefined;
+          if(owner.disposed||this.status<200||this.status>=300)return;
+          try { if(this.responseType==='json')owner.readAPI(this.response,info.url);else if(!this.responseType||this.responseType==='text') { if(this.responseText.length<3*1024*1024)owner.readAPI(JSON.parse(this.responseText),info.url); } } catch { /* non-JSON */ }
+        };
+        info.listener=listener;this.addEventListener('readystatechange',listener,{capture:true,signal:owner.events.signal});
+      }
+      return Reflect.apply(owner.xhrSend,this,args);
+    };
+    XMLHttpRequest.prototype.open=this.openHook;XMLHttpRequest.prototype.send=this.sendHook;XMLHttpRequest.prototype.setRequestHeader=this.headerHook;
+    const signal=this.events.signal;
+    window.addEventListener('message',event=>{
+      if(event.source!==window||event.origin!==location.origin||event.data?.type!=='soundsky:prefetch')return;
+      const {count,playing,next,current,seconds}=event.data;
+      if(typeof seconds!=='number'||![0,15,30,60,120].includes(seconds)||typeof current!=='string'||(current&&trackKey(current)!==current)||!Number.isInteger(count)||count<0||count>3||typeof playing!=='boolean'||!Array.isArray(next)||next.length>3||!next.every(key=>typeof key==='string'&&trackKey(key)===key))return;
+      this.configure(count,playing,next,current,seconds);
+    },{signal});
+    const hydration=()=>{for(const script of document.querySelectorAll('script:not([src])')){const text=script.textContent||'';if(text.length>3*1024*1024)continue;const match=text.match(/window\.__sc_hydration\s*=\s*(\[.*?\]);/s);if(match)try{this.collect(JSON.parse(match[1]));}catch{/* changed hydration */}}};
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hydration,{once:true,signal});else hydration();
+    window.addEventListener('offline',()=>{this.stop();this.status();},{signal});
+    window.addEventListener('online',()=>{this.retryAt=0;this.schedule();},{signal});
+  }
+  private key(value: string, headers: Headers) { const url=new URL(value);url.searchParams.sort();return url.href+'\n'+(apiURL(value)?headers.get('authorization')||'':'')+'\n'+(headers.get('range')||''); }
+  private observeRequest(value: string, headers: Headers) {
+    const url=apiURL(value);if(!url)return;
+    // Credentials remain inside this page's bridge and are never sent to a CDN or UI.
+    if(url.searchParams.has('client_id')) {
+      this.params=new URLSearchParams();for(const name of ['client_id','app_version','app_locale']) { const value=url.searchParams.get(name);if(value)this.params.set(name,value); }
+      this.headers=new Headers();const authorization=headers.get('authorization');if(authorization)this.headers.set('authorization',authorization);
+    }
+    if(url.pathname.startsWith('/media/'))for(const meta of this.metadata.values())for(const t of meta.media.transcodings)if(new URL(t.url).pathname===url.pathname)this.preferred={protocol:t.format.protocol,mime:t.format.mime_type,quality:t.quality};
+    this.schedule();
+  }
+  private async inspect(response: Response, url: string) {
+    try { if(!response.ok||!apiURL(response.url))return;const size=Number(response.headers.get('content-length'));if(size>3*1024*1024)return;const text=await response.text();if(text.length<3*1024*1024&&!this.disposed)this.readAPI(JSON.parse(text),url); } catch { /* native response unchanged */ }
+  }
+  private readAPI(data: unknown, url: string) {
+    this.collect(data);
+    if(!apiURL(url)?.pathname.startsWith('/media/')||!data||typeof data!=='object')return;
+    const stream=(data as {url?:unknown}).url;if(typeof stream!=='string'||!mediaURL(stream))return;
+    // Only a successful native broker response authorizes a newly signed URL.
+    // Match the immutable CDN path and the exact transcoding's owner, retaining signatures elsewhere.
+    const path=apiURL(url)!.pathname;
+    const owner=[...this.metadata].find(([,meta])=>meta.media.transcodings.some(t=>apiURL(t.url)?.pathname===path))?.[0];
+    if(!owner)return;
+    const next=mediaURL(stream)!;
+    for(const [key,entry] of this.cache) {
+      const old=mediaURL(entry.response.url);
+      if(entry.owner===owner&&old&&old.origin===next.origin&&old.pathname===next.pathname&&Date.now()-entry.at<TTL)this.aliases.set(stream,key);
+    }
+  }
+  private collect(value: unknown, depth=0) {
+    if(this.disposed||depth>7||!value||typeof value!=='object')return;
+    if(Array.isArray(value)){for(const item of value.slice(0,300))this.collect(item,depth+1);return;}
+    const data=value as Record<string,unknown>, meta=data as unknown as Metadata;
+    if(typeof meta.permalink_url==='string') {
+      const key=trackKey(meta.permalink_url);
+      if(key&&(meta.streamable===false||(typeof meta.policy==='string'&&meta.policy!=='ALLOW'))) {
+        this.metadata.delete(key);this.ready.delete(key);
+        for(const [cacheKey,item]of this.cache)if(item.owner===key){this.bytes-=item.bytes;this.cache.delete(cacheKey);}
+        this.status();
+      }
+      if(key&&meta.streamable===true&&meta.policy==='ALLOW'&&meta.media&&Array.isArray(meta.media.transcodings)) {
+        const transcodings=meta.media.transcodings.slice(0,10).filter(t=>typeof t?.url==='string'&&apiURL(t.url)?.pathname.startsWith('/media/')&&typeof t.format?.protocol==='string'&&typeof t.format?.mime_type==='string'&&!t.snipped);
+        this.metadata.set(key,{permalink_url:meta.permalink_url,streamable:true,policy:'ALLOW',track_authorization:typeof meta.track_authorization==='string'?meta.track_authorization:undefined,media:{transcodings}});
+        while(this.metadata.size>300)this.metadata.delete(this.metadata.keys().next().value!);
+        this.schedule();
+      }
+    }
+    for(const name of ['collection','tracks','data'])if(name in data)this.collect(data[name],depth+1);
+  }
+  configure(count: number, playing: boolean, next: string[], current='', seconds=0) {
+    let expired=false;
+    for(const [key,item]of this.cache)if(Date.now()-item.at>=TTL){this.bytes-=item.bytes;this.cache.delete(key);this.ready.delete(item.owner);expired=true;}
+    for(const [url,key]of this.aliases)if(!this.cache.has(key))this.aliases.delete(url);
+    const scopeChanged=seconds!==this.seconds;
+    const changed=scopeChanged||current!==this.current||count!==this.count||playing!==this.playing||JSON.stringify(next)!==JSON.stringify(this.next);
+    if(!changed){if(expired){this.retryAt=0;this.status();this.schedule();}return;}
+    this.retryAt=0;this.seconds=seconds;if(scopeChanged)this.ready.clear();this.current=current;this.count=count;this.playing=playing;this.next=[...new Set(next)].slice(0,count);this.stop();
+    for(const key of this.ready)if(!this.next.includes(key))this.ready.delete(key);
+    for(const [key,item]of this.cache)if(this.next.length&&item.owner!==current&&!this.next.includes(item.owner)){this.bytes-=item.bytes;this.cache.delete(key);}
+    if(!count){this.cache.clear();this.aliases.clear();this.ready.clear();this.bytes=0;}
+    this.status();this.schedule();
+  }
+  private status() { if(!this.disposed)window.postMessage({type:'soundsky:prefetch-status',ready:[...this.ready].filter(key=>this.next.includes(key)).length,total:this.next.length,seconds:this.seconds},location.origin); }
+  private stop() { this.revision++;this.controller?.abort();this.controller=null;if(this.timer)clearTimeout(this.timer);this.timer=null; }
+  private schedule() {
+    if(this.disposed||Date.now()<this.retryAt||this.timer||this.controller||!this.count||!this.playing||!navigator.onLine||!this.next.some(key=>!this.ready.has(key))||!this.params.has('client_id'))return;
+    this.timer=setTimeout(()=>{this.timer=null;void this.run();},1500);
+  }
+  private async run() {
+    if(this.foreground){this.schedule();return;}
+    const generation=this.revision,controller=new AbortController();this.controller=controller;
+    try {
+      for(const key of this.next) {
+        if(this.ready.has(key))continue;
+        await this.prepare(key,controller.signal);
+        if(this.disposed||generation!==this.revision)return;
+        this.ready.add(key);this.status();
+      }
+    } catch { if(!controller.signal.aborted)this.retryAt=Date.now()+60000; /* bounded backoff; native playback stays unchanged */ }
+    finally { if(this.controller===controller)this.controller=null; }
+  }
+  private async get(url: string, owner: string, signal: AbortSignal, headers=new Headers()): Promise<Response> {
+    if(!mediaURL(url)&&!apiURL(url)?.pathname.startsWith('/media/'))throw new Error('Unsupported stream');
+    const key=this.key(url,headers),hit=this.cache.get(key);
+    if(hit&&Date.now()-hit.at<TTL)return this.copy(hit.response);
+    if(hit){this.bytes-=hit.bytes;this.cache.delete(key);}
+    if(this.foreground)throw new Error('Playback takes priority');
+    const response=await this.nativeFetch.call(window,url,{signal,headers,credentials:'omit',priority:'low'} as RequestInit);
+    if(!response.ok||response.type==='opaque'||(!mediaURL(response.url)&&!apiURL(response.url)?.pathname.startsWith('/media/')))throw new Error('Unavailable stream');
+    const length=Number(response.headers.get('content-length'));if(length>CAP-this.bytes)throw new Error('Cache full');
+    const reader=response.body?.getReader(),parts:Uint8Array[]=[];let bytes=0;
+    if(reader)try {
+      while(true){const part=await reader.read();if(part.done)break;bytes+=part.value.byteLength;if(bytes+this.bytes>CAP){void reader.cancel().catch(()=>{});throw new Error('Cache full');}parts.push(part.value);}
+    } finally { reader.releaseLock(); }
+    if(signal.aborted)throw new DOMException('Aborted','AbortError');
+    const body=new Uint8Array(bytes);let offset=0;for(const part of parts){body.set(part,offset);offset+=part.byteLength;}
+    const stored=new Response(body,{status:response.status,statusText:response.statusText,headers:response.headers});
+    for(const name of ['url','type','redirected'] as const)Object.defineProperty(stored,name,{value:response[name]});
+    this.cache.set(key,{response:stored,bytes,at:Date.now(),owner});this.bytes+=bytes;return this.copy(stored);
+  }
+  private copy(response:Response) {
+    const clone=response.clone();for(const name of ['url','type','redirected'] as const)Object.defineProperty(clone,name,{value:response[name],configurable:true});return clone;
+  }
+
+  private async prepare(key: string, signal: AbortSignal) {
+    if(!this.metadata.has(key)) {
+      const page=await this.nativeFetch.call(window,'https://soundcloud.com'+key,{signal,credentials:'same-origin',priority:'low'} as RequestInit);
+      if(!page.ok||!/^https:\/\/(www\.)?soundcloud\.com\//.test(page.url))throw new Error('Unavailable track');
+      const text=await page.text(),hydration=text.match(/window\.__sc_hydration\s*=\s*(\[.*?\]);/s);
+      if(hydration)try { this.collect(JSON.parse(hydration[1])); } catch { /* changed page format */ }
+    }
+    const meta=this.metadata.get(key);if(!meta)throw new Error('No authorized track metadata');
+    const t=meta.media.transcodings.find(t=>t.format.protocol===this.preferred?.protocol&&t.format.mime_type===this.preferred?.mime&&t.quality===this.preferred?.quality)
+      ||meta.media.transcodings.find(t=>t.format.protocol==='hls'&&t.format.mime_type.includes('audio/mp4')&&t.quality==='sq');
+    if(!t)throw new Error('Unsupported audio format');
+    const resolver=new URL(t.url);for(const [name,value]of this.params)resolver.searchParams.set(name,value);if(meta.track_authorization)resolver.searchParams.set('track_authorization',meta.track_authorization);
+    const result=await (await this.get(resolver.href,key,signal,this.headers)).json();if(typeof result.url!=='string'||!mediaURL(result.url))throw new Error('Unavailable audio URL');
+    if(t.format.protocol==='progressive'){if(this.seconds)throw new Error('Duration-limited progressive preparation is unsupported');await this.get(result.url,key,signal);return;}
+    await this.playlist(result.url,key,signal,0);
+  }
+  private async playlist(url: string, key: string, signal: AbortSignal, depth: number): Promise<void> {
+    if(depth>2)throw new Error('Nested playlist');
+    const text=await (await this.get(url,key,signal)).text();if(!text.startsWith('#EXTM3U')||/#EXT-X-KEY:(?!METHOD=NONE)/.test(text)||text.includes('#EXT-X-BYTERANGE'))throw new Error('Unsupported HLS');
+    const lines=text.split(/\r?\n/),files=lines.map(line=>line.trim()).filter(line=>line&&!line.startsWith('#')).map(line=>new URL(line,url).href);
+    if(!files.length||files.length>400)throw new Error('Unsupported playlist size');
+    if(text.includes('#EXT-X-STREAM-INF')) { for(const file of files)await this.playlist(file,key,signal,depth+1);return; }
+    if(!text.includes('#EXT-X-ENDLIST'))throw new Error('Live streams are not prefetched');
+    for(const line of lines)if(line.startsWith('#EXT-X-MAP:')){const map=line.match(/URI="([^"]+)"/);if(!map||line.includes('BYTERANGE'))throw new Error('Unsupported init segment');await this.get(new URL(map[1],url).href,key,signal);}
+    const durations=[...text.matchAll(/^#EXTINF:([\d.]+)/gm)].map(match=>Number(match[1]));
+    if(this.seconds&&(durations.length!==files.length||durations.some(value=>!Number.isFinite(value)||value<=0)))throw new Error('Unknown segment duration');
+    let elapsed=0;
+    for(let i=0;i<files.length;i++){await this.get(files[i],key,signal);elapsed+=durations[i]||0;if(this.seconds&&elapsed>=this.seconds)break;}
+  }
+  destroy() {
+    if(this.disposed)return;this.stop();this.disposed=true;this.events.abort();this.cache.clear();this.aliases.clear();this.metadata.clear();this.ready.clear();this.bytes=0;this.headers=new Headers();this.params=new URLSearchParams();this.requests=new WeakMap();
+    if(window.fetch===this.hook)window.fetch=this.nativeFetch;
+    if(XMLHttpRequest.prototype.open===this.openHook)XMLHttpRequest.prototype.open=this.xhrOpen;
+    if(XMLHttpRequest.prototype.send===this.sendHook)XMLHttpRequest.prototype.send=this.xhrSend;
+    if(XMLHttpRequest.prototype.setRequestHeader===this.headerHook)XMLHttpRequest.prototype.setRequestHeader=this.xhrHeader;
+  }
+}

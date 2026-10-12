@@ -9,11 +9,12 @@ import { CoverPulse } from './cover-pulse';
 import { SceneFlow } from './scene-flow';
 import { Materials } from './materials';
 import { ArtworkAccent, accentColor } from './accent';
+import { upcomingTracks } from './lookahead';
 import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.3.12';
+const VERSION = '1.3.13';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
@@ -22,6 +23,7 @@ export const formatTime = (seconds: number) => {
 
 type NumericSetting = Exclude<keyof SoundSkySettings, 'heatEnabled' | 'modernSoundCloud' | 'turntable'>;
 const settingValue = (key: NumericSetting, value: number) => {
+  if (key === 'prefetchCount') return value === 0 ? 'オフ' : `${value}曲`;
   if (key === 'sceneSway') return value === 0 ? 'オフ' : `${Math.round(value * 100)}%`;
   if (value === 0) return key === 'pulseMax' ? 'なし' : key === 'ambientGlow' ? '消灯' : key === 'heatResponse' ? '反応なし' : '停止';
   return key === 'pulseMax' ? `+${(value * 100).toFixed(1)}%` : key === 'ambientGlow' ? `${Math.round(value * 100)}%` : `${value.toFixed(1)}倍`;
@@ -150,6 +152,9 @@ class SoundSky {
               ${settingControl('materialSpeed', '再生ボタンの動く速さ', 0, 8, .1, '金属のような表面の流れ。音が強いと速く動きます。', '停止', '速く')}
               ${settingControl('consoleSpeed', '操作パネルの煙の速さ', 0, 2, .1, '再生ボタンの土台にある、薄い煙の動き。', '停止', '速く')}
               <div class="settings-group"><div class="settings-label-row settings-toggle"><label for="setting-turntable">レコードのように再生・停止</label><input id="setting-turntable" type="checkbox" role="switch" aria-describedby="hint-turntable"><output id="val-turntable"></output></div><p class="settings-hint" id="hint-turntable">停止時は約0.4秒かけて音程と速度が下がり、再生時は約0.24秒で戻ります。SoundSky・下部の再生ボタン・Spaceに適用します。</p></div>
+              ${settingControl('prefetchCount', '次の曲を先読み', 0, 3, 1, '次の1〜3曲の音声を、このタブで一時的に読み込みます。次の曲が未確定のAutoPlayでは動きません。タブを閉じると消えます。', 'オフ', '3曲')}
+              <div class="settings-group"><div class="settings-label-row"><label for="setting-prefetchSeconds">各曲の読み込み量</label><select class="settings-choice" id="setting-prefetchSeconds" aria-describedby="hint-prefetchSeconds"><option value="15">冒頭15秒</option><option value="30">冒頭30秒</option><option value="60">冒頭1分</option><option value="120">冒頭2分</option><option value="0">曲全体</option></select></div><p class="settings-hint" id="hint-prefetchSeconds">通信量を抑えるなら冒頭だけ、長い途切れに備えるなら曲全体。音声データの区切りまで読み込みます。</p></div>
+              <p class="settings-hint" id="prefetch-status" aria-live="polite">次の曲の準備待ち</p>
               ${settingControl('seekSpeed', 'シークバーの色の流れ', 0, 3, .1, '再生済みの部分を流れる色。曲の再生速度は変わりません。', '停止', '速く')}
             </div>
             <div class="settings-footer"><span>すぐ反映・自動保存</span><button class="settings-reset" data-command="settings-reset">すべて標準に戻す</button></div>
@@ -217,6 +222,11 @@ class SoundSky {
   };
   private bindEvents() {
     const signal = this.events.signal;
+    window.addEventListener('message', event => {
+      if(event.source!==window||event.origin!==location.origin||event.data?.type!=='soundsky:prefetch-status')return;
+      const {ready,total,seconds}=event.data;
+      if(seconds===this.settings.prefetchSeconds&&Number.isInteger(ready)&&Number.isInteger(total)&&ready>=0&&ready<=total&&total<=3)this.el('#prefetch-status').textContent=total?`${total}曲中${ready}曲の${seconds?`冒頭${seconds}秒まで`:'音声'}を準備済み`:'次の曲が未確定のため待機中';
+    }, {signal});
     window.addEventListener('message', event => {
       if (event.source !== window || event.origin !== location.origin || event.data?.type !== 'soundsky:audio') return;
       const level = event.data.level;
@@ -287,6 +297,10 @@ class SoundSky {
     }, { signal });
     this.el<HTMLInputElement>('#setting-modernSoundCloud').addEventListener('change',event=>{
       this.settings.modernSoundCloud=(event.target as HTMLInputElement).checked;
+      this.updateSettingsUI();this.applySettings();this.saveSettings();
+    },{signal});
+    this.el<HTMLSelectElement>('#setting-prefetchSeconds').addEventListener('change',event=>{
+      this.settings.prefetchSeconds=Number((event.target as HTMLSelectElement).value);
       this.updateSettingsUI();this.applySettings();this.saveSettings();
     },{signal});
     this.el<HTMLInputElement>('#setting-turntable').addEventListener('change', event => {
@@ -393,7 +407,7 @@ class SoundSky {
     this.state = state;
     this.transport.sync(state);
     this.syncAnalysis();
-    this.syncNativeCover();
+    this.syncNativeCover(); this.syncPrefetch();
     this.el('.player').dataset.playing = String(state.playing);
     this.atmosphere.setPlaying(state.playing);
     if (this.active && state.track.key && !state.actions.repost.available) void this.adapter.probeRepost();
@@ -654,6 +668,8 @@ class SoundSky {
         slider?.setAttribute('aria-valuetext', valEl.textContent);
       }
     }
+    this.el<HTMLSelectElement>('#setting-prefetchSeconds').value=String(this.settings.prefetchSeconds);
+    this.el<HTMLSelectElement>('#setting-prefetchSeconds').disabled=this.settings.prefetchCount===0;
     this.el<HTMLInputElement>('#setting-modernSoundCloud').checked=this.settings.modernSoundCloud;
     this.el<HTMLInputElement>('#setting-turntable').checked=this.settings.turntable;
     this.el('#val-turntable').textContent=this.settings.turntable?'オン':'オフ';
@@ -665,6 +681,9 @@ class SoundSky {
       this.el<HTMLInputElement>(`#setting-${key}`).disabled = !this.settings.heatEnabled;
       this.el<HTMLButtonElement>(`[data-setting-key="${key}"]`).disabled = !this.settings.heatEnabled;
     }
+  }
+  private syncPrefetch() {
+    window.postMessage({type:'soundsky:prefetch',seconds:this.settings.prefetchSeconds,current:this.state.track.key,count:this.disposed?0:this.settings.prefetchCount,playing:!this.disposed&&this.state.playing,next:upcomingTracks(this.adapter.root,this.state.track.key,this.settings.prefetchCount)},location.origin);
   }
   private syncNativeCover() {
     const href=this.adapter.query<HTMLAnchorElement>('.playbackSoundBadge__titleLink')?.href;
@@ -679,10 +698,11 @@ class SoundSky {
   }
   private applySettings() {
     window.postMessage({type:'soundsky:turntable',enabled:!this.disposed&&this.settings.turntable},location.origin);
+    this.el('#prefetch-status').hidden=this.settings.prefetchCount===0;
     this.siteTheme.setEnabled(this.settings.modernSoundCloud);
     this.transport.setEnabled(this.settings.modernSoundCloud);
     this.transport.setSpeeds(this.settings.materialSpeed,this.settings.seekSpeed);
-    this.syncNativeCover();
+    this.syncNativeCover(); this.syncPrefetch();
     this.syncAnalysis();
     this.ambient.setFlowSpeed(this.settings.ambientSpeed);
     this.atmosphere.setSettings(this.settings.ambientSpeed, this.settings.ambientGlow, this.settings.consoleSpeed, this.settings.seekSpeed);
@@ -725,7 +745,7 @@ class SoundSky {
   }
   destroy() {
     if (this.disposed) return;
-    this.disposed = true; window.postMessage({type:'soundsky:turntable',enabled:false},location.origin); this.syncAnalysis(); this.close();
+    this.disposed = true; this.syncPrefetch(); window.postMessage({type:'soundsky:turntable',enabled:false},location.origin); this.syncAnalysis(); this.close();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.toastTimer) clearTimeout(this.toastTimer);
     this.artworkGeneration++; this.clearTrackAnimations(); this.events.abort(); this.unsubscribe();

@@ -37,6 +37,10 @@ export interface SoundSkySettings {
   modernSoundCloud: boolean;
   /** Record-style pitch glide on manual play/pause, opt-in. */
   turntable: boolean;
+  /** Upcoming audio tracks to prepare in memory, 0 off through 3. */
+  prefetchCount: number;
+  /** Per-track prepared duration in seconds; 0 means the whole track. */
+  prefetchSeconds: number;
   /** How far sound drives the red thermal front (0–3, default 1). */
   heatResponse: number;
   /** Audio-reactive backdrop light multiplier (0–2). */
@@ -58,6 +62,8 @@ export const defaultSettings: SoundSkySettings = {
   heatEnabled: true,
   modernSoundCloud: false,
   turntable: false,
+  prefetchCount: 3,
+  prefetchSeconds: 0,
   heatResponse: 1,
   ambientGlow: 1,
   consoleSpeed: .2,

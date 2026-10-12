@@ -274,3 +274,7 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
   .settings-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 20px; }
   .settings-group { padding: 22px 0 19px; }
 }
+
+.settings-choice { font: inherit; font-size: 12px; color: #eeeae2; color-scheme: dark; background: #1a2025; border: 1px solid #c2d5db24; border-radius: 6px; padding: 7px 10px; min-height: 34px; }
+.settings-choice:focus-visible { outline: 2px solid var(--sky-accent); outline-offset: 3px; }
+.settings-choice:disabled { opacity: .4; }
