@@ -129,9 +129,13 @@ html[data-soundsky-theme] .trackItem__image .image,
 html[data-soundsky-embed] :is(img[src*="sndcdn.com/artworks-"],.MuiBox-root:has(> img[src*="sndcdn.com/artworks-"])) { border-radius: 3% !important; }
 
 /* A quiet dashed rail distinguishes prepared audio from the solid playing rail. */
-html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queueItemView[data-soundsky-prefetched] { position: relative !important; }
-html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queueItemView[data-soundsky-prefetched]:not(.m-active)::after {
+html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queueItemView[data-soundsky-prefetching] { position: relative !important; }
+html[data-soundsky-theme] .queue:not([data-soundsky-queue]) .queueItemView[data-soundsky-prefetching]:not(.m-active)::after {
   content: ''; position: absolute; left: 0; top: 12px; bottom: 12px; width: 2px;
   background: repeating-linear-gradient(to bottom, #b8c1c166 0 3px, transparent 3px 7px);
   border: 0; border-radius: 1px; pointer-events: none;
+  clip-path: inset(0 0 calc((1 - var(--sky-prefetch-progress, 0)) * 100%) 0);
+  transition: clip-path .2s ease-out;
 }
+
+@media (prefers-reduced-motion: reduce) { .queueItemView[data-soundsky-prefetching]::after { transition: none !important; } }

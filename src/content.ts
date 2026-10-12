@@ -15,7 +15,7 @@ import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.3.15';
+const VERSION = '1.3.16';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
@@ -226,11 +226,13 @@ class SoundSky {
     const signal = this.events.signal;
     window.addEventListener('message', event => {
       if(event.source!==window||event.origin!==location.origin||event.data?.type!=='soundsky:prefetch-status')return;
-      const {ready,readyKeys,total,seconds,phase}=event.data;
+      const {ready,readyKeys,progress:trackProgress,total,seconds,phase}=event.data;
       if(seconds!==this.settings.prefetchSeconds||!Number.isInteger(ready)||!Number.isInteger(total)||ready<0||ready>total||total>3)return;
       if (Array.isArray(readyKeys) && readyKeys.length === ready && new Set(readyKeys).size === ready && readyKeys.every(key => typeof key === 'string' && canonical(key) === key && /^\/[^/]+\/[^/]+$/.test(key))) {
         const next = upcomingTracks(this.adapter.root, this.state.track.key, this.settings.prefetchCount);
-        this.queuePrefetch.setReady(readyKeys.filter(key => next.includes(key)));
+        if (Array.isArray(trackProgress) && trackProgress.length <= 3 && trackProgress.every(item => item && typeof item.key === 'string' && canonical(item.key) === item.key && typeof item.value === 'number' && Number.isFinite(item.value) && item.value >= 0 && item.value <= 1 && (item.value < 1 || readyKeys.includes(item.key)))) {
+          this.queuePrefetch.setProgress(trackProgress.filter(item => next.includes(item.key)));
+        } else this.queuePrefetch.setReady(readyKeys.filter(key => next.includes(key)));
       }
       const range=seconds?`冒頭${seconds>=60?`${seconds/60}分`:`${seconds}秒`}まで`:'音声';
       const progress=`${total}曲中${ready}曲の${range}を準備済み`;
@@ -536,7 +538,7 @@ class SoundSky {
     this.accent.setArtwork(url);
     if (!url) { display.hidden = true; placeholder.hidden = false; this.materials.setArtwork(''); display.removeAttribute('src'); this.el('.artwork-frame').style.removeProperty('--art-natural'); return; }
     // SoundCloud offers an explicit 500px artwork rendition. Never assume "original" exists.
-    const larger = artworkURL(url.replace(/-t\d+x\d+(?=\.)/, '-t500x500')) || url;
+    const larger = artworkURL(url.replace(/-(?:t\d+x\d+|large)(?=\.)/, '-t500x500')) || url;
     const image = new Image();
     const commit = () => {
       if (this.disposed || generation !== this.artworkGeneration) return;

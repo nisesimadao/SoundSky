@@ -108,3 +108,27 @@ test('known queued tracks prepare while paused, including the current SoundCloud
 test('one unavailable queued song does not block preparation of the other known songs',async t=>{
  const h=setup(t);await h.seed();h.preload.metadata.delete('/artist/track-1');h.preload.configure(3,false,['/artist/track-1','/artist/track-2','/artist/track-3'],'/artist/current');await h.tick();assert.equal(h.messages.at(-1).ready,2);assert.equal(h.messages.at(-1).phase,'unavailable');
 });
+
+
+test('per-track progress advances with actual HLS segments, reaches one only when ready and clears on scope change',async t=>{
+ const h=setup(t);await h.seed();
+ h.preload.nativeFetch=async(input,options)=>String(input).includes('.m3u8') ? new FakeResponse('#EXTM3U\n#EXT-X-MAP:URI="init.mp4"\n'+Array.from({length:4},(_,i)=>`#EXTINF:5,\naudio${i}.m4s\n`).join('')+'#EXT-X-ENDLIST\n',String(input),{'content-type':'application/vnd.apple.mpegurl'}) : h.native(input,options);
+ h.preload.configure(1,true,['/artist/track-1']);await h.tick();
+ const values=h.messages.filter(m=>m.progress?.[0]?.key==='/artist/track-1').map(m=>({value:m.progress[0].value,ready:m.ready}));
+ for(const fraction of [.25,.5,.75])assert.ok(values.some(m=>m.value===fraction&&m.ready===0));
+ assert.ok(values.every(m=>m.value<1||m.ready===1));assert.equal(values.at(-1).value,1);
+ h.preload.configure(1,true,['/artist/track-1'],'',15);assert.equal(h.messages.at(-1).progress[0].value,0);
+ h.preload.configure(0,true,[]);assert.equal(h.messages.at(-1).progress.length,0);
+});
+
+
+test('temporary queue gaps and unrelated rows do not discard prepared current/future bytes',async t=>{
+ const h=setup(t);await h.seed();h.preload.configure(3,true,['/artist/track-1','/artist/track-2','/artist/track-3'],'/artist/current');await h.tick();const before=h.requests.length;
+ h.preload.configure(3,true,[],'');h.preload.configure(3,true,['/other/new'],'/artist/current');h.preload.configure(3,true,['/artist/track-2','/artist/track-3'],'/artist/track-1');h.offline=true;
+ for(const i of [1,2,3])assert.equal(await(await h.w.fetch(`https://cf-hls-media.sndcdn.com/${i}/audio.m4s`)).text(),'audio-bytes');assert.equal(h.requests.length,before);assert.equal(h.messages.at(-1).ready,2);
+});
+
+
+test('observing the native resolver for the already prepared format retains other ready tracks',async t=>{
+ const h=setup(t);await h.seed();h.preload.configure(3,true,['/artist/track-1','/artist/track-2','/artist/track-3']);await h.tick();await h.w.fetch('https://api-v2.soundcloud.com/media/1/stream/hls?client_id=client');h.preload.configure(3,true,['/artist/track-2','/artist/track-3'],'/artist/track-1');assert.equal(h.messages.at(-1).ready,2);
+});
