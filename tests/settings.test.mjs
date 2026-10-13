@@ -34,3 +34,14 @@ test('prepared duration accepts the offered scopes and defaults to whole tracks'
  for(const seconds of [0,15,30,60,120])assert.equal(loadSavedSettings({prefetchSeconds:seconds}).prefetchSeconds,seconds);
  for(const seconds of [7,NaN,Infinity,'30',-1])assert.equal(loadSavedSettings({prefetchSeconds:seconds}).prefetchSeconds,0);
 });
+
+test('native page appearance sections and style choices validate independently',()=>{
+ const customized=loadSavedSettings({modernSoundCloud:true,siteHeader:false,siteQueue:false,siteTransport:false,siteArtwork:false,siteBackground:false,siteWide:false,siteCorners:'round',siteAccent:'warm',siteBackdropOpacity:.55});
+ for(const key of ['siteHeader','siteQueue','siteTransport','siteArtwork','siteBackground','siteWide'])assert.equal(customized[key],false);
+ assert.equal(customized.siteCorners,'round');assert.equal(customized.siteAccent,'warm');assert.equal(customized.siteBackdropOpacity,.55);
+ const invalid=loadSavedSettings({siteHeader:'false',siteQueue:1,siteCorners:'random',siteAccent:'purple',siteBackdropOpacity:Infinity});
+ for(const key of ['siteHeader','siteQueue','siteBackground','siteTransport','siteWide'])assert.equal(invalid[key],true);
+ assert.equal(invalid.siteCorners,'soft');assert.equal(invalid.siteAccent,'artwork');assert.equal(invalid.siteBackdropOpacity,.3);
+ assert.equal(loadSavedSettings({siteBackdropOpacity:-5}).siteBackdropOpacity,0);
+ assert.equal(loadSavedSettings({siteBackdropOpacity:5}).siteBackdropOpacity,.7);
+});

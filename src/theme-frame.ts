@@ -6,7 +6,10 @@ if(window!==window.top && (!location.pathname.startsWith('/n/embeds/')||location
  const events=new AbortController();
  let disposed=false;
  const changed=(changes:Record<string,chrome.storage.StorageChange>,area:string)=>{
-  if(area==='local'&&changes['soundsky:settings'])theme.setEnabled(loadSavedSettings(changes['soundsky:settings'].newValue).modernSoundCloud);
+  if(area==='local'&&changes['soundsky:settings']){
+   const settings=loadSavedSettings(changes['soundsky:settings'].newValue);
+   theme.setPreferences(settings);theme.setEnabled(settings.modernSoundCloud);
+  }
  };
  let removeStorageListener=()=>{};
  const dispose=()=>{if(disposed)return;disposed=true;events.abort();removeStorageListener();theme.destroy();};
@@ -16,7 +19,7 @@ if(window!==window.top && (!location.pathname.startsWith('/n/embeds/')||location
   storage?.onChanged?.addListener(changed);
   removeStorageListener=()=>{try{storage?.onChanged?.removeListener(changed);}catch{/* extension reloaded */}};
   if(storage?.local?.get)void storage.local.get('soundsky:settings').then(result=>{
-   if(!disposed)theme.setEnabled(loadSavedSettings(result['soundsky:settings']).modernSoundCloud);
+   if(!disposed){const settings=loadSavedSettings(result['soundsky:settings']);theme.setPreferences(settings);theme.setEnabled(settings.modernSoundCloud);}
   }).catch(()=>{});
  }catch{/* parent theme messages remain available */}
  document.addEventListener('soundsky:theme-dispose',dispose,{signal:events.signal});

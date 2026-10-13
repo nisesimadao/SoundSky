@@ -2,7 +2,7 @@ import { defaultSettings, type SoundSkySettings } from './types';
 export const settingLimits = {
   pulseMax: [0, .3], pulseSensitivity: [.2, 12], ambientSpeed: [0, 8],
   materialSpeed: [0, 8], heatSpeed: [0, 8], heatResponse: [0, 3],
-  ambientGlow: [0, 2], consoleSpeed: [0, 2], seekSpeed: [0, 3], sceneSway: [0, 1], prefetchCount: [0, 3],
+  ambientGlow: [0, 2], consoleSpeed: [0, 2], seekSpeed: [0, 3], sceneSway: [0, 1], prefetchCount: [0, 3], siteBackdropOpacity: [0, .7],
 } as const;
 /** Accept only known, finite settings; old combined speed seeds Heatmap speed. */
 export function loadSavedSettings(saved: unknown): SoundSkySettings {
@@ -18,7 +18,11 @@ export function loadSavedSettings(saved: unknown): SoundSkySettings {
   settings.prefetchCount=Math.round(settings.prefetchCount);
   if (typeof values.prefetchSeconds==='number' && [0,15,30,60,120].includes(values.prefetchSeconds)) settings.prefetchSeconds=values.prefetchSeconds;
   if (typeof values.heatEnabled === 'boolean') settings.heatEnabled = values.heatEnabled;
-  if (typeof values.modernSoundCloud === 'boolean') settings.modernSoundCloud = values.modernSoundCloud;
+  for (const key of ['modernSoundCloud', 'siteHeader', 'siteArtwork', 'siteQueue', 'siteTransport', 'siteBackground', 'siteWide'] as const) {
+    if (typeof values[key] === 'boolean') settings[key] = values[key];
+  }
+  if (values.siteCorners === 'subtle' || values.siteCorners === 'soft' || values.siteCorners === 'round') settings.siteCorners = values.siteCorners;
+  if (values.siteAccent === 'artwork' || values.siteAccent === 'sky' || values.siteAccent === 'warm') settings.siteAccent = values.siteAccent;
   if (typeof values.turntable === 'boolean') settings.turntable = values.turntable;
   return settings;
 }

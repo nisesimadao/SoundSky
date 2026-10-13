@@ -44,3 +44,24 @@ test('loading delay and scheduled start retain spin-up, but subsequent chunks st
 test('a source with a scheduled future stop remains eligible for manual slowing until it ends',t=>{
  const h=setup(t);h.button.click();const scheduled=new h.Source();scheduled.start(0);scheduled.stop(10);h.turntable.setEnabled(true);h.button.click();assert.equal(scheduled.playbackRate.calls.at(-1)[0],'curve');scheduled.dispatchEvent(new h.w.Event('ended'));assert.equal(scheduled.playbackRate.value,1);
 });
+
+test('Space inside SoundSky shadow player reaches the turntable once; settings remain keyboard accessible', t => {
+ const h=setup(t);h.turntable.setEnabled(true);
+ const host=h.w.document.createElement('soundsky-player');
+ const shadow=host.attachShadow({mode:'open'});
+ shadow.innerHTML='<button class="play-toggle"></button><button class="settings-tab"></button><input type="range">';
+ h.w.document.body.append(host);
+ const keyboard=(element)=>element.dispatchEvent(new h.w.KeyboardEvent('keydown',{code:'Space',key:' ',bubbles:true,composed:true,cancelable:true}));
+ const toggle=shadow.querySelector('.play-toggle');
+ assert.equal(keyboard(toggle),false,'handled Space must cancel native button activation');
+ assert.equal(h.clicks,1);
+ assert.equal(h.source.playbackRate.calls.at(-1)[0],'curve');
+ keyboard(toggle);
+ assert.equal(h.clicks,1,'second press must ease the output down before the native pause');
+ assert.equal(h.timers.size,1);
+ h.advance(420);assert.equal(h.clicks,2);
+ const settings=shadow.querySelector('.settings-tab');
+ assert.equal(keyboard(settings),true);
+ assert.equal(keyboard(shadow.querySelector('input')),true);
+ assert.equal(h.clicks,2,'Space in settings must not start playback');
+});

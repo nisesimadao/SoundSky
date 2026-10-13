@@ -49,3 +49,23 @@ test('theme broadcasts only to ready same-origin frames, including after navigat
  source.location.origin='null';theme.setAccent(70);assert.equal(sent,2);
  theme.destroy();dom.window.close();
 });
+
+test('appearance regions, corner scale and fixed accent apply without leaking after disabling',()=>{
+ const dom=create(),w=dom.window,theme=new w.themeTest.SiteTheme();
+ theme.setEnabled(true);
+ theme.setPreferences({siteHeader:false,siteArtwork:false,siteQueue:false,siteTransport:false,siteBackground:false,siteWide:false,siteCorners:'round',siteAccent:'warm',siteBackdropOpacity:.55});
+ const html=w.document.documentElement;
+ for(const part of ['header','artwork','queue','transport','background','wide'])assert.equal(html.hasAttribute('data-sky-site-'+part),false);
+ assert.equal(html.style.getPropertyValue('--sky-site-radius'),'20px');
+ assert.equal(html.style.getPropertyValue('--sky-site-background-opacity'),'0.55');
+ assert.equal(html.style.getPropertyValue('--sky-site-accent'),'#f2b585');
+ theme.setPreferences({siteHeader:true,siteArtwork:true,siteQueue:true,siteTransport:true,siteBackground:true,siteWide:true,siteCorners:'subtle',siteAccent:'sky',siteBackdropOpacity:.15});
+ for(const part of ['header','artwork','queue','transport','background','wide'])assert.equal(html.hasAttribute('data-sky-site-'+part),true);
+ assert.equal(html.style.getPropertyValue('--sky-site-radius'),'5px');
+ assert.equal(html.style.getPropertyValue('--sky-site-accent'),'#97d7ec');
+ theme.setEnabled(false);
+ for(const part of ['header','artwork','queue','transport','background','wide'])assert.equal(html.hasAttribute('data-sky-site-'+part),false);
+ for(const value of ['--sky-site-radius','--sky-site-background-opacity','--sky-site-accent'])assert.equal(html.style.getPropertyValue(value),'');
+ assert.equal(w.document.querySelectorAll('[data-soundsky-site-style]').length,0);
+ theme.destroy();dom.window.close();
+});

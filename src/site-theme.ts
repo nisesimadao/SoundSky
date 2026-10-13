@@ -2,6 +2,8 @@ import { createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MeshGradient } from '@paper-design/shaders-react';
 import { accentColor } from './accent';
+import { defaultSettings, type SoundSkySettings } from './types';
+import { loadSavedSettings } from './settings';
 import { defaultPalette } from './artwork-palette';
 import css from './site-theme.css';
 import { unmountShader } from './shader-lifecycle';
@@ -19,6 +21,7 @@ export class SiteTheme {
   private open = false;
   private hue = 210;
   private colors = [...defaultPalette];
+  private preferences: SoundSkySettings = { ...defaultSettings };
   private events = new AbortController();
   private inView = true;
   private observer = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver(entries=>{this.inView=entries[0]?.isIntersecting??false;this.render();});
@@ -39,6 +42,7 @@ export class SiteTheme {
         if(frame&&this.sameOriginFrame(frame)){this.frames.add(frame);frame.contentWindow?.postMessage(this.packet(),location.origin);}
       } else if(!this.top && event.source===window.parent && event.data?.type==='soundsky:site-theme'){
         const data=event.data;
+        if(data.settings && typeof data.settings==='object') this.setPreferences(loadSavedSettings(data.settings));
         if(typeof data.enabled==='boolean')this.setEnabled(data.enabled);
         if(typeof data.hue==='number'&&Number.isFinite(data.hue))this.setAccent(data.hue);
         if(Array.isArray(data.colors)&&data.colors.length===4&&data.colors.every((c:unknown)=>typeof c==='string'&&/^#[0-9a-f]{6}$/i.test(c)))this.setPalette(data.colors);
@@ -52,7 +56,7 @@ export class SiteTheme {
     },{signal:this.events.signal});
     if(!this.top)window.parent.postMessage({type:'soundsky:theme-ready'},location.origin);
   }
-  private packet(){return {type:'soundsky:site-theme',enabled:this.enabled,hue:this.hue,colors:this.colors,open:this.open,cover:this.coverState};}
+  private packet(){return {type:'soundsky:site-theme',enabled:this.enabled,hue:this.hue,colors:this.colors,settings:this.preferences,open:this.open,cover:this.coverState};}
   private sameOriginFrame(frame:HTMLIFrameElement){
     // src alone is insufficient: sandboxed frames and redirects can have opaque origins.
     try{return frame.isConnected&&frame.contentWindow?.location.origin===location.origin;}catch{return false;}
@@ -65,13 +69,43 @@ export class SiteTheme {
     }
   }
   setEnabled(enabled:boolean){
-    if(this.enabled===enabled)return;this.enabled=enabled;this.cover.setEnabled(enabled);
-    if(enabled){document.head.append(this.style);if(this.decorative){document.body.prepend(this.surface);this.observer?.observe(this.surface);}else document.documentElement.setAttribute('data-soundsky-embed','');document.documentElement.setAttribute('data-soundsky-theme','');this.applyAccent();}
-    else {this.observer?.unobserve(this.surface);document.documentElement.removeAttribute('data-soundsky-theme');document.documentElement.removeAttribute('data-soundsky-embed');document.documentElement.style.removeProperty('--sky-site-accent');unmountShader(this.root,this.surface);this.root=null;this.surface.remove();this.style.remove();}
-    if(this.decorative){this.gallery??=new SiteGallery();this.gallery.setEnabled(enabled);}
+    if(this.enabled===enabled)return;this.enabled=enabled;
+    if(enabled){document.head.append(this.style);if(this.decorative){document.body.prepend(this.surface);this.observer?.observe(this.surface);}else document.documentElement.setAttribute('data-soundsky-embed','');document.documentElement.setAttribute('data-soundsky-theme','');this.applyPreferences();}
+    else {this.observer?.unobserve(this.surface);document.documentElement.removeAttribute('data-soundsky-theme');document.documentElement.removeAttribute('data-soundsky-embed');this.clearPreferences();unmountShader(this.root,this.surface);this.root=null;this.surface.remove();this.style.remove();}
+    this.cover.setEnabled(enabled && this.preferences.siteArtwork);
+    if(this.decorative){this.gallery??=new SiteGallery();this.gallery.setEnabled(enabled && this.preferences.siteArtwork);}
     this.render();this.broadcast();
   }
-  private applyAccent(){if(this.enabled)document.documentElement.style.setProperty('--sky-site-accent',accentColor(this.hue));}
+  private static siteAttributes = ['header','artwork','queue','transport','background','wide'] as const;
+  private clearPreferences() {
+    const html=document.documentElement;
+    for(const part of SiteTheme.siteAttributes) html.removeAttribute(`data-sky-site-${part}`);
+    for(const name of ['--sky-site-accent','--sky-site-radius','--sky-site-radius-lg','--sky-site-background-opacity']) html.style.removeProperty(name);
+  }
+  private applyPreferences() {
+    if(!this.enabled)return;
+    const html=document.documentElement,p=this.preferences;
+    for(const [part,enabled] of Object.entries({header:p.siteHeader,artwork:p.siteArtwork,queue:p.siteQueue,transport:p.siteTransport,background:p.siteBackground,wide:p.siteWide})) {
+      html.toggleAttribute(`data-sky-site-${part}`,enabled);
+    }
+    const radii={subtle:['5px','9px'],soft:['12px','16px'],round:['20px','26px']}[p.siteCorners];
+    html.style.setProperty('--sky-site-radius',radii[0]);
+    html.style.setProperty('--sky-site-radius-lg',radii[1]);
+    html.style.setProperty('--sky-site-background-opacity',String(p.siteBackdropOpacity));
+    this.applyAccent();
+  }
+  setPreferences(settings:SoundSkySettings) {
+    this.preferences={...settings};
+    this.cover.setEnabled(this.enabled && settings.siteArtwork);
+    this.gallery?.setEnabled(this.enabled && settings.siteArtwork);
+    this.applyPreferences();this.render();this.broadcast();
+  }
+  private applyAccent(){
+    if(!this.enabled)return;
+    const option=this.preferences.siteAccent;
+    document.documentElement.style.setProperty('--sky-site-accent',
+      option==='sky'?'#97d7ec':option==='warm'?'#f2b585':accentColor(this.hue));
+  }
   setAccent(hue:number){this.hue=hue;this.applyAccent();this.broadcast();}
   setPalette(colors:string[]){this.colors=[...colors];this.render();this.broadcast();}
   setPlayerOpen(open:boolean){this.open=open;this.cover.setOpen(open);this.render();this.broadcast();}
@@ -84,7 +118,9 @@ export class SiteTheme {
   }
   private render(){
     if(!this.enabled||!this.decorative)return;
-    this.surface.hidden=this.open;
+    const visible=this.preferences.siteBackground&&this.preferences.siteBackdropOpacity>0;
+    this.surface.hidden=this.open||!visible;
+    if(!visible) { if(this.root){unmountShader(this.root,this.surface);this.root=null;} return; }
     if(!this.root&&typeof WebGL2RenderingContext!=='undefined')this.root=createRoot(this.surface);
     const moving=this.inView&&!this.open&&!document.hidden&&!this.motion.matches;
     this.root?.render(createElement(MeshGradient,{width:'100%',height:'100%',colors:this.colors,speed:moving?.22:0,distortion:.65,swirl:.25,grainMixer:.02,grainOverlay:.018,scale:1.25,minPixelRatio:1,maxPixelCount:60000,frame:18000}));

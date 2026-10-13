@@ -28,6 +28,24 @@ test('reopening and reinjecting retain one instance and release every observer/t
  for(let i=0;i<12;i++){w.__soundsky.toggle();w.__soundsky.toggle();}
  w.__soundsky.toggle();
  ui.querySelector('[data-command="settings"]').click();
+ ui.querySelector('#tab-site').click();
+ const master=ui.querySelector('#setting-modernSoundCloud');master.checked=true;
+ master.dispatchEvent(new w.Event('change',{bubbles:true}));
+ assert.equal(w.document.documentElement.hasAttribute('data-soundsky-theme'),true);
+ const header=ui.querySelector('#setting-siteHeader');header.checked=false;
+ header.dispatchEvent(new w.Event('change',{bubbles:true}));
+ assert.equal(w.document.documentElement.hasAttribute('data-sky-site-header'),false);
+ const corners=ui.querySelector('#setting-siteCorners');corners.value='round';
+ corners.dispatchEvent(new w.Event('change',{bubbles:true}));
+ assert.equal(w.document.documentElement.style.getPropertyValue('--sky-site-radius'),'20px');
+ const accent=ui.querySelector('#setting-siteAccent');accent.value='warm';
+ accent.dispatchEvent(new w.Event('change',{bubbles:true}));
+ assert.equal(w.document.documentElement.style.getPropertyValue('--sky-site-accent'),'#f2b585');
+ const background=ui.querySelector('#setting-siteBackground');background.checked=false;
+ background.dispatchEvent(new w.Event('change',{bubbles:true}));
+ assert.equal(ui.querySelector('#setting-siteBackdropOpacity').disabled,true);
+ master.checked=false;master.dispatchEvent(new w.Event('change',{bubbles:true}));
+ assert.equal(w.document.documentElement.hasAttribute('data-soundsky-theme'),false);
  ui.querySelector('#tab-light').click();
  assert.equal(ui.querySelector('#settings-light').hidden,false);
  ui.querySelector('#tab-light').dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,composed:true}));

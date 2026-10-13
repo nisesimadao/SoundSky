@@ -35,6 +35,19 @@ export interface SoundSkySettings {
   heatSpeed: number;
   heatEnabled: boolean;
   modernSoundCloud: boolean;
+  /** Which native SoundCloud surfaces receive SoundSky finishing details. */
+  siteHeader: boolean;
+  siteArtwork: boolean;
+  siteQueue: boolean;
+  siteTransport: boolean;
+  siteBackground: boolean;
+  siteWide: boolean;
+  /** Site controls: understated, standard, or strongly rounded. */
+  siteCorners: 'subtle' | 'soft' | 'round';
+  /** Artwork-driven or fixed accent colour. */
+  siteAccent: 'artwork' | 'sky' | 'warm';
+  /** Strength of the decorative site-only background canvas. */
+  siteBackdropOpacity: number;
   /** Record-style pitch glide on manual play/pause, opt-in. */
   turntable: boolean;
   /** Upcoming audio tracks to prepare in memory, 0 off through 3. */
@@ -61,6 +74,15 @@ export const defaultSettings: SoundSkySettings = {
   heatSpeed: 1,
   heatEnabled: true,
   modernSoundCloud: false,
+  siteHeader: true,
+  siteArtwork: true,
+  siteQueue: true,
+  siteTransport: true,
+  siteBackground: true,
+  siteWide: true,
+  siteCorners: 'soft',
+  siteAccent: 'artwork',
+  siteBackdropOpacity: .3,
   turntable: false,
   prefetchCount: 3,
   prefetchSeconds: 0,

@@ -15,17 +15,23 @@ import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.3.16';
+const VERSION = '1.3.17';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
   return s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2,'0')}`;
 };
 
-type NumericSetting = Exclude<keyof SoundSkySettings, 'heatEnabled' | 'modernSoundCloud' | 'turntable'>;
+type NumericSetting = 'pulseMax' | 'pulseSensitivity' | 'ambientSpeed' | 'materialSpeed' | 'heatSpeed' | 'prefetchCount' | 'heatResponse' | 'ambientGlow' | 'consoleSpeed' | 'seekSpeed' | 'sceneSway' | 'siteBackdropOpacity';
+type SiteToggle = 'siteHeader' | 'siteArtwork' | 'siteQueue' | 'siteTransport' | 'siteBackground' | 'siteWide';
+const siteToggle = (key: SiteToggle, label: string, help: string) => `
+  <div class="settings-site-item">
+    <div class="settings-label-row settings-toggle"><label for="setting-${key}">${label}</label><input class="settings-site-toggle" id="setting-${key}" data-site-toggle="${key}" type="checkbox" role="switch" aria-describedby="hint-${key}"><output id="val-${key}"></output></div>
+    <p class="settings-hint" id="hint-${key}">${help}</p>
+  </div>`;
 const settingValue = (key: NumericSetting, value: number) => {
   if (key === 'prefetchCount') return value === 0 ? 'オフ' : `${value}曲`;
-  if (key === 'sceneSway') return value === 0 ? 'オフ' : `${Math.round(value * 100)}%`;
+  if (key === 'sceneSway' || key === 'siteBackdropOpacity') return value === 0 ? 'オフ' : `${Math.round(value * 100)}%`;
   if (value === 0) return key === 'pulseMax' ? 'なし' : key === 'ambientGlow' ? '消灯' : key === 'heatResponse' ? '反応なし' : '停止';
   return key === 'pulseMax' ? `+${(value * 100).toFixed(1)}%` : key === 'ambientGlow' ? `${Math.round(value * 100)}%` : `${value.toFixed(1)}倍`;
 };
@@ -147,6 +153,29 @@ class SoundSky {
               <div class="settings-effect-toggle">
                 <div class="settings-label-row settings-toggle"><label for="setting-modernSoundCloud">SoundCloudの見た目を整える</label><input id="setting-modernSoundCloud" type="checkbox" role="switch" aria-describedby="hint-modernSoundCloud"><output id="val-modernSoundCloud"></output></div>
                 <p class="settings-hint" id="hint-modernSoundCloud">通常のページも、暗い配色・柔らかい角丸・整った文字へ。アクセントは再生中のカバーの色に合わせます。SoundSkyを閉じても有効です。</p>
+              </div>
+              <div class="settings-site-details">
+                <div class="settings-subheading"><span>01 / WHERE</span><h3>適用する場所</h3><p>気になる部分だけ仕上げを切り替えます。元の操作や配置は変えません。</p></div>
+                <div class="settings-site-grid">
+                  ${siteToggle('siteHeader', 'ヘッダー・検索', 'ナビゲーションのガラス感と境界線')}
+                  ${siteToggle('siteArtwork', 'カバー・一覧', 'ジャケットの角とホバー時の奥行き')}
+                  ${siteToggle('siteQueue', 'Next Up', '次の曲リストの質感・文字組み')}
+                  ${siteToggle('siteTransport', '下部プレイヤー', '再生バーと操作部のサーフェス')}
+                  ${siteToggle('siteBackground', '背景の光', '通常ページに広がる淡いシェーダー')}
+                  ${siteToggle('siteWide', 'ワイドレイアウト', '広い画面で余白をゆったり使う')}
+                </div>
+                <div class="settings-subheading"><span>02 / HOW</span><h3>仕上げ方</h3><p>適用箇所の形・アクセント・光の強さを調整できます。</p></div>
+                <div class="settings-site-options">
+                  <div class="settings-group settings-site-option"><div class="settings-label-row"><label for="setting-siteCorners">パーツの丸み</label>
+                    <select class="settings-choice settings-site-choice" id="setting-siteCorners" data-site-choice="siteCorners">
+                      <option value="subtle">シャープ</option><option value="soft">標準</option><option value="round">やわらかい</option>
+                    </select></div><p class="settings-hint">ボタン、カード、入力欄の輪郭。アーティスト画像の円形は維持します。</p></div>
+                  <div class="settings-group settings-site-option"><div class="settings-label-row"><label for="setting-siteAccent">アクセントカラー</label>
+                    <select class="settings-choice settings-site-choice" id="setting-siteAccent" data-site-choice="siteAccent">
+                      <option value="artwork">再生中のジャケット</option><option value="sky">スカイブルー</option><option value="warm">アンバー</option>
+                    </select></div><p class="settings-hint">リンクや再生バーの強調色を選びます。</p></div>
+                  ${settingControl('siteBackdropOpacity', '背景の光の強さ', 0, .7, .05, 'SoundCloudの通常ページに表示する、やわらかな背景の透明度。0で消灯。', 'オフ', '強く')}
+                </div>
               </div>
             </div>
             <div class="settings-section" role="tabpanel" id="settings-controls" aria-labelledby="tab-controls" hidden>
@@ -294,7 +323,7 @@ class SoundSky {
     });
     this.shadow.querySelectorAll<HTMLInputElement>('.settings-slider').forEach(slider => {
       slider.addEventListener('input', () => {
-        const key = slider.dataset.setting as Exclude<keyof SoundSkySettings, 'heatEnabled' | 'modernSoundCloud' | 'turntable'> | undefined;
+        const key = slider.dataset.setting as NumericSetting | undefined;
         if (!key) return;
         const val = Number(slider.value);
         this.settings[key] = val;
@@ -311,6 +340,20 @@ class SoundSky {
       this.settings.modernSoundCloud=(event.target as HTMLInputElement).checked;
       this.updateSettingsUI();this.applySettings();this.saveSettings();
     },{signal});
+    this.shadow.querySelectorAll<HTMLInputElement>('.settings-site-toggle').forEach(input => {
+      input.addEventListener('change', () => {
+        const key = input.dataset.siteToggle as SiteToggle;
+        this.settings[key] = input.checked;
+        this.updateSettingsUI(); this.applySettings(); this.saveSettings();
+      }, { signal });
+    });
+    this.shadow.querySelectorAll<HTMLSelectElement>('.settings-site-choice').forEach(input => {
+      input.addEventListener('change', () => {
+        if (input.dataset.siteChoice === 'siteCorners' && ['subtle','soft','round'].includes(input.value)) this.settings.siteCorners = input.value as SoundSkySettings['siteCorners'];
+        if (input.dataset.siteChoice === 'siteAccent' && ['artwork','sky','warm'].includes(input.value)) this.settings.siteAccent = input.value as SoundSkySettings['siteAccent'];
+        this.updateSettingsUI(); this.applySettings(); this.saveSettings();
+      }, { signal });
+    });
     this.el<HTMLSelectElement>('#setting-prefetchSeconds').addEventListener('change',event=>{
       this.settings.prefetchSeconds=Number((event.target as HTMLSelectElement).value);
       this.updateSettingsUI();this.applySettings();this.saveSettings();
@@ -683,6 +726,19 @@ class SoundSky {
     this.el<HTMLSelectElement>('#setting-prefetchSeconds').value=String(this.settings.prefetchSeconds);
     this.el<HTMLSelectElement>('#setting-prefetchSeconds').disabled=this.settings.prefetchCount===0;
     this.el<HTMLInputElement>('#setting-modernSoundCloud').checked=this.settings.modernSoundCloud;
+    for (const key of ['siteHeader','siteArtwork','siteQueue','siteTransport','siteBackground','siteWide'] as const) {
+      this.el<HTMLInputElement>(`#setting-${key}`).checked = this.settings[key];
+      this.el<HTMLInputElement>(`#setting-${key}`).disabled = !this.settings.modernSoundCloud;
+      this.el(`#val-${key}`).textContent = this.settings[key] ? 'オン' : 'オフ';
+    }
+    for (const key of ['siteCorners','siteAccent'] as const) {
+      const select = this.el<HTMLSelectElement>(`#setting-${key}`);
+      select.value = this.settings[key];
+      select.disabled = !this.settings.modernSoundCloud;
+    }
+    this.el<HTMLInputElement>('#setting-siteBackdropOpacity').disabled = !this.settings.modernSoundCloud || !this.settings.siteBackground;
+    this.el<HTMLButtonElement>('[data-setting-key="siteBackdropOpacity"]').disabled = !this.settings.modernSoundCloud || !this.settings.siteBackground;
+    this.el('.settings-site-details').classList.toggle('is-disabled', !this.settings.modernSoundCloud);
     this.el<HTMLInputElement>('#setting-turntable').checked=this.settings.turntable;
     this.el('#val-turntable').textContent=this.settings.turntable?'オン':'オフ';
     this.el('#val-modernSoundCloud').textContent=this.settings.modernSoundCloud?'オン':'オフ';
@@ -712,8 +768,9 @@ class SoundSky {
   private applySettings() {
     window.postMessage({type:'soundsky:turntable',enabled:!this.disposed&&this.settings.turntable},location.origin);
     this.el('#prefetch-status').hidden=this.settings.prefetchCount===0;
+    this.siteTheme.setPreferences(this.settings);
     this.siteTheme.setEnabled(this.settings.modernSoundCloud);
-    this.transport.setEnabled(this.settings.modernSoundCloud);
+    this.transport.setEnabled(this.settings.modernSoundCloud && this.settings.siteTransport);
     this.transport.setSpeeds(this.settings.materialSpeed,this.settings.seekSpeed);
     this.syncNativeCover(); this.syncPrefetch();
     this.syncAnalysis();
