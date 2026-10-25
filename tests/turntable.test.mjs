@@ -9,10 +9,15 @@ function setup(t){
  class Rate{value=1;calls=[];cancelScheduledValues(at){this.calls.push(['cancel',at]);}cancelAndHoldAtTime(at){this.calls.push(['hold',at]);}setValueAtTime(value,at){this.value=value;this.calls.push(['value',value,at]);}setValueCurveAtTime(curve,at,duration){this.value=curve[0];this.calls.push(['curve',[...curve],at,duration]);}}
  const context={state:'running',currentTime:0};
  class Source extends w.EventTarget{context=context;playbackRate=new Rate();starts=[];stops=[];start(...args){if(args[0]<0)throw new Error('Invalid start');this.starts.push(args);}stop(...args){this.stops.push(args);}}
+ const actions=new Map();const session={setActionHandler(action,handler){if(handler)actions.set(action,handler);else actions.delete(action);}};
+ Object.defineProperty(w.navigator,'mediaSession',{value:session});const originalAction=session.setActionHandler;
+ const paused=new WeakMap();let pauses=0;
+ Object.defineProperty(w.HTMLMediaElement.prototype,'paused',{get(){return paused.get(this)??true;}});
+ w.HTMLMediaElement.prototype.pause=function(){pauses++;paused.set(this,true);};const originalPause=w.HTMLMediaElement.prototype.pause;
  w.AudioBufferSourceNode=Source;const originalStart=Source.prototype.start,originalStop=Source.prototype.stop;w.eval(bundle.outputFiles[0].text);const turntable=new w.recordTest.Turntable();t.after(()=>turntable.destroy());const button=w.document.querySelector('button');
  button.onclick=()=>{clicks++;const playing=button.classList.toggle('playing');button.title=playing?'Pause current':'Play current';if(playing){source=new Source();source.start(0,5,10);}else source.stop(context.currentTime);};
  const advance=ms=>{time+=ms;context.currentTime=time/1000;for(const [id,callback]of [...frames]){frames.delete(id);callback(time);}for(const [id,timer]of [...timers])if(timer.at<=time){timers.delete(id);timer.f();}};
- return {w,turntable,button,Source,context,originalStart,originalStop,timers,frames,advance,get source(){return source;},get clicks(){return clicks;}};
+ return {w,turntable,button,Source,context,originalStart,originalStop,originalPause,originalAction,session,actions,paused,timers,frames,advance,get pauses(){return pauses;},get source(){return source;},get clicks(){return clicks;}};
 }
 test('record effect is opt-in, slows the live source before native pause and accelerates a fresh source on resume',t=>{
  const h=setup(t);h.button.click();assert.equal(h.clicks,1);assert.equal(h.source.playbackRate.calls.length,0);h.turntable.setEnabled(true);h.button.click();assert.equal(h.clicks,1);const down=h.source.playbackRate.calls.at(-1);assert.equal(down[0],'curve');assert.ok(Math.abs(down[1].at(-1)-.04)<.001);assert.equal(down[3],.42);
@@ -64,4 +69,55 @@ test('Space inside SoundSky shadow player reaches the turntable once; settings r
  assert.equal(keyboard(settings),true);
  assert.equal(keyboard(shadow.querySelector('input')),true);
  assert.equal(h.clicks,2,'Space in settings must not start playback');
+});
+
+test('track and queue pause controls slow the current output before committing native pause',t=>{
+ const h=setup(t);h.turntable.setEnabled(true);
+ for(const className of ['sc-button-play sc-button-pause','playButton m-playing']){
+  const control=h.w.document.createElement('button');control.className=className;control.innerHTML='<span>Pause</span>';h.w.document.body.append(control);
+  let direct=0;control.onclick=()=>direct++;
+  h.button.click();const before=h.clicks;control.firstChild.click();
+  assert.equal(direct,0);assert.equal(h.clicks,before);assert.equal(h.source.playbackRate.calls.at(-1)[3],.42);
+  h.advance(420);assert.equal(h.clicks,before+1);assert.equal(h.source.stops.length,1);h.advance(250);control.remove();
+ }
+ const play=h.w.document.createElement('button');play.className='sc-button-play';h.w.document.body.append(play);
+ play.onclick=()=>{h.button.classList.add('playing');h.button.title='Pause current';const source=new h.Source();source.start();assert.equal(source.playbackRate.calls.at(-1)[3],.24);};play.click();
+});
+
+test('media session pause and play preserve handler details, reverse pending pauses and restore on teardown',t=>{
+ const h=setup(t);h.turntable.setEnabled(true);let pauses=0,received;
+ const pause=details=>{pauses++;received=details;h.source.stop();};
+ h.session.setActionHandler('pause',pause);
+ h.session.setActionHandler('play',()=>{if(!h.button.classList.contains('playing'))h.button.click();});
+ h.button.click();const details={action:'pause'};
+ h.actions.get('pause')(details);h.advance(200);h.actions.get('pause')(details);h.advance(220);
+ assert.equal(pauses,1,'repeated pause must not restart or reverse the slowdown');assert.equal(received,details);
+ h.advance(250);h.button.classList.remove('playing');h.button.title='Play current';h.actions.get('play')({action:'play'});
+ assert.equal(h.source.playbackRate.calls.at(-1)[3],.24);
+ h.actions.get('pause')(details);h.actions.get('play')({action:'play'});h.advance(500);assert.equal(pauses,1);
+ h.session.setActionHandler('pause',null);assert.equal(h.actions.has('pause'),false);
+ h.session.setActionHandler('pause',pause);h.turntable.destroy();assert.equal(h.actions.get('pause'),pause);assert.equal(h.session.setActionHandler,h.originalAction);
+});
+
+test('media session seeking and track changes cancel delayed pause without delaying navigation',t=>{
+ const h=setup(t);h.turntable.setEnabled(true);h.button.click();let pauses=0,navigations=0;
+ h.session.setActionHandler('pause',()=>pauses++);
+ for(const action of ['seekto','seekforward','seekbackward','nexttrack','previoustrack']){
+  h.session.setActionHandler(action,()=>navigations++);
+  h.actions.get('pause')({action:'pause'});h.actions.get(action)({action});h.advance(500);
+  assert.equal(pauses,0);assert.equal(h.source.playbackRate.value,1);
+ }
+ assert.equal(navigations,5);
+});
+
+test('direct HTML media pause slows detached output and resumes with original rate and pitch',t=>{
+ const h=setup(t),media=h.w.document.createElement('audio');media.playbackRate=1.25;media.preservesPitch=true;
+ h.turntable.setEnabled(true);h.turntable.startMedia(media);h.paused.set(media,false);h.advance(240);
+ media.pause();assert.equal(h.pauses,0);h.advance(200);assert.ok(media.playbackRate<1.25);assert.equal(media.preservesPitch,false);
+ media.pause();h.advance(220);assert.equal(h.pauses,1);assert.equal(media.paused,true);assert.equal(media.playbackRate,1.25);assert.equal(media.preservesPitch,true);
+ h.turntable.startMedia(media);h.paused.set(media,false);assert.equal(media.playbackRate,.3125);h.advance(240);
+ media.pause();h.turntable.startMedia(media);h.advance(500);assert.equal(h.pauses,1,'resume cancels a delayed direct pause');
+ media.pause();media.dispatchEvent(new h.w.Event('seeking'));h.advance(500);assert.equal(h.pauses,1);
+ Object.defineProperty(media,'seeking',{value:true});media.pause();assert.equal(h.pauses,2,'seeking must retain immediate native pause');
+ h.turntable.destroy();assert.equal(h.w.HTMLMediaElement.prototype.pause,h.originalPause);
 });

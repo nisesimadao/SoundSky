@@ -4,6 +4,7 @@ export class Turntable {
   private disposed = false;
   private events = new AbortController();
   private media: HTMLMediaElement | null = null;
+  private watchedMedia = new WeakSet<HTMLMediaElement>();
   private sources = new Set<AudioBufferSourceNode>();
   private sourceRates = new Map<AudioBufferSourceNode, number>();
   private mediaRates = new Map<HTMLMediaElement, { rate: number; pitch: boolean }>();
@@ -12,12 +13,46 @@ export class Turntable {
   private release: ReturnType<typeof setTimeout> | null = null;
   private bypass = false;
   private startingUntil = 0;
+  private pauseNative = HTMLMediaElement.prototype.pause;
+  private pauseHook: HTMLMediaElement['pause'];
+  private session = navigator.mediaSession;
+  private actionNative = this.session?.setActionHandler;
+  private actionHook: MediaSession['setActionHandler'] | null = null;
+  private actions = new Map<MediaSessionAction, MediaSessionActionHandler>();
   private startNative = typeof AudioBufferSourceNode === 'undefined' ? null : AudioBufferSourceNode.prototype.start;
   private stopNative = typeof AudioBufferSourceNode === 'undefined' ? null : AudioBufferSourceNode.prototype.stop;
   private startHook: AudioBufferSourceNode['start'] | null = null;
   private stopHook: AudioBufferSourceNode['stop'] | null = null;
   constructor() {
     const signal = this.events.signal;
+    const owner = this;
+    this.pauseHook = function(this: HTMLMediaElement) {
+      // A pause event is already too late to slow audible output. Intercept the
+      // request while the tracked media is still playing, including detached audio.
+      if (this === owner.media && !this.paused && !this.ended && !this.seeking &&
+          owner.pause(() => owner.pauseNative.call(this))) return;
+      owner.pauseNative.call(this);
+    };
+    HTMLMediaElement.prototype.pause = this.pauseHook;
+    if (this.session && typeof this.actionNative === 'function') {
+      this.actionHook = function(action, handler) {
+        const hook: MediaSessionActionHandler | null = handler ? details => {
+          if (!owner.enabled || owner.disposed || owner.bypass) { handler(details); return; }
+          if (action === 'pause' || action === 'stop') {
+            if (owner.pause(() => handler(details))) return;
+          } else if (action === 'play') {
+            owner.cancel(); owner.startingUntil = performance.now() + 10000;
+          } else if (['seekbackward', 'seekforward', 'seekto', 'nexttrack', 'previoustrack'].includes(action)) {
+            owner.cancel();
+          }
+          handler(details);
+        } : null;
+        Reflect.apply(owner.actionNative!, this, [action, hook]);
+        if (handler) owner.actions.set(action, handler);
+        else owner.actions.delete(action);
+      };
+      this.session.setActionHandler = this.actionHook;
+    }
     if (this.startNative && this.stopNative) {
       const owner = this;
       this.startHook = function(this: AudioBufferSourceNode, ...args: Parameters<AudioBufferSourceNode['start']>) {
@@ -65,27 +100,42 @@ export class Turntable {
   startMedia(media: HTMLMediaElement) {
     if (this.disposed) return;
     this.media = media;
-    if (!this.enabled || performance.now() >= this.startingUntil) return;
+    if (!this.watchedMedia.has(media)) {
+      this.watchedMedia.add(media);
+      // SoundCloud also uses audio elements that never enter the document.
+      for (const event of ['seeking', 'emptied']) media.addEventListener(event, () => this.cancel(), { signal: this.events.signal });
+    }
+    if (!this.enabled) return;
+    if (this.pending) this.cancel();
+    if (!media.paused && performance.now() >= this.startingUntil) return;
     this.rampMedia(media, false); this.startingUntil = 0;
   }
   private click = (event: MouseEvent) => {
     if (!this.enabled || this.bypass) return;
-    const control = (event.target as Element)?.closest?.<HTMLElement>('.playControl');
+    const control = (event.target as Element)?.closest?.<HTMLElement>('.playControl,.sc-button-play,.sc-button-pause,.playButton');
     if (!control) return;
-    const playing = control.classList.contains('playing') || /pause/i.test(control.getAttribute('title') || control.getAttribute('aria-label') || '');
+    const playing = control.classList.contains('playing') || control.classList.contains('m-playing') || control.classList.contains('sc-button-pause') || /pause/i.test(control.getAttribute('title') || control.getAttribute('aria-label') || '');
     if (!playing) {
       this.cancel(); this.startingUntil = performance.now() + 10000;
       return; // Original native handler starts playback; start hooks add the spin-up.
     }
+    if (!this.pause(() => {
+      const play = document.querySelector<HTMLElement>('.playControl');
+      if (play && (play.classList.contains('playing') || /pause/i.test(play.getAttribute('title') || play.getAttribute('aria-label') || ''))) play.click();
+    }, true)) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+  };
+  private pause(commit: () => void, toggle = false): boolean {
+    if (!this.enabled || this.disposed || this.bypass) return false;
     const media = [...new Set([...document.querySelectorAll<HTMLMediaElement>('audio,video'), ...(this.media ? [this.media] : [])])].filter(el => !el.paused && !el.ended);
     const sources = [...this.sources].filter(node => node.context.state === 'running');
-    if (!media.length && !sources.length) return;
-    event.preventDefault(); event.stopImmediatePropagation();
+    if (!media.length && !sources.length) return false;
     if (this.pending) {
+      if (!toggle) return true; // Repeated pause requests share the original deadline.
       clearTimeout(this.pending); this.pending = null;
       for (const node of sources) this.rampSource(node, false, true);
       for (const element of media) this.rampMedia(element, false, true);
-      return; // A second press reverses the slowing record without pausing native playback.
+      return true; // A second press reverses the slowing record without pausing native playback.
     }
     this.startingUntil = 0;
     if (this.release) clearTimeout(this.release); this.release = null;
@@ -95,15 +145,15 @@ export class Turntable {
     this.pending = setTimeout(() => {
       this.pending = null;
       const current = document.querySelector<HTMLAnchorElement>('.playbackSoundBadge__titleLink')?.href;
-      const play = document.querySelector<HTMLElement>('.playControl');
-      if (!this.enabled || current !== key || !play || !(/pause/i.test(play.getAttribute('title') || play.getAttribute('aria-label') || '') || play.classList.contains('playing'))) { this.cancel(); return; }
+      if (!this.enabled || current !== key) { this.cancel(); return; }
       this.bypass = true;
-      try { play.click(); } finally { this.bypass = false; }
+      try { commit(); } finally { this.bypass = false; }
       // Preserve the low pitch through any short native stop fade, then restore owned rates.
       for (const element of media) if (element.paused) this.restoreMedia(element);
       this.release = setTimeout(() => { this.release = null; this.restoreRates(); }, 250);
     }, 420);
-  };
+    return true;
+  }
   private rampSource(node: AudioBufferSourceNode, down: boolean, reverse = false, at = node.context.currentTime) {
     const rate = node.playbackRate;
     if (!this.sourceRates.has(node)) this.sourceRates.set(node, rate.value);
@@ -164,6 +214,12 @@ export class Turntable {
   destroy() {
     if (this.disposed) return; this.disposed = true;
     this.enabled = false; this.cancel(); this.events.abort(); this.sources.clear(); this.media = null;
+    if (HTMLMediaElement.prototype.pause === this.pauseHook) HTMLMediaElement.prototype.pause = this.pauseNative;
+    if (this.session && this.actionHook && this.session.setActionHandler === this.actionHook) {
+      for (const [action, handler] of this.actions) this.actionNative!.call(this.session, action, handler);
+      this.session.setActionHandler = this.actionNative!;
+    }
+    this.actions.clear();
     if (this.startHook && AudioBufferSourceNode.prototype.start === this.startHook) AudioBufferSourceNode.prototype.start = this.startNative!;
     if (this.stopHook && AudioBufferSourceNode.prototype.stop === this.stopHook) AudioBufferSourceNode.prototype.stop = this.stopNative!;
   }
