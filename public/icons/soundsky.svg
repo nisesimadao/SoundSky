@@ -1,10 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
 <title>SoundSky</title>
-<rect width="24" height="24" rx="4.5" fill="#0d1221"/>
-<ellipse cx="12" cy="11.7" rx="11.05" ry="3.6" transform="rotate(-34 12 11.7)" stroke="#adb8ff" stroke-width="1.0"/>
-<circle cx="12" cy="11.7" r="7.6" fill="#f2efe8"/>
-<circle cx="12" cy="11.7" r="5.0" stroke="#0d1221" stroke-width="0.42"/>
-<circle cx="12" cy="11.7" r="2.65" stroke="#0d1221" stroke-width="0.42"/>
-<circle cx="12" cy="11.7" r="0.55" fill="#0d1221"/>
-<path d="M21.160865 5.520918 A11.05 3.6 -34 0 1 2.839135 17.879082" stroke="#adb8ff" stroke-width="1.0" stroke-linecap="round"/>
+<rect width="24" height="24" rx="4.5" fill="#00aaff"/>
+<circle cx="12" cy="12" r="8" fill="#071b2d"/>
+<circle cx="17" cy="10.7" r="6.5" fill="#00aaff"/>
+<rect x="4.7" y="3" width="0.7" height="18" fill="#00aaff"/>
+<rect x="6.3" y="3" width="0.7" height="18" fill="#00aaff"/>
+<rect x="7.9" y="3" width="0.7" height="18" fill="#00aaff"/>
+<rect x="9.5" y="3" width="0.7" height="18" fill="#00aaff"/>
+<rect x="11.1" y="3" width="0.7" height="18" fill="#00aaff"/>
 </svg>

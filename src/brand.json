@@ -1,24 +1,24 @@
 {
   "size": 24,
-  "background": "#0d1221",
+  "background": "#00aaff",
+  "foreground": "#071b2d",
   "radius": 4.5,
-  "disc": {
+  "moon": {
     "cx": 12,
-    "cy": 11.7,
-    "radius": 7.6,
-    "color": "#f2efe8",
-    "grooves": [
-      5.0,
-      2.65
-    ],
-    "grooveWidth": 0.42,
-    "holeRadius": 0.55
+    "cy": 12,
+    "radius": 8,
+    "cutout": {
+      "cx": 17,
+      "cy": 10.7,
+      "radius": 6.5
+    }
   },
-  "orbit": {
-    "rx": 11.05,
-    "ry": 3.6,
-    "rotation": -34,
-    "color": "#adb8ff",
-    "strokeWidth": 1.0
+  "bars": {
+    "count": 5,
+    "firstGap": 4.7,
+    "step": 1.6,
+    "gapWidth": 0.7,
+    "top": 3,
+    "height": 18
   }
 }

@@ -20,17 +20,13 @@ const paths: Record<string, string> = {
   expand: '<path d="M9 3H3v6m12-6h6v6M3 15v6h6m12-6v6h-6"/>',
   tune: '<path d="M4 21v-7m0-4V3m8 18v-9m0-4V3m8 18v-5m0-4V3M2 14h4M10 8h4M18 16h4"/>',
 };
-const { disc, orbit } = brand;
-const angle = orbit.rotation * Math.PI / 180;
-const orbitX = orbit.rx * Math.cos(angle), orbitY = orbit.rx * Math.sin(angle);
+const { moon, bars } = brand;
 const brandIcon = [
   `<svg viewBox="0 0 ${brand.size} ${brand.size}" fill="none" aria-hidden="true">`,
   `<rect width="${brand.size}" height="${brand.size}" rx="${brand.radius}" fill="${brand.background}"/>`,
-  `<ellipse cx="${disc.cx}" cy="${disc.cy}" rx="${orbit.rx}" ry="${orbit.ry}" transform="rotate(${orbit.rotation} ${disc.cx} ${disc.cy})" stroke="${orbit.color}" stroke-width="${orbit.strokeWidth}"/>`,
-  `<circle cx="${disc.cx}" cy="${disc.cy}" r="${disc.radius}" fill="${disc.color}"/>`,
-  ...disc.grooves.map(radius => `<circle cx="${disc.cx}" cy="${disc.cy}" r="${radius}" stroke="${brand.background}" stroke-width="${disc.grooveWidth}"/>`),
-  `<circle cx="${disc.cx}" cy="${disc.cy}" r="${disc.holeRadius}" fill="${brand.background}"/>`,
-  `<path d="M${disc.cx + orbitX} ${disc.cy + orbitY} A${orbit.rx} ${orbit.ry} ${orbit.rotation} 0 1 ${disc.cx - orbitX} ${disc.cy - orbitY}" stroke="${orbit.color}" stroke-width="${orbit.strokeWidth}" stroke-linecap="round"/>`,
+  `<circle cx="${moon.cx}" cy="${moon.cy}" r="${moon.radius}" fill="${brand.foreground}"/>`,
+  `<circle cx="${moon.cutout.cx}" cy="${moon.cutout.cy}" r="${moon.cutout.radius}" fill="${brand.background}"/>`,
+  ...Array.from({ length: bars.count }, (_, i) => `<rect x="${bars.firstGap + i * bars.step}" y="${bars.top}" width="${bars.gapWidth}" height="${bars.height}" fill="${brand.background}"/>`),
   '</svg>',
 ].join('');
 

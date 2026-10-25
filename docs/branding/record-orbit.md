@@ -1,4 +1,6 @@
-# SoundSky: record + orbit
+# SoundSky: record + orbit (archived)
+
+This earlier concept was superseded by [moon + waveform](moon-wave.md). The shared source and production files listed below now contain the current mark.
 
 An ivory record with a periwinkle orbit on a deep navy tile. The generated concept was redrawn as circles and an elliptical arc so the artwork stays editable and scales to toolbar sizes.
 
