@@ -4,7 +4,7 @@ import {JSDOM} from 'jsdom';
 import {build} from 'esbuild';
 const bundle=await build({entryPoints:['src/turntable.ts'],bundle:true,write:false,format:'iife',globalName:'recordTest',footer:{js:'window.recordTest=recordTest;'}});
 function setup(t){
- const dom=new JSDOM('<button class="playControl" title="Play current"></button><a class="playbackSoundBadge__titleLink" href="/artist/track"></a><input>',{url:'https://soundcloud.com/discover',runScripts:'outside-only'}),w=dom.window;t.after(()=>dom.window.close());
+ const dom=new JSDOM('<button class="playControl" title="Play current"></button><a class="playbackSoundBadge__titleLink" href="/artist/track"></a><input>',{url:'https://soundcloud.com/discover',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;t.after(()=>dom.window.close());
  let time=0,id=0,clicks=0,source=null;const timers=new Map(),frames=new Map();w.performance.now=()=>time;w.setTimeout=(f,ms)=>{timers.set(++id,{f,at:time+ms});return id;};w.clearTimeout=i=>timers.delete(i);w.requestAnimationFrame=f=>{frames.set(++id,f);return id;};w.cancelAnimationFrame=i=>frames.delete(i);
  class Rate{value=1;calls=[];cancelScheduledValues(at){this.calls.push(['cancel',at]);}cancelAndHoldAtTime(at){this.calls.push(['hold',at]);}setValueAtTime(value,at){this.value=value;this.calls.push(['value',value,at]);}setValueCurveAtTime(curve,at,duration){this.value=curve[0];this.calls.push(['curve',[...curve],at,duration]);}}
  const context={state:'running',currentTime:0};
@@ -16,7 +16,7 @@ function setup(t){
  w.HTMLMediaElement.prototype.pause=function(){pauses++;paused.set(this,true);};const originalPause=w.HTMLMediaElement.prototype.pause;
  w.AudioBufferSourceNode=Source;const originalStart=Source.prototype.start,originalStop=Source.prototype.stop;w.eval(bundle.outputFiles[0].text);const turntable=new w.recordTest.Turntable();t.after(()=>turntable.destroy());const button=w.document.querySelector('button');
  button.onclick=()=>{clicks++;const playing=button.classList.toggle('playing');button.title=playing?'Pause current':'Play current';if(playing){source=new Source();source.start(0,5,10);}else source.stop(context.currentTime);};
- const advance=ms=>{time+=ms;context.currentTime=time/1000;for(const [id,callback]of [...frames]){frames.delete(id);callback(time);}for(const [id,timer]of [...timers])if(timer.at<=time){timers.delete(id);timer.f();}};
+ const advance=(ms,draw=true)=>{time+=ms;context.currentTime=time/1000;if(draw)for(const [id,callback]of [...frames]){frames.delete(id);callback(time);}for(const [id,timer]of [...timers])if(timer.at<=time){timers.delete(id);timer.f();}};
  return {w,turntable,button,Source,context,originalStart,originalStop,originalPause,originalAction,session,actions,paused,timers,frames,advance,get pauses(){return pauses;},get source(){return source;},get clicks(){return clicks;}};
 }
 test('record effect is opt-in, slows the live source before native pause and accelerates a fresh source on resume',t=>{
@@ -166,5 +166,49 @@ test('Space in editors, dialogs and menus retains its existing behavior',t=>{
  for(const markup of ['<textarea></textarea>','<select><option>One</option></select>','<div contenteditable="true"><span>Text</span></div>','<div role="textbox" tabindex="0"></div>','<div role="dialog"><button>Save</button></div>','<div role="menu"><button role="menuitem">More</button></div>','<div data-soundsky-menu><button>Repost</button></div>']){
   const holder=h.w.document.createElement('div');holder.innerHTML=markup;h.w.document.body.append(holder);const control=holder.querySelector('button,span')||holder.firstChild;
   assert.equal(control.dispatchEvent(new h.w.KeyboardEvent('keydown',{code:'Space',key:' ',bubbles:true,composed:true,cancelable:true})),true);assert.equal(h.clicks,0);holder.remove();
+ }
+});
+
+test('hidden autoplay and track changes never leave detached media at the spin-up rate',t=>{
+ const h=setup(t);h.turntable.setEnabled(true);Object.defineProperty(h.w.document,'hidden',{value:true,configurable:true});
+ const media=h.w.document.createElement('audio');media.playbackRate=1.25;media.preservesPitch=true;
+ for(let track=0;track<3;track++){
+  h.w.document.querySelector('a').href='/artist/track-'+track;h.paused.set(media,true);media.dispatchEvent(new h.w.Event('emptied'));
+  h.turntable.startMedia(media);h.paused.set(media,false);
+  assert.equal(media.playbackRate,1.25,'background playback must start at the original speed');assert.equal(media.preservesPitch,true);
+  h.advance(600000,false);assert.equal(media.playbackRate,1.25);assert.equal(h.frames.size,0);assert.equal(h.timers.size,0);
+ }
+});
+
+test('hiding during media spin-up restores speed and pitch without another animation frame',t=>{
+ const h=setup(t),media=h.w.document.createElement('audio');media.playbackRate=1.5;media.preservesPitch=false;h.turntable.setEnabled(true);
+ h.turntable.startMedia(media);h.paused.set(media,false);h.advance(80);assert.ok(media.playbackRate<1.5);
+ Object.defineProperty(h.w.document,'hidden',{value:true,configurable:true});h.w.document.dispatchEvent(new h.w.Event('visibilitychange'));
+ assert.equal(media.playbackRate,1.5);assert.equal(media.preservesPitch,false);assert.equal(h.frames.size,0);assert.equal(h.timers.size,0);
+ h.advance(600000,false);assert.equal(media.playbackRate,1.5);
+});
+
+test('media spin-up completes on its deadline even if no animation frames run',t=>{
+ const h=setup(t),media=h.w.document.createElement('audio');media.playbackRate=1.25;media.preservesPitch=true;h.turntable.setEnabled(true);
+ h.turntable.startMedia(media);h.paused.set(media,false);h.advance(239,false);assert.ok(media.playbackRate<1.25);
+ h.advance(1,false);assert.equal(media.playbackRate,1.25);assert.equal(media.preservesPitch,true);assert.equal(h.frames.size,0);assert.equal(h.timers.size,0);
+});
+
+test('hiding during slowdown restores media rate but still commits the requested pause',t=>{
+ const h=setup(t),media=h.w.document.createElement('audio');media.preservesPitch=true;h.turntable.setEnabled(true);h.turntable.startMedia(media);h.paused.set(media,false);h.advance(240);
+ media.pause();h.advance(150);assert.ok(media.playbackRate<1);assert.equal(h.pauses,0);
+ Object.defineProperty(h.w.document,'hidden',{value:true,configurable:true});h.w.document.dispatchEvent(new h.w.Event('visibilitychange'));
+ assert.equal(media.playbackRate,1);assert.equal(media.preservesPitch,true);assert.equal(h.frames.size,0);
+ h.advance(270,false);assert.equal(h.pauses,1);assert.equal(media.paused,true);assert.equal(media.playbackRate,1);
+ h.advance(250,false);h.turntable.startMedia(media);h.paused.set(media,false);h.advance(600000,false);assert.equal(media.playbackRate,1);assert.equal(h.frames.size,0);
+});
+
+test('disabling or destroying a media ramp cancels its completion timer and restores owned settings',t=>{
+ for(const finish of ['disable','destroy']){
+  const h=setup(t),media=h.w.document.createElement('audio');media.playbackRate=1.25;media.preservesPitch=true;h.turntable.setEnabled(true);
+  h.turntable.startMedia(media);h.paused.set(media,false);assert.ok(h.timers.size>0);
+  if(finish==='disable')h.turntable.setEnabled(false);else h.turntable.destroy();
+  assert.equal(media.playbackRate,1.25);assert.equal(media.preservesPitch,true);assert.equal(h.frames.size,0);assert.equal(h.timers.size,0);
+  media.playbackRate=1.5;h.advance(1000,false);assert.equal(media.playbackRate,1.5,'a stale completion must not overwrite later native rate changes');
  }
 });

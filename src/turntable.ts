@@ -9,6 +9,7 @@ export class Turntable {
   private sourceRates = new Map<AudioBufferSourceNode, number>();
   private mediaRates = new Map<HTMLMediaElement, { rate: number; pitch: boolean }>();
   private frames = new Map<HTMLMediaElement, number>();
+  private mediaCompletion = new Map<HTMLMediaElement, ReturnType<typeof setTimeout>>();
   private pending: ReturnType<typeof setTimeout> | null = null;
   private release: ReturnType<typeof setTimeout> | null = null;
   private bypass = false;
@@ -91,6 +92,11 @@ export class Turntable {
       if (!event.repeat) play.click();
     }, { capture: true, signal });
     document.addEventListener('seeking', () => this.cancel(), { capture: true, signal });
+    document.addEventListener('visibilitychange', () => {
+      // Hidden tabs suspend animation frames. Never leave their media waiting for
+      // a visual update to return to its original playback speed and pitch.
+      if (document.hidden) for (const media of this.mediaRates.keys()) this.restoreMedia(media);
+    }, { signal });
     document.addEventListener('pointerdown', event => {
       if ((event.target as Element)?.closest?.('.skipControl__next,.skipControl__previous,.playbackTimeline__progressWrapper')) this.cancel();
     }, { capture: true, signal });
@@ -178,20 +184,32 @@ export class Turntable {
     } catch { this.restoreSource(node); }
   }
   private rampMedia(media: HTMLMediaElement, down: boolean, reverse = false) {
+    if (document.hidden) { this.restoreMedia(media); return; }
     if (!this.mediaRates.has(media)) this.mediaRates.set(media, { rate: media.playbackRate, pitch: media.preservesPitch });
     const original = this.mediaRates.get(media)!;
     const oldFrame = this.frames.get(media); if (oldFrame) cancelAnimationFrame(oldFrame);
+    const oldCompletion = this.mediaCompletion.get(media); if (oldCompletion !== undefined) clearTimeout(oldCompletion);
     const from = down || reverse ? media.playbackRate : original.rate * .25;
     const to = down ? original.rate * .25 : original.rate;
     media.preservesPitch = false; media.playbackRate = from;
     const at = performance.now(), duration = down ? 420 : 240;
+    const complete = () => {
+      media.playbackRate = to;
+      const frame = this.frames.get(media); if (frame !== undefined) cancelAnimationFrame(frame);
+      this.frames.delete(media);
+      const timer = this.mediaCompletion.get(media); if (timer !== undefined) clearTimeout(timer);
+      this.mediaCompletion.delete(media);
+      if (!down) this.restoreMedia(media);
+    };
     const tick = (now: number) => {
       const t = Math.min(1, (now - at) / duration), ease = t * t * (3 - 2 * t);
       media.playbackRate = from + (to - from) * ease;
       if (t < 1) this.frames.set(media, requestAnimationFrame(tick));
-      else { this.frames.delete(media); if (!down) this.restoreMedia(media); }
+      else complete();
     };
     this.frames.set(media, requestAnimationFrame(tick));
+    // Frame delivery is only for smooth interpolation, never for completion.
+    this.mediaCompletion.set(media, setTimeout(complete, duration));
   }
   private restoreSource(node: AudioBufferSourceNode) {
     const base = this.sourceRates.get(node); if (base === undefined) return;
@@ -204,6 +222,7 @@ export class Turntable {
   }
   private restoreMedia(media: HTMLMediaElement) {
     const frame = this.frames.get(media); if (frame) cancelAnimationFrame(frame); this.frames.delete(media);
+    const timer = this.mediaCompletion.get(media); if (timer !== undefined) clearTimeout(timer); this.mediaCompletion.delete(media);
     const original = this.mediaRates.get(media);
     if (original) { media.playbackRate = original.rate; media.preservesPitch = original.pitch; this.mediaRates.delete(media); }
   }
