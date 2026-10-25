@@ -146,3 +146,25 @@ test('playback state synchronization leaves disabled and disposed sessions under
  h.turntable.setEnabled(false);h.turntable.syncPlaybackState('playing');assert.equal(h.session.playbackState,'paused');
  h.turntable.destroy();h.turntable.syncPlaybackState('none');assert.equal(h.session.playbackState,'paused');
 });
+
+test('Space on focused SoundCloud buttons and links uses record transport before native shortcuts',t=>{
+ const h=setup(t);h.turntable.setEnabled(true);
+ let nativeShortcuts=0;
+ h.w.document.addEventListener('keydown',event=>{if(event.code==='Space'){nativeShortcuts++;h.button.onclick();}});
+ const keyboard=(element,repeat=false)=>element.dispatchEvent(new h.w.KeyboardEvent('keydown',{code:'Space',key:' ',repeat,bubbles:true,composed:true,cancelable:true}));
+ for(const markup of ['<button>Like</button>','<a href="/artist">Artist</a>','<div role="button" tabindex="0"><span>Queue</span></div>','<button class="playControl" role="button">Play</button>']){
+  const holder=h.w.document.createElement('div');holder.innerHTML=markup;h.w.document.body.append(holder);const control=holder.firstChild;control.focus();assert.equal(h.w.document.activeElement,control);
+  const before=h.clicks;assert.equal(keyboard(control),false);assert.equal(h.clicks,before+1);assert.equal(h.source.playbackRate.calls.at(-1)[3],.24);h.advance(240);
+  assert.equal(keyboard(control.lastElementChild||control),false);assert.equal(h.clicks,before+1);assert.equal(h.source.stops.length,0);assert.equal(h.source.playbackRate.calls.at(-1)[3],.42);
+  assert.equal(keyboard(control,true),false);h.advance(420);assert.equal(h.clicks,before+2);assert.equal(h.source.stops.length,1);h.advance(250);holder.remove();
+ }
+ assert.equal(nativeShortcuts,0,'native shortcuts must not stop the source ahead of the record effect');
+});
+
+test('Space in editors, dialogs and menus retains its existing behavior',t=>{
+ const h=setup(t);h.turntable.setEnabled(true);
+ for(const markup of ['<textarea></textarea>','<select><option>One</option></select>','<div contenteditable="true"><span>Text</span></div>','<div role="textbox" tabindex="0"></div>','<div role="dialog"><button>Save</button></div>','<div role="menu"><button role="menuitem">More</button></div>','<div data-soundsky-menu><button>Repost</button></div>']){
+  const holder=h.w.document.createElement('div');holder.innerHTML=markup;h.w.document.body.append(holder);const control=holder.querySelector('button,span')||holder.firstChild;
+  assert.equal(control.dispatchEvent(new h.w.KeyboardEvent('keydown',{code:'Space',key:' ',bubbles:true,composed:true,cancelable:true})),true);assert.equal(h.clicks,0);holder.remove();
+ }
+});

@@ -76,14 +76,14 @@ export class Turntable {
     window.addEventListener('click', this.click, { capture: true, signal });
     window.addEventListener('keydown', event => {
       if (!this.enabled || event.code !== 'Space' || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-      // Space from the shadow-root player was previously skipped. Its isolated-world
-      // handler then competed with SoundCloud's native shortcut, bypassing the record.
-      // Inspect the composed path so text fields and settings controls keep their
-      // normal Space behaviour even inside a shadow root.
+      // SoundCloud's global Space shortcut also runs while its buttons and links
+      // have focus. Route those through the record before the native shortcut can
+      // stop audio directly; preserve editing, menus and SoundSky control activation.
       const path = event.composedPath();
       const elements = path.filter((node): node is Element => node instanceof Element);
-      if (elements.some(el => el.matches('input,textarea,select,[contenteditable],[role="textbox"],a,[role="button"],button:not(.playControl):not(.play-toggle)'))) return;
+      if (elements.some(el => el.matches('input,textarea,select,[contenteditable],[role="textbox"],[role="dialog"],[role="menu"],[role="menuitem"],[role="tab"],[data-soundsky-menu],[id^="repost-dropdown-"],.repostDropdown'))) return;
       const fromPlayer = elements.some(el => el.matches('soundsky-player'));
+      if (fromPlayer && elements.some(el => el.matches('a,button:not(.playControl):not(.play-toggle),[role="button"]:not(.playControl):not(.play-toggle)'))) return;
       if (event.defaultPrevented && !fromPlayer) return;
       const play = document.querySelector<HTMLElement>('.playControl');
       if (!play) return;
