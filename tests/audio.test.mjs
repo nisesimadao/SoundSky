@@ -54,10 +54,22 @@ function graphHarness(t) {
  const context={state:'running',sampleRate:48000,createAnalyser(){analysers++;return new Analyser(this);}};
  const node=new Node(context),destination=new Destination(context);
  const nativeConnect=Node.prototype.connect,nativeDisconnect=Node.prototype.disconnect,nativePlay=w.HTMLMediaElement.prototype.play;
+ const session={playbackState:'none',setActionHandler(){}};
+ Object.defineProperty(w.navigator,'mediaSession',{value:session});
  const send=active=>w.dispatchEvent(new w.MessageEvent('message',{source:w,origin:w.location.origin,data:{type:'soundsky:analysis',active}}));
  w.eval(compiled.outputFiles[0].text);
- return {w,Node,node,destination,context,frames,send,nativeConnect,nativeDisconnect,nativePlay,analysers:()=>analysers};
+ return {w,Node,node,destination,context,frames,send,session,nativeConnect,nativeDisconnect,nativePlay,analysers:()=>analysers};
 }
+test('turntable bridge validates and forwards native playback state to the media session',t=>{
+ const h=graphHarness(t);
+ const send=(data,origin=h.w.location.origin)=>h.w.dispatchEvent(new h.w.MessageEvent('message',{source:h.w,origin,data:{type:'soundsky:turntable',...data}}));
+ send({enabled:true,playbackState:'playing'});assert.equal(h.session.playbackState,'playing');
+ send({enabled:true,playbackState:'paused'});assert.equal(h.session.playbackState,'paused');
+ send({playbackState:'invalid'});assert.equal(h.session.playbackState,'paused');
+ send({playbackState:'playing'},'https://example.com');assert.equal(h.session.playbackState,'paused');
+ send({playbackState:'none'});assert.equal(h.session.playbackState,'none');
+ send({enabled:false,playbackState:'playing'});assert.equal(h.session.playbackState,'none');
+});
 test('reinjecting audio hooks retains exactly one tap and one animation loop',t=>{
  const h=graphHarness(t);h.node.connect(h.destination);h.send(true);
  const hook=h.Node.prototype.connect;h.w.eval(compiled.outputFiles[0].text);h.send(true);

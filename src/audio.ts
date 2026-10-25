@@ -156,7 +156,12 @@ import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-an
   }, { capture: true, signal: events.signal });
   window.addEventListener('message', event => {
     if (event.source !== window || event.origin !== location.origin) return;
-    if (event.data?.type === 'soundsky:turntable') { if (typeof event.data.enabled === 'boolean') turntable.setEnabled(event.data.enabled); return; }
+    if (event.data?.type === 'soundsky:turntable') {
+      if (typeof event.data.enabled === 'boolean') turntable.setEnabled(event.data.enabled);
+      const state = event.data.playbackState;
+      if (state === 'playing' || state === 'paused' || state === 'none') turntable.syncPlaybackState(state);
+      return;
+    }
     if (event.data?.type !== 'soundsky:analysis') return;
     if (event.data.active !== true) { deactivate(); return; }
     if (active) return;

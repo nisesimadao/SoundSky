@@ -121,3 +121,28 @@ test('direct HTML media pause slows detached output and resumes with original ra
  Object.defineProperty(media,'seeking',{value:true});media.pause();assert.equal(h.pauses,2,'seeking must retain immediate native pause');
  h.turntable.destroy();assert.equal(h.w.HTMLMediaElement.prototype.pause,h.originalPause);
 });
+
+test('media key toggle resumes after delayed pause using the native playback state',t=>{
+ const h=setup(t);h.turntable.setEnabled(true);
+ const nativeClick=h.button.onclick;
+ h.button.onclick=()=>{nativeClick();h.turntable.syncPlaybackState(h.button.classList.contains('playing')?'playing':'paused');};
+ h.session.setActionHandler('play',()=>h.button.click());
+ h.session.setActionHandler('pause',()=>h.button.click());
+ const mediaKey=()=>{const action=h.session.playbackState==='playing'?'pause':'play';h.actions.get(action)({action});};
+ h.turntable.syncPlaybackState('paused');mediaKey();assert.equal(h.session.playbackState,'playing');assert.equal(h.clicks,1);
+ mediaKey();h.advance(419);assert.equal(h.session.playbackState,'playing');assert.equal(h.clicks,1);
+ h.advance(1);assert.equal(h.session.playbackState,'paused');assert.equal(h.clicks,2);
+ mediaKey();assert.equal(h.session.playbackState,'playing');assert.equal(h.clicks,3);
+ mediaKey();h.advance(420);assert.equal(h.session.playbackState,'paused');assert.equal(h.clicks,4);
+ // Button-driven resume and pause must publish the same OS state.
+ h.button.click();assert.equal(h.session.playbackState,'playing');h.button.click();h.advance(420);assert.equal(h.session.playbackState,'paused');
+ h.turntable.syncPlaybackState('none');assert.equal(h.session.playbackState,'none');
+});
+
+test('playback state synchronization leaves disabled and disposed sessions under native control',t=>{
+ const h=setup(t);h.session.playbackState='none';h.turntable.syncPlaybackState('playing');assert.equal(h.session.playbackState,'none');
+ h.turntable.setEnabled(true);h.turntable.syncPlaybackState('paused');assert.equal(h.session.playbackState,'paused');
+ h.session.playbackState='playing';h.turntable.syncPlaybackState('paused');assert.equal(h.session.playbackState,'paused','a stale OS state must be corrected even when the native state has not changed');
+ h.turntable.setEnabled(false);h.turntable.syncPlaybackState('playing');assert.equal(h.session.playbackState,'paused');
+ h.turntable.destroy();h.turntable.syncPlaybackState('none');assert.equal(h.session.playbackState,'paused');
+});

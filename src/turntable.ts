@@ -96,6 +96,11 @@ export class Turntable {
     }, { capture: true, signal });
   }
   setEnabled(enabled: boolean) { if (this.disposed) return; this.enabled = enabled; if (!enabled) this.cancel(); }
+  /** Use the native player's state, rather than AudioContext activity, for OS controls. */
+  syncPlaybackState(state: MediaSessionPlaybackState) {
+    if (this.disposed || !this.enabled || !this.session) return;
+    if (this.session.playbackState !== state) this.session.playbackState = state;
+  }
   /** Called before native media.play(), so pitch correction is disabled before sound starts. */
   startMedia(media: HTMLMediaElement) {
     if (this.disposed) return;

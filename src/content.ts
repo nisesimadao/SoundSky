@@ -461,6 +461,7 @@ class SoundSky {
     }
     this.state = state;
     this.transport.sync(state);
+    this.syncTurntable();
     this.syncAnalysis();
     this.syncNativeCover(); this.syncPrefetch();
     this.el('.player').dataset.playing = String(state.playing);
@@ -765,8 +766,12 @@ class SoundSky {
     }catch{/* no playlist context */}
     this.siteTheme.setCoverState({trackKey:this.state.track.key,contextKey,playing:this.state.playing,muted:this.state.muted,maximum:this.settings.pulseMax,sensitivity:this.settings.pulseSensitivity});
   }
+  private syncTurntable() {
+    window.postMessage({type:'soundsky:turntable',enabled:!this.disposed&&this.settings.turntable,
+      playbackState:this.state.track.key ? (this.state.playing ? 'playing' : 'paused') : 'none'},location.origin);
+  }
   private applySettings() {
-    window.postMessage({type:'soundsky:turntable',enabled:!this.disposed&&this.settings.turntable},location.origin);
+    this.syncTurntable();
     this.el('#prefetch-status').hidden=this.settings.prefetchCount===0;
     this.siteTheme.setPreferences(this.settings);
     this.siteTheme.setEnabled(this.settings.modernSoundCloud);
