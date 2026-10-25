@@ -1,11 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
 <title>SoundSky</title>
 <rect width="24" height="24" rx="4.5" fill="#00aaff"/>
-<circle cx="12" cy="12" r="8" fill="#071b2d"/>
-<circle cx="17" cy="10.7" r="6.5" fill="#00aaff"/>
-<rect x="4.7" y="3" width="0.7" height="18" fill="#00aaff"/>
-<rect x="6.3" y="3" width="0.7" height="18" fill="#00aaff"/>
-<rect x="7.9" y="3" width="0.7" height="18" fill="#00aaff"/>
-<rect x="9.5" y="3" width="0.7" height="18" fill="#00aaff"/>
-<rect x="11.1" y="3" width="0.7" height="18" fill="#00aaff"/>
+<circle cx="13.6" cy="12" r="7.6" fill="#071b2d"/>
+<circle cx="10.3" cy="10.7" r="6.8" fill="#00aaff"/>
+<rect x="6" y="4.4" width="5.9" height="15.2" fill="#00aaff"/>
+<rect x="2.5" y="12.8" width="0.2" height="3.8" rx="0.1" fill="#071b2d"/>
+<rect x="3.1" y="12.04" width="0.4" height="5.32" rx="0.2" fill="#071b2d"/>
+<rect x="3.9" y="10.9" width="0.4" height="7.6" rx="0.2" fill="#071b2d"/>
+<rect x="4.5" y="10.52" width="0.6" height="8.36" rx="0.3" fill="#071b2d"/>
+<rect x="5.3" y="10.9" width="0.6" height="7.98" rx="0.3" fill="#071b2d"/>
+<rect x="6.1" y="8.62" width="0.6" height="10.26" rx="0.3" fill="#071b2d"/>
+<rect x="6.9" y="7.1" width="0.6" height="11.78" rx="0.3" fill="#071b2d"/>
+<rect x="7.7" y="6.34" width="0.6" height="12.54" rx="0.3" fill="#071b2d"/>
+<rect x="8.5" y="5.96" width="0.6" height="12.92" rx="0.3" fill="#071b2d"/>
+<rect x="9.3" y="6.34" width="0.6" height="12.54" rx="0.3" fill="#071b2d"/>
+<rect x="10.1" y="6.72" width="0.6" height="12.16" rx="0.3" fill="#071b2d"/>
+<rect x="10.9" y="5.2" width="0.6" height="13.68" rx="0.3" fill="#071b2d"/>
 </svg>

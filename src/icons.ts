@@ -26,7 +26,8 @@ const brandIcon = [
   `<rect width="${brand.size}" height="${brand.size}" rx="${brand.radius}" fill="${brand.background}"/>`,
   `<circle cx="${moon.cx}" cy="${moon.cy}" r="${moon.radius}" fill="${brand.foreground}"/>`,
   `<circle cx="${moon.cutout.cx}" cy="${moon.cutout.cy}" r="${moon.cutout.radius}" fill="${brand.background}"/>`,
-  ...Array.from({ length: bars.count }, (_, i) => `<rect x="${bars.firstGap + i * bars.step}" y="${bars.top}" width="${bars.gapWidth}" height="${bars.height}" fill="${brand.background}"/>`),
+  `<rect x="${moon.cx - moon.radius}" y="${moon.cy - moon.radius}" width="${moon.split - moon.cx + moon.radius}" height="${moon.radius * 2}" fill="${brand.background}"/>`,
+  ...bars.map(bar => `<rect x="${bar.x}" y="${bar.y}" width="${bar.width}" height="${bar.height}" rx="${bar.width / 2}" fill="${brand.foreground}"/>`),
   '</svg>',
 ].join('');
 
