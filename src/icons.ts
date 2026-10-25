@@ -20,6 +20,18 @@ const paths: Record<string, string> = {
   expand: '<path d="M9 3H3v6m12-6h6v6M3 15v6h6m12-6v6h-6"/>',
   tune: '<path d="M4 21v-7m0-4V3m8 18v-9m0-4V3m8 18v-5m0-4V3M2 14h4M10 8h4M18 16h4"/>',
 };
-const brandIcon = `<svg viewBox="0 0 ${brand.size} ${brand.size}" fill="none" aria-hidden="true"><rect width="${brand.size}" height="${brand.size}" rx="${brand.radius}" fill="${brand.background}"/>${brand.waves.map(wave => `<polyline points="${wave.points.map(point => point.join(',')).join(' ')}" stroke="${wave.color}" stroke-width="${brand.strokeWidth}" stroke-linejoin="round"/>`).join('')}</svg>`;
+const { disc, orbit } = brand;
+const angle = orbit.rotation * Math.PI / 180;
+const orbitX = orbit.rx * Math.cos(angle), orbitY = orbit.rx * Math.sin(angle);
+const brandIcon = [
+  `<svg viewBox="0 0 ${brand.size} ${brand.size}" fill="none" aria-hidden="true">`,
+  `<rect width="${brand.size}" height="${brand.size}" rx="${brand.radius}" fill="${brand.background}"/>`,
+  `<ellipse cx="${disc.cx}" cy="${disc.cy}" rx="${orbit.rx}" ry="${orbit.ry}" transform="rotate(${orbit.rotation} ${disc.cx} ${disc.cy})" stroke="${orbit.color}" stroke-width="${orbit.strokeWidth}"/>`,
+  `<circle cx="${disc.cx}" cy="${disc.cy}" r="${disc.radius}" fill="${disc.color}"/>`,
+  ...disc.grooves.map(radius => `<circle cx="${disc.cx}" cy="${disc.cy}" r="${radius}" stroke="${brand.background}" stroke-width="${disc.grooveWidth}"/>`),
+  `<circle cx="${disc.cx}" cy="${disc.cy}" r="${disc.holeRadius}" fill="${brand.background}"/>`,
+  `<path d="M${disc.cx + orbitX} ${disc.cy + orbitY} A${orbit.rx} ${orbit.ry} ${orbit.rotation} 0 1 ${disc.cx - orbitX} ${disc.cy - orbitY}" stroke="${orbit.color}" stroke-width="${orbit.strokeWidth}" stroke-linecap="round"/>`,
+  '</svg>',
+].join('');
 
 export const icon = (name: string) => name === 'sky' ? brandIcon : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.music}</svg>`;
