@@ -1,19 +1,25 @@
-# SoundSky: moon + waveform
+# SoundSky: selected B mark
 
-The mark is one left-facing crescent. Its left portion is divided into bars, and its right portion is solid. Both the outer circle and the inner circular cutout apply to every bar. There is no separate cloud-shaped waveform.
+The user selected concept B from the image-generated A/B/C board on 2026-10-27 and requested alignment refinements. The production artwork redraws that concept as a left-facing crescent beside five rounded audio bars, on a soft blue tile with a dark navy symbol.
 
-The cyan background (`#00aaff`) and dark navy mark (`#071b2d`) retain the chosen inverted-orange direction. The background fills the square canvas, matching the treatment of the reference icon. The crescent is centered by its visible silhouette rather than the center of its outer circle.
+## Alignment
 
-Six bars use a width of roughly 1 unit with a roughly 0.3-unit gap at a 24-unit canvas size. The earlier twelve bars were too thin because their horizontal dimensions had been compressed while their heights were stretched. The new bars are cut from the actual moon outline; their heights do not borrow SoundCloud's cloud profile.
+- All five bars use the same width (1.5 units), corner radius (0.75), and pitch (2), leaving a 0.5-unit gap on a 24-unit canvas.
+- Their heights grow evenly: 3.4, 5.25, 7.1, 8.95, and 10.8 units.
+- Every bar is centered on y = 12, matching the crescent's horizontal centerline.
+- The moon's upper and lower curves mirror around y = 12. The tips have a subtle radius.
+- The last bar is separated from the moon, including its rounded ends.
+- The symbol's horizontal bounds are approximately x = 3.4 to 20.5, keeping its left and right margins balanced.
+- Background: `#60a3f7`. Mark: `#111329`. Tile corner radius: 4.5 units.
 
-The dark mark occupies approximately 16–17% of the image, compared with approximately 17% for the reference's white mark. The different silhouettes retain their own aspect ratios.
+## Sources and regeneration
 
-- Shared geometry and colors: `src/brand.json`
-- In-page SVG: `src/icons.ts` (a separate mask ID for each instance)
+- Shared geometry: `src/brand.json`
+- In-page SVG: `src/icons.ts`
 - Editable vector: `public/icons/soundsky.svg`
-- Extension icons: `public/icons/{16,32,48,128}.png`
+- Extension PNGs: `public/icons/{16,32,48,128}.png`
 - Regenerate with `python3 scripts/icons.py` (requires Pillow), then `npm run build`.
 
-Current comparison: `artifacts/branding/correction/moon-final-comparison.png`. SVG rendering was checked independently using macOS Quick Look. The PNG mark was also checked against the outer circle and inner cutout to ensure no waveform pixels extend outside the crescent.
+The same cubic curves produce both the SVG path and supersampled PNGs. No masks or shared SVG IDs are required.
 
-Reference: [SoundCloud website touch icon](https://a-v2.sndcdn.com/assets/images/sc-icons/ios-a62dfc8fe7.png), inspected on 2026-10-26. Earlier studies remain under `artifacts/branding/` and are not the current production mark.
+The original board and full built-in image-generation prompt are saved locally in `artifacts/branding/redesign-2026-10-27/`. The selected B crop, vector rendering, size comparison, and verification script are in `artifacts/branding/selected-b/`.

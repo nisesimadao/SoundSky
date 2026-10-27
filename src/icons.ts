@@ -21,22 +21,14 @@ const paths: Record<string, string> = {
   tune: '<path d="M4 21v-7m0-4V3m8 18v-9m0-4V3m8 18v-5m0-4V3M2 14h4M10 8h4M18 16h4"/>',
 };
 const { moon, wave } = brand;
-let brandSequence = 0;
-function brandIcon() {
-  // Each use owns its mask so hidden or replaced logos cannot affect another SVG.
-  const maskId = `soundsky-moon-${++brandSequence}`;
-  return [
-    `<svg viewBox="0 0 ${brand.size} ${brand.size}" fill="none" aria-hidden="true">`,
-    `<rect width="${brand.size}" height="${brand.size}" rx="${brand.radius}" fill="${brand.background}"/>`,
-    `<defs><mask id="${maskId}" maskUnits="userSpaceOnUse" x="0" y="0" width="${brand.size}" height="${brand.size}" style="mask-type:luminance">`,
-    `<circle cx="${moon.cx}" cy="${moon.cy}" r="${moon.radius}" fill="white"/>`,
-    `<circle cx="${moon.cutout.cx}" cy="${moon.cutout.cy}" r="${moon.cutout.radius}" fill="black"/>`,
-    '</mask></defs>',
-    `<g mask="url(#${maskId})" fill="${brand.foreground}">`,
-    `<rect x="${wave.split}" width="${brand.size - wave.split}" height="${brand.size}"/>`,
-    ...Array.from({ length: wave.count }, (_, i) => `<rect x="${wave.start + i * wave.pitch}" width="${wave.width}" height="${brand.size}"/>`),
-    '</g></svg>',
-  ].join('');
-}
+const moonPath = `M${moon.start.join(' ')} ${moon.curves.map(points => `C${points.map(point => point.join(' ')).join(' ')}`).join(' ')} Z`;
+const brandIcon = [
+  `<svg viewBox="0 0 ${brand.size} ${brand.size}" fill="none" aria-hidden="true">`,
+  `<rect width="${brand.size}" height="${brand.size}" rx="${brand.radius}" fill="${brand.background}"/>`,
+  `<g fill="${brand.foreground}">`,
+  ...wave.heights.map((height, i) => `<rect x="${wave.firstX + i * wave.pitch}" y="${wave.centerY - height / 2}" width="${wave.width}" height="${height}" rx="${wave.width / 2}"/>`),
+  `<path d="${moonPath}"/>`,
+  '</g></svg>',
+].join('');
 
-export const icon = (name: string) => name === 'sky' ? brandIcon() : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.music}</svg>`;
+export const icon = (name: string) => name === 'sky' ? brandIcon : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.music}</svg>`;
