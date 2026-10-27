@@ -1,9 +1,9 @@
 [data-soundsky-entry] { appearance: none; border: 0; border-left: 1px solid #ffffff18; background: transparent; color: inherit; display: grid; place-items: center; padding: 0 0 0 14px; margin: 0 0 0 12px; width: 44px; height: 32px; flex: 0 0 44px; cursor: pointer; }
-[data-soundsky-entry] svg { width: 24px; height: 24px; transition: transform .2s ease; }
+[data-soundsky-entry] svg { width: 20px; height: 20px; transition: transform .2s ease; }
 [data-soundsky-entry]:hover svg { transform: scale(1.08); }
 [data-soundsky-entry]:focus-visible { outline: 2px solid var(--sky-site-accent,#b7c8e5); outline-offset: 3px; }
 [data-soundsky-entry][hidden] { display: none !important; }
-/* The Now Playing entry uses the actual SoundSky mark, not a second button tile. */
+/* Match the surrounding transport controls with a compact monochrome music glyph. */
 html[data-soundsky-theme] .playControls__elements > button[data-soundsky-entry] {
   position: relative;
   box-sizing: border-box !important;
@@ -31,18 +31,16 @@ html[data-soundsky-theme] .playControls__elements > button[data-soundsky-entry]:
 }
 html[data-soundsky-theme] .playControls__elements > button[data-soundsky-entry] svg {
   display: block;
-  width: 30px;
-  height: 30px;
+  width: 20px;
+  height: 20px;
   flex: none;
-  filter: drop-shadow(0 2px 5px #0005);
-  transition: transform 220ms cubic-bezier(.18,.72,.27,1), filter 220ms ease-out;
+  transition: transform 220ms cubic-bezier(.18,.72,.27,1);
 }
 html[data-soundsky-theme] .playControls__elements > button[data-soundsky-entry]:hover {
   background: #ffffff0a !important;
 }
 html[data-soundsky-theme] .playControls__elements > button[data-soundsky-entry]:hover svg {
   transform: scale(1.07);
-  filter: drop-shadow(0 3px 8px #0009);
 }
 html[data-soundsky-theme] .playControls__elements > button[data-soundsky-entry]:active svg { transform: scale(.96); }
 html[data-soundsky-theme] .playControls__elements > button[data-soundsky-entry]:focus-visible {

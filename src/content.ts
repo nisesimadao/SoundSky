@@ -105,7 +105,7 @@ class SoundSky {
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.clearTrackAnimations(); }, { signal: this.events.signal });
     document.addEventListener('soundsky:dispose', () => this.destroy(), { signal: this.events.signal });
     this.shadow.innerHTML = `<style>${css}</style>
-      <button class="launcher" title="Open SoundSky · Alt/Option + Shift + Y" aria-label="Open SoundSky">${icon('sky')}<span>SoundSky</span></button>
+      <button class="launcher" title="Open SoundSky · Alt/Option + Shift + Y" aria-label="Open SoundSky">${icon('music')}<span>SoundSky</span></button>
       <section class="player" role="dialog" aria-modal="false" aria-label="SoundSky music player" hidden>
         <div class="ambient-fallback"></div><canvas class="ambient" aria-hidden="true"></canvas><div class="atmosphere" aria-hidden="true"></div><div class="veil"></div>
         <div class="shell">

@@ -177,7 +177,7 @@ input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.25); }
 .return { color: #a9b4b5; font-size: 11px; padding: 8px 14px; border: 1px solid #c6d9df1b; border-radius: 30px; }
 .return:hover { background: #c1dae608; border-color: #c6d9df35; }
 .launcher { border: 1px solid #c6d9df25; background: #131719f5; border-radius: 12px; padding: 10px 15px; box-shadow: 0 5px 24px #0003; }
-.launcher svg { width: 24px; height: 24px; }
+.launcher svg { width: 20px; height: 20px; }
 .volume input[type="range"]::-webkit-slider-runnable-track { background: linear-gradient(#afc4ca,#afc4ca) 0 0 / var(--progress) 100% no-repeat, #ffffff18; }
 .seek-surface input.seek::-webkit-slider-runnable-track { height: 3px; border: 0; background: #c2d5db18; }
 .seek-light { inset: 10.5px 0; border-radius: 1px; }

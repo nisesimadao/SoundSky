@@ -42,7 +42,7 @@ export class NativeTransport {
  private motion=matchMedia('(prefers-reduced-motion: reduce)');
  constructor(private adapter:SoundCloudAdapter,onOpen:()=>void,private onDock:(docked:boolean)=>void){
   this.style.textContent=css;this.style.dataset.soundskyTransportStyle='';document.head.append(this.style);
-  this.entry.type='button';this.entry.dataset.soundskyEntry='';this.entry.innerHTML=icon('sky');
+  this.entry.type='button';this.entry.dataset.soundskyEntry='';this.entry.innerHTML=icon('music');
   this.entry.title='Open SoundSky · Alt/Option + Shift + Y';this.entry.setAttribute('aria-label','Open SoundSky');
   this.entry.addEventListener('click',onOpen,{signal:this.events.signal});
   const signal=this.events.signal;
