@@ -20,14 +20,11 @@ const paths: Record<string, string> = {
   expand: '<path d="M9 3H3v6m12-6h6v6M3 15v6h6m12-6v6h-6"/>',
   tune: '<path d="M4 21v-7m0-4V3m8 18v-9m0-4V3m8 18v-5m0-4V3M2 14h4M10 8h4M18 16h4"/>',
 };
-const { moon, wave } = brand;
-const moonPath = `M${moon.start.join(' ')} ${moon.curves.map(points => `C${points.map(point => point.join(' ')).join(' ')}`).join(' ')} Z`;
 const brandIcon = [
-  `<svg viewBox="0 0 ${brand.size} ${brand.size}" fill="none" aria-hidden="true">`,
-  `<rect width="${brand.size}" height="${brand.size}" rx="${brand.radius}" fill="${brand.background}"/>`,
+  `<svg viewBox="0 0 ${brand.size} ${brand.size}" aria-hidden="true">`,
+  `<path d="${brand.tile.d}" transform="${brand.tile.transform}" fill="${brand.background}"/>`,
   `<g fill="${brand.foreground}">`,
-  ...wave.heights.map((height, i) => `<rect x="${wave.firstX + i * wave.pitch}" y="${wave.centerY - height / 2}" width="${wave.width}" height="${height}" rx="${wave.width / 2}"/>`),
-  `<path d="${moonPath}"/>`,
+  ...brand.paths.map(path => `<path d="${path.d}" transform="${path.transform}"/>`),
   '</g></svg>',
 ].join('');
 

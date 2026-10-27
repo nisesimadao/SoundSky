@@ -1,25 +1,25 @@
-# SoundSky: selected B mark
+# SoundSky: traced B mark
 
-The user selected concept B from the image-generated A/B/C board on 2026-10-27 and requested alignment refinements. The production artwork redraws that concept as a left-facing crescent beside five rounded audio bars, on a soft blue tile with a dark navy symbol.
+The user selected B from the generated concept board and requested contour-based SVG conversion. `selected-b-source.png` is the complete 560×560 crop of B from that board, including its original tile boundary. It is the source of the production paths.
 
-## Alignment
+## Conversion
 
-- All five bars use the same width (1.5 units), corner radius (0.75), and pitch (2), leaving a 0.5-unit gap on a 24-unit canvas.
-- Their heights grow evenly: 3.4, 5.25, 7.1, 8.95, and 10.8 units.
-- Every bar is centered on y = 12, matching the crescent's horizontal centerline.
-- The moon's upper and lower curves mirror around y = 12. The tips have a subtle radius.
-- The last bar is separated from the moon, including its rounded ends.
-- The symbol's horizontal bounds are approximately x = 3.4 to 20.5, keeping its left and right margins balanced.
-- Background: `#60a3f7`. Mark: `#111329`. Tile corner radius: 4.5 units.
+Run `python3 scripts/icons.py`, then `npm run build`.
 
-## Sources and regeneration
+The Python script requires Pillow, NumPy, opencv-python, and the `potrace` executable. These tools are needed only to regenerate assets; the normal extension build copies the committed PNGs and SVG and does not require them.
 
-- Shared geometry: `src/brand.json`
-- In-page SVG: `src/icons.ts`
-- Editable vector: `public/icons/soundsky.svg`
-- Extension PNGs: `public/icons/{16,32,48,128}.png`
-- Regenerate with `python3 scripts/icons.py` (requires Pillow), then `npm run build`.
+1. Separate the dark mark, blue tile, and neutral surrounding board using deterministic color clustering.
+2. Extract the moon, five bars, and tile boundary as separate connected contours.
+3. Approximate the contours using Potrace (`alphamax=1`, `opttolerance=0.2`, coordinates quantized to 0.1 source pixels).
+4. Keep each contour's shape. Center the bars on the moon's bounding-box centerline and make their edge-to-edge gaps uniform by translation, rounded to 0.5 source pixels. Widths, lengths, curvature, and moon shape are preserved.
+5. Generate `src/brand.json`, `public/icons/soundsky.svg`, and 16/32/48/128px RGBA PNGs from the traced curves. `src/icons.ts` uses the same paths for in-page branding.
 
-The same cubic curves produce both the SVG path and supersampled PNGs. No masks or shared SVG IDs are required.
+The tile's corner profile and padding are also traced, rather than replaced with a guessed rounded rectangle. Flat colors are sampled from the median foreground/background colors in the source.
 
-The original board and full built-in image-generation prompt are saved locally in `artifacts/branding/redesign-2026-10-27/`. The selected B crop, vector rendering, size comparison, and verification script are in `artifacts/branding/selected-b/`.
+## Verification
+
+Before alignment, rasterized traced paths are compared with their extracted source contours. At 560px source resolution, this revision has mean symmetric edge distances of 0.07–0.33px across the components, and a maximum measured raster edge distance of 1px. Alignment is reported separately; source-to-trace metrics do not include the intentional translations.
+
+The exported SVG is independently rendered through macOS Quick Look and compared with the PNG. Original contours, traced contours, edge overlay, translations, per-component metrics, and a size comparison are saved locally in `artifacts/branding/trace-b/`.
+
+The full generated board and prompt remain locally in `artifacts/branding/redesign-2026-10-27/`. The former hand-redrawn implementation is superseded by these traced paths.
