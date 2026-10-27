@@ -12,7 +12,7 @@ The Python script requires Pillow, NumPy, opencv-python, and the `potrace` execu
 2. Extract the moon, five bars, and tile boundary as separate connected contours.
 3. Approximate the contours using Potrace (`alphamax=1`, `opttolerance=0.2`, coordinates quantized to 0.1 source pixels).
 4. Keep each contour's shape. Center the bars on the moon's bounding-box centerline and make their edge-to-edge gaps uniform by translation, rounded to 0.5 source pixels. Widths, lengths, curvature, and moon shape are preserved.
-5. Generate `src/brand.json`, `public/icons/soundsky.svg`, and 16/32/48/128px RGBA PNGs from the traced curves. `src/icons.ts` uses the same paths for in-page branding.
+5. Generate `src/brand.json`, `public/icons/soundsky.svg`, and 16/32/48/128px RGBA PNGs from the traced curves. `src/icons.ts` retains the same paths for SoundSky brand uses. The Now Playing header uses the separate SoundCloud mark in `src/soundcloud-mark.json`, sourced from the official media kit; entry controls use the music glyph.
 
 The tile's corner profile and padding are also traced, rather than replaced with a guessed rounded rectangle. Flat colors are sampled from the median foreground/background colors in the source.
 

@@ -1,4 +1,5 @@
 import brand from './brand.json';
+import soundcloud from './soundcloud-mark.json';
 
 const paths: Record<string, string> = {
   queue: '<path d="M4 6h12M4 11h12M4 16h8m4-2 5 3-5 3Z"/>',
@@ -28,4 +29,6 @@ const brandIcon = [
   '</g></svg>',
 ].join('');
 
-export const icon = (name: string) => name === 'sky' ? brandIcon : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.music}</svg>`;
+const soundcloudIcon = `<svg viewBox="${soundcloud.viewBox}" fill="currentColor" aria-hidden="true"><g transform="${soundcloud.transform}">${soundcloud.paths.map(d => `<path d="${d}"/>`).join('')}</g></svg>`;
+
+export const icon = (name: string) => name === 'soundcloud' ? soundcloudIcon : name === 'sky' ? brandIcon : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.music}</svg>`;

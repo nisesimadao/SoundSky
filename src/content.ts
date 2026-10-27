@@ -27,7 +27,7 @@ type SiteToggle = 'siteHeader' | 'siteArtwork' | 'siteQueue' | 'siteTransport' |
 const siteToggle = (key: SiteToggle, label: string, help: string) => `
   <div class="settings-site-item">
     <div class="settings-label-row settings-toggle"><label for="setting-${key}">${label}</label><input class="settings-site-toggle" id="setting-${key}" data-site-toggle="${key}" type="checkbox" role="switch" aria-describedby="hint-${key}"><output id="val-${key}"></output></div>
-    <p class="settings-hint" id="hint-${key}">${help}</p>
+    <p class="settings-hint" id="hint-${key}" hidden>${help}</p>
   </div>`;
 const settingValue = (key: NumericSetting, value: number) => {
   if (key === 'prefetchCount') return value === 0 ? 'オフ' : `${value}曲`;
@@ -39,11 +39,10 @@ const settingControl = (key: NumericSetting, label: string, min: number, max: nu
   <div class="settings-group">
     <div class="settings-label-row"><label for="setting-${key}">${label}</label><output class="settings-val" id="val-${key}" for="setting-${key}"></output></div>
     <p class="settings-hint" id="hint-${key}">${hint}</p>
-    <div class="settings-range-wrap" style="--default-position: ${(defaultSettings[key] - min) / (max - min) * 100}%">
-      <input class="settings-slider" id="setting-${key}" type="range" min="${min}" max="${max}" step="${step}" data-setting="${key}" aria-describedby="hint-${key}">
-      <i class="settings-default-tick" aria-hidden="true"></i>
+    <div class="settings-range-wrap">
+      <input class="settings-slider" id="setting-${key}" type="range" min="${min}" max="${max}" step="${step}" data-setting="${key}" aria-describedby="hint-${key}" title="${low} – ${high}">
     </div>
-    <div class="settings-scale"><span>${low}</span><button data-command="setting-default" data-setting-key="${key}" aria-label="${label}を標準に戻す">標準 ${settingValue(key, defaultSettings[key])}</button><span>${high}</span></div>
+    <div class="settings-scale"><button data-command="setting-default" data-setting-key="${key}" aria-label="${label}を標準に戻す">標準に戻す</button></div>
   </div>`;
 class SoundSky {
   private host = document.createElement('soundsky-player');
@@ -109,7 +108,7 @@ class SoundSky {
       <section class="player" role="dialog" aria-modal="false" aria-label="SoundSky music player" hidden>
         <div class="ambient-fallback"></div><canvas class="ambient" aria-hidden="true"></canvas><div class="atmosphere" aria-hidden="true"></div><div class="veil"></div>
         <div class="shell">
-          <header class="topbar"><div class="brand">${icon('sky')}<span>SoundSky</span><span class="brand-caption">MUSIC PLAYER</span></div>
+          <header class="topbar"><div class="brand">${icon('soundcloud')}<span>SoundCloud</span></div>
             <div class="top-actions">
               <button class="icon-button" data-command="settings" aria-label="見た目の設定" aria-expanded="false" aria-controls="visual-settings" title="見た目の設定">${icon('tune')}</button>
               <button class="return" data-command="close" aria-label="Back to SoundCloud" title="Return to SoundCloud · Escape">${icon('down')}<span>Back to SoundCloud</span></button>
@@ -118,7 +117,7 @@ class SoundSky {
           </header>
           <section class="settings-panel" id="visual-settings" popover="manual" aria-labelledby="settings-title" hidden>
             <div class="settings-header">
-              <div><p class="settings-kicker">SOUNDSKY / VISUALS</p><h2 class="settings-title" id="settings-title">見た目の設定</h2></div>
+              <h2 class="settings-title" id="settings-title">見た目の設定</h2>
               <button class="settings-close icon-button" data-command="settings-close" aria-label="設定を閉じる">${icon('close')}</button>
             </div>
             <div class="settings-tabs" role="tablist" aria-label="設定のカテゴリ">
@@ -129,14 +128,13 @@ class SoundSky {
               <button class="settings-tab" role="tab" id="tab-site" aria-controls="settings-site" aria-selected="false" tabindex="-1" data-settings-tab="site">SoundCloud</button>
             </div>
             <div class="settings-section" role="tabpanel" id="settings-cover" aria-labelledby="tab-cover">
-              <p class="settings-section-note">音に合わせたジャケットの動きを調整します。SoundCloudの見た目を整える設定がオンなら、再生中の曲・プレイリストのページにも反映されます。</p>
               ${settingControl('pulseMax', '拡大の上限', 0, .3, .005, '音が強いとき、元の大きさからどこまで拡大するか。', '拡大なし', '最大 +30%')}
               ${settingControl('pulseSensitivity', '音への反応', .2, 12, .1, '音量と音の変化に合わせて動きます。上げるほど反応が強くなります。', '控えめ', '強く')}
             </div>
             <div class="settings-section" role="tabpanel" id="settings-light" aria-labelledby="tab-light" hidden>
               <div class="settings-effect-toggle">
                 <div class="settings-label-row settings-toggle"><label for="setting-heatEnabled">カバー周囲の光</label><input id="setting-heatEnabled" type="checkbox" role="switch" aria-describedby="hint-heatEnabled"><output id="val-heatEnabled"></output></div>
-                <p class="settings-hint" id="hint-heatEnabled">赤い光は音に反応し、空色の帯は一定の速さで流れます。</p>
+                <p class="settings-hint" id="hint-heatEnabled">カバーの周りに表示する光を調整します。</p>
               </div>
               <div class="settings-heat-controls">
                 ${settingControl('heatResponse', '赤い光の反応', 0, 3, .1, '上げるほど、同じ音量でも赤い光が下まで広がります。', '反応なし', '強く')}
@@ -144,27 +142,26 @@ class SoundSky {
               </div>
             </div>
             <div class="settings-section" role="tabpanel" id="settings-background" aria-labelledby="tab-background" hidden>
-              <p class="settings-section-note">背景は音が強いと明るく速く、静かなときは暗くゆっくり動きます。</p>
               ${settingControl('ambientSpeed', '背景の動く速さ', 0, 8, .1, '画面全体に広がる模様の動き。0で止まります。', '停止', '速く')}
-              ${settingControl('sceneSway', '画面のゆらぎ', 0, 1, .05, 'ランダムな地点へ約5秒で移動し、キックで加速して徐々に元の速さへ戻ります。停止中は止まります。', 'オフ', '最大 約14px')}
+              ${settingControl('sceneSway', '画面のゆらぎ', 0, 1, .05, '画面がゆっくり揺れ、低音に合わせて動きます。', 'オフ', '最大 約14px')}
               ${settingControl('ambientGlow', '背景の明るさ', 0, 2, .05, '音に反応する背景の光量。0で光を消します。', '消灯', '明るく')}
             </div>
             <div class="settings-section" role="tabpanel" id="settings-site" aria-labelledby="tab-site" hidden>
               <div class="settings-effect-toggle">
                 <div class="settings-label-row settings-toggle"><label for="setting-modernSoundCloud">SoundCloudの見た目を整える</label><input id="setting-modernSoundCloud" type="checkbox" role="switch" aria-describedby="hint-modernSoundCloud"><output id="val-modernSoundCloud"></output></div>
-                <p class="settings-hint" id="hint-modernSoundCloud">通常のページも、暗い配色・柔らかい角丸・整った文字へ。アクセントは再生中のカバーの色に合わせます。SoundSkyを閉じても有効です。</p>
+                <p class="settings-hint" id="hint-modernSoundCloud">通常ページにも配色とレイアウトを適用します。プレイヤーを閉じても有効です。</p>
               </div>
               <div class="settings-site-details">
-                <div class="settings-subheading"><span>01 / WHERE</span><h3>適用する場所</h3><p>気になる部分だけ仕上げを切り替えます。元の操作や配置は変えません。</p></div>
+                <h3 class="settings-subheading">適用する場所</h3>
                 <div class="settings-site-grid">
-                  ${siteToggle('siteHeader', 'ヘッダー・検索', 'ナビゲーションのガラス感と境界線')}
-                  ${siteToggle('siteArtwork', 'カバー・一覧', 'ジャケットの角とホバー時の奥行き')}
-                  ${siteToggle('siteQueue', 'Next Up', '次の曲リストの質感・文字組み')}
-                  ${siteToggle('siteTransport', '下部プレイヤー', '再生バーと操作部のサーフェス')}
-                  ${siteToggle('siteBackground', '背景の光', '通常ページに広がる淡いシェーダー')}
-                  ${siteToggle('siteWide', 'ワイドレイアウト', '広い画面で余白をゆったり使う')}
+                  ${siteToggle('siteHeader', 'ヘッダー・検索', 'ヘッダーと検索欄の配色')}
+                  ${siteToggle('siteArtwork', 'カバー・一覧', 'ジャケットと曲一覧の表示')}
+                  ${siteToggle('siteQueue', 'Next Up', '次に再生する曲の一覧')}
+                  ${siteToggle('siteTransport', '下部プレイヤー', '再生バーと操作ボタン')}
+                  ${siteToggle('siteBackground', '背景の光', '通常ページの背景に表示する光')}
+                  ${siteToggle('siteWide', 'ワイドレイアウト', 'ページの表示幅を広げる')}
                 </div>
-                <div class="settings-subheading"><span>02 / HOW</span><h3>仕上げ方</h3><p>適用箇所の形・アクセント・光の強さを調整できます。</p></div>
+                <h3 class="settings-subheading">表示</h3>
                 <div class="settings-site-options">
                   <div class="settings-group settings-site-option"><div class="settings-label-row"><label for="setting-siteCorners">パーツの丸み</label>
                     <select class="settings-choice settings-site-choice" id="setting-siteCorners" data-site-choice="siteCorners">
@@ -179,20 +176,19 @@ class SoundSky {
               </div>
             </div>
             <div class="settings-section" role="tabpanel" id="settings-controls" aria-labelledby="tab-controls" hidden>
-              <p class="settings-section-note">再生・停止の音と、操作部分の見た目を調整します。</p>
-              ${settingControl('materialSpeed', '再生ボタンの動く速さ', 0, 8, .1, '金属のような表面の流れ。音が強いと速く動きます。', '停止', '速く')}
-              ${settingControl('consoleSpeed', '操作パネルの煙の速さ', 0, 2, .1, '再生ボタンの土台にある、薄い煙の動き。', '停止', '速く')}
-              <div class="settings-group"><div class="settings-label-row settings-toggle"><label for="setting-turntable">レコードのように再生・停止</label><input id="setting-turntable" type="checkbox" role="switch" aria-describedby="hint-turntable"><output id="val-turntable"></output></div><p class="settings-hint" id="hint-turntable">停止時は約0.4秒かけて音程と速度が下がり、再生時は約0.24秒で戻ります。SoundSky・SoundCloud内の再生操作・Space・メディアキーに適用します。</p></div>
-              ${settingControl('prefetchCount', '次の曲を先読み', 0, 3, 1, '次の1〜3曲の音声を、このタブで一時的に読み込みます。次の曲が未確定のAutoPlayでは動きません。タブを閉じると消えます。', 'オフ', '3曲')}
+              ${settingControl('materialSpeed', '再生ボタンの動く速さ', 0, 8, .1, '再生ボタンの表面が流れる速さ。0で停止します。', '停止', '速く')}
+              ${settingControl('consoleSpeed', '操作パネルの煙の速さ', 0, 2, .1, '再生ボタンの周りに流れる煙の速さ。', '停止', '速く')}
+              <div class="settings-group"><div class="settings-label-row settings-toggle"><label for="setting-turntable">レコードのように再生・停止</label><input id="setting-turntable" type="checkbox" role="switch" aria-describedby="hint-turntable"><output id="val-turntable"></output></div><p class="settings-hint" id="hint-turntable">再生・一時停止の前後で、レコードのように音程と速度を変えます。</p></div>
+              ${settingControl('prefetchCount', '次の曲を先読み', 0, 3, 1, '次の1〜3曲を先読みします。音声はタブを閉じると破棄されます。', 'オフ', '3曲')}
               <div class="settings-group"><div class="settings-label-row"><label for="setting-prefetchSeconds">各曲の読み込み量</label><select class="settings-choice" id="setting-prefetchSeconds" aria-describedby="hint-prefetchSeconds"><option value="15">冒頭15秒</option><option value="30">冒頭30秒</option><option value="60">冒頭1分</option><option value="120">冒頭2分</option><option value="0">曲全体</option></select></div><p class="settings-hint" id="hint-prefetchSeconds">通信量を抑えるなら冒頭だけ、長い途切れに備えるなら曲全体。音声データの区切りまで読み込みます。</p></div>
               <p class="settings-hint" id="prefetch-status" aria-live="polite">次の曲の準備待ち</p>
               ${settingControl('seekSpeed', 'シークバーの色の流れ', 0, 3, .1, '再生済みの部分を流れる色。曲の再生速度は変わりません。', '停止', '速く')}
             </div>
-            <div class="settings-footer"><span>すぐ反映・自動保存</span><button class="settings-reset" data-command="settings-reset">すべて標準に戻す</button></div>
+            <div class="settings-footer"><span>変更は自動保存されます</span><button class="settings-reset" data-command="settings-reset">すべて標準に戻す</button></div>
           </section>
           <main class="stage">
             <div class="artwork-area reveal"><div class="artwork-frame"><div class="cover-heat" aria-hidden="true" hidden></div><div class="artwork"><div class="artwork-placeholder">${icon('music')}</div><img class="art-image" alt="" hidden></div></div></div>
-            <div class="details"><div class="metadata reveal"><p class="eyebrow"><span class="live-dot"></span><span class="now-label">NOW PLAYING</span></p>
+            <div class="details"><div class="metadata reveal">
               <button class="title-link" data-command="track" title="Open this track on SoundCloud"><h1>Your music, in focus.</h1></button>
               <button class="artist" data-command="artist">Play something on SoundCloud to begin.</button>
               <div class="socials">
@@ -201,17 +197,17 @@ class SoundSky {
                 <button class="social" data-action="follow" aria-label="Follow current artist" aria-pressed="false" disabled>${icon('follow')}<span>Follow artist</span></button>
               </div>
             </div>
-            <section class="queue-area reveal" aria-label="Queue"><div class="queue-header"><h2 class="queue-heading">Next up</h2><span class="queue-status">SoundCloud queue</span></div>
+            <section class="queue-area reveal" aria-label="Queue"><div class="queue-header"><h2 class="queue-heading">Next up</h2></div>
               <div class="queue-aperture"><div class="queue-empty">Your queue will appear here.<br>Start a track on SoundCloud.</div></div>
             </section></div>
           </main>
-          <footer class="controls reveal"><div class="transport-row"><span class="playback-note">SOUNDCLOUD</span>
+          <footer class="controls reveal"><div class="transport-row">
             <div class="transport"><div class="console-smoke" aria-hidden="true"></div><button class="icon-button" data-command="previous" aria-label="Previous track" title="Previous">${icon('previous')}</button>
               <button class="play-toggle" data-command="play" aria-label="Play" title="Play · Space"><span class="metal-fallback" aria-hidden="true"></span><div class="metal-surface" aria-hidden="true"></div><span class="play-glyph-outline" aria-hidden="true"></span><span class="play-glyph">${icon('play')}</span></button>
               <button class="icon-button" data-command="next" aria-label="Next track" title="Next">${icon('next')}</button></div>
             <div class="volume"><button class="icon-button" data-command="mute" aria-label="Mute" title="Mute">${icon('volume')}</button><input class="volume-range" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="Volume"></div>
           </div><div class="seek-row"><span class="time current">0:00</span><div class="seek-surface"><div class="seek-light" aria-hidden="true"><div class="seek-fallback"></div><div class="seek-shader"></div></div><input class="seek" type="range" min="0" max="1000" step="any" value="0" aria-label="Seek position"></div><span class="time duration">0:00</span></div>
-          <p class="hint">Space to play or pause · Esc to return</p></footer>
+          </footer>
         </div><div class="toast" role="status" hidden></div>
       </section>`;
     document.body.append(this.host);
@@ -220,7 +216,6 @@ class SoundSky {
       this.el('.queue-empty').hidden = info.available && info.hasTracks && !!this.state.track.key;
       this.setText('.queue-empty', !this.state.track.key ? 'Play something on SoundCloud to see your queue.'
         : !info.available ? 'SoundCloud’s queue is not available yet.' : 'No tracks are queued yet.');
-      this.setText('.queue-status', info.autoplay === true ? 'Autoplay on' : info.autoplay === false ? 'Autoplay off' : 'SoundCloud queue');
       this.setText('.queue-heading', info.history ? 'Queue · earlier tracks' : 'Next up');
     };
     this.ambient = new Ambient(this.el<HTMLCanvasElement>('.ambient'), this.el('.ambient-fallback'));
@@ -483,7 +478,6 @@ class SoundSky {
       for (const selector of ['.title-link', '.artist']) this.trackAnimate(this.el(selector),
         [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'translateY(0)' }], 280);
     }
-    this.setText('.now-label', state.track.key ? state.playing ? 'NOW PLAYING' : 'PAUSED' : 'SOUNDSKY');
     if (state.track.artwork !== this.lastArt) { this.lastArt = state.track.artwork; this.loadArtwork(state.track.artwork, state.track.title); }
     else if (changedTrack && state.track.artwork) this.el<HTMLImageElement>('.art-image').alt = `${state.track.title} artwork`;
     for (const [command, enabled] of Object.entries({ play: state.canPlay, previous: state.canPrevious, next: state.canNext, mute: state.canVolume })) {
@@ -700,6 +694,7 @@ class SoundSky {
       tab.setAttribute('aria-selected', String(selected)); tab.tabIndex = selected ? 0 : -1;
     });
     this.shadow.querySelectorAll<HTMLElement>('.settings-section').forEach(panel => { panel.hidden = panel.id !== `settings-${group}`; });
+    this.el('.settings-panel').scrollTop = 0;
   }
   private resetSettings() {
     this.settings = { ...defaultSettings };

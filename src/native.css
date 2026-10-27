@@ -40,8 +40,6 @@
 [data-soundsky-queue] .queueItemView__meta { order: 1 !important; line-height: 17px !important; }
 [data-soundsky-queue] .queueItemView__username { color: #8e9f9f !important; font-size: 11px !important; text-decoration: none !important; }
 [data-soundsky-queue] .queueItemView__duration { color: #8c9b9c !important; font-size: 11px !important; font-variant-numeric: tabular-nums !important; padding-right: 4px !important; }
-[data-soundsky-queue] [data-sky-status="current"] .queueItemView__duration { font-size: 0 !important; }
-[data-soundsky-queue] [data-sky-status="current"] .queueItemView__duration::after { content: 'NOW'; font-size: 9px; letter-spacing: .12em; color: var(--sky-accent, #d2b795); }
 [data-soundsky-queue] [data-sky-status="history"] { opacity: .45 !important; }
 [data-soundsky-queue] .queueFallback { background: transparent !important; border: 0 !important; color: #b3afbf !important; }
 [data-soundsky-queue] .queueFallback__stationMode { padding: 14px 8px !important; }
