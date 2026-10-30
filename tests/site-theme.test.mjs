@@ -4,7 +4,7 @@ import {build} from 'esbuild';
 import {JSDOM} from 'jsdom';
 const result=await build({entryPoints:['src/site-theme.ts'],bundle:true,write:false,format:'iife',globalName:'themeTest',footer:{js:'window.themeTest=themeTest;'},loader:{'.css':'text'},define:{'process.env.NODE_ENV':'"production"'}});
 const create=()=>{
- const dom=new JSDOM('<!doctype html><html><head><style>body{background:white}</style></head><body><button id="native">Play</button></body></html>',{runScripts:'outside-only',url:'https://soundcloud.com/discover'});
+ const dom=new JSDOM('<!doctype html><html><head><style>body{background:white}</style></head><body class="theme-dark"><button id="native">Play</button></body></html>',{runScripts:'outside-only',url:'https://soundcloud.com/discover'});
  dom.window.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
  dom.window.eval(result.outputFiles[0].text);return dom;
 };
@@ -98,11 +98,12 @@ test('desktop wide layout reaches the modern track frame and restores its native
 });
 
 
-test('light palette is available without the modern skin and reaches every native surface',()=>{
+test('native theme changes drive the palette without independent saved overrides',async()=>{
  const dom=create(),w=dom.window,theme=new w.themeTest.SiteTheme();
- theme.setPreferences({appearance:'light'});assert.equal(w.document.documentElement.dataset.soundskyAppearance,'light');
+ w.document.body.className='theme-light';await Promise.resolve();
+ assert.equal(w.document.documentElement.dataset.soundskyAppearance,'light');
  assert.ok(w.document.querySelector('[data-soundsky-palette-style]'));
  theme.setEnabled(true);assert.match(w.document.documentElement.style.getPropertyValue('--sky-site-accent'),/35%/);
- theme.setPreferences({appearance:'dark'});assert.equal(w.document.documentElement.dataset.soundskyAppearance,'dark');
+ w.document.body.className='theme-dark';await Promise.resolve();assert.equal(w.document.documentElement.dataset.soundskyAppearance,'dark');
  theme.destroy();assert.equal(w.document.querySelector('[data-soundsky-palette-style]'),null);dom.window.close();
 });

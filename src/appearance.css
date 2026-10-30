@@ -17,5 +17,5 @@ html[data-soundsky-appearance],html[data-soundsky-appearance] body {
 html[data-soundsky-appearance="light"] { --surface-rgb:245,244,240!important; }
 html[data-soundsky-appearance="dark"] { --surface-rgb:16,18,20!important; }
 html[data-soundsky-appearance="light"] :is(.MuiPaper-root,.MuiCard-root) { background-color:var(--ss-surface)!important;color:var(--ss-ink)!important; }
-html[data-soundsky-appearance="light"] :is(.header,.playControls,.playControls__inner,.queue,.queue__panel,.volume__sliderWrapper,.dropdownMenu,.modal__modal) {background-color:var(--ss-surface)!important;color:var(--ss-ink)!important;}
+html[data-soundsky-appearance="light"] :is(.header,.playControls,.playControls__inner,.queue:not([data-soundsky-queue]),.queue__panel,.volume__sliderWrapper,.dropdownMenu,.modal__modal) {background-color:var(--ss-surface)!important;color:var(--ss-ink)!important;}
 html[data-soundsky-appearance="light"] .header :is(.header__navMenu a,.header__userNavButton) {color:var(--ss-ink)!important;}

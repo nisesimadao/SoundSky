@@ -5,7 +5,7 @@ import { build } from 'esbuild';
 const result=await build({entryPoints:['src/content.ts'],bundle:true,format:'iife',loader:{'.css':'text'},write:false});
 const code=result.outputFiles[0].text;
 test('reopening and reinjecting retain one instance and release every observer/timer on teardown',async t=>{
- const dom=new JSDOM('<!doctype html><body><main id="content">Page</main><div class="playControls"><div class="playControls__elements"><button class="playControl"></button><div class="playbackSoundBadge"><a class="playbackSoundBadge__titleLink" href="/a/b" title="Song"></a><a class="playbackSoundBadge__lightLink" href="/a" title="Artist"></a><a class="playbackSoundBadge__showQueue"></a></div></div><div class="queue"><button class="queue__hide"></button><div class="queue__scrollableInner"></div></div></div></body>',{url:'https://soundcloud.com',runScripts:'outside-only',pretendToBeVisual:true});
+ const dom=new JSDOM('<!doctype html><body class="theme-dark"><main id="content">Page</main><div class="playControls"><div class="playControls__elements"><button class="playControl"></button><div class="playbackSoundBadge"><a class="playbackSoundBadge__titleLink" href="/a/b" title="Song"></a><a class="playbackSoundBadge__lightLink" href="/a" title="Artist"></a><a class="playbackSoundBadge__showQueue"></a></div></div><div class="queue"><button class="queue__hide"></button><div class="queue__scrollableInner"></div></div></div></body>',{url:'https://soundcloud.com',runScripts:'outside-only',pretendToBeVisual:true});
  const w=dom.window;const observers=new Set();const timeouts=new Set();const intervals=new Set();
  t.after(()=>dom.window.close());
  Object.defineProperty(w.HTMLElement.prototype,'inert',{get(){return this.hasAttribute('inert');},set(value){this.toggleAttribute('inert',!!value);},configurable:true});
@@ -77,11 +77,12 @@ test('reopening and reinjecting retain one instance and release every observer/t
  assert.equal(ui.querySelector('.settings-page-link'),null,'sidebar must not navigate the playing page');
  const before=w.location.href;ui.querySelector('#tab-account').click();
  assert.equal(w.location.href,before);assert.equal(ui.querySelector('#settings-account iframe').getAttribute('src'),'/settings');
- const nativeMode=nativeView.querySelector('#native-setting-appearance');nativeMode.value='light';nativeMode.dispatchEvent(new w.Event('change',{bubbles:true}));
+ assert.equal(ui.querySelector('#setting-appearance'),null,'SoundCloud is the only theme selector');
+ w.document.body.classList.replace('theme-dark','theme-light');await Promise.resolve();
  assert.equal(w.document.querySelector('soundsky-player').dataset.appearance,'light');
- assert.equal(ui.querySelector('#setting-appearance').value,'light');
- ui.querySelector('#setting-appearance').value='dark';ui.querySelector('#setting-appearance').dispatchEvent(new w.Event('change',{bubbles:true}));
- assert.equal(nativeMode.value,'dark');assert.equal(w.location.href,before);
+ assert.equal(w.document.documentElement.dataset.soundskyAppearance,'light');
+ w.document.body.classList.replace('theme-light','theme-dark');await Promise.resolve();
+ assert.equal(w.document.querySelector('soundsky-player').dataset.appearance,'dark');assert.equal(w.location.href,before);
 
  w.__soundsky.toggle();
  w.history.pushState({},'', '/discover');w.dispatchEvent(new w.PopStateEvent('popstate'));

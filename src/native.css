@@ -128,3 +128,19 @@ html[data-soundsky-appearance="light"] [data-soundsky-queue] .queueFallback__hea
 html[data-soundsky-appearance="light"] [data-soundsky-queue] .queueItemView { border-color:#24384418!important; }
 html[data-soundsky-appearance="light"] [data-soundsky-queue] .queueItemView:hover { background:#24384408!important; }
 html[data-soundsky-appearance="light"] [data-soundsky-menu] { background:#fafaf7!important;color:#202a30!important; }
+
+/* The live queue is positioned over Now Playing; it must never inherit a page
+   surface from the native transport palette, in either theme. */
+html[data-soundsky-appearance] [data-soundsky-player],
+html[data-soundsky-appearance] [data-soundsky-player] :is(.playControls__inner,.playControls__queue),
+html[data-soundsky-appearance] [data-soundsky-queue].queue,
+html[data-soundsky-appearance] [data-soundsky-queue] :is(.queue__scrollable,.queue__scrollableInner,.queue__itemsContainer,.queue__itemWrapper) {background:transparent!important;}
+html[data-soundsky-appearance="light"] [data-soundsky-queue] .queueItemView.m-active {background:#2048600f!important;box-shadow:inset 2px 0 0 #326b87!important;}
+html[data-soundsky-appearance="light"] [data-soundsky-queue] .queueItemView__playButton .sc-button {background:#f5f4f0e6!important;color:#202a30!important;}
+html[data-soundsky-appearance="light"] [data-soundsky-queue] .sc-toggle {background:#c9d0d2!important;}
+html[data-soundsky-appearance="light"] [data-soundsky-queue] .sc-toggle::before {background:#c9d0d2!important;}
+html[data-soundsky-appearance="light"] [data-soundsky-queue] .sc-toggle-on,
+html[data-soundsky-appearance="light"] [data-soundsky-queue] .sc-toggle-on::before {background:#326b87!important;}
+html[data-soundsky-appearance="light"] [data-soundsky-queue] .sc-toggle-handle {background:#fff!important;}
+html[data-soundsky-appearance="light"] [data-soundsky-queue] .queue__scrollableInner {scrollbar-color:#24384440 transparent;}
+html[data-soundsky-appearance="light"] [data-soundsky-menu] .sc-button-repost {color:#202a30!important;}

@@ -1,3 +1,4 @@
+import { NativeAppearance, declaredAppearance, type Appearance } from './native-appearance';
 import appearanceCSS from './appearance.css';
 import { createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -14,7 +15,9 @@ import { SiteGallery } from './site-gallery';
 /** Reversible skin: a scoped stylesheet and one decorative, pointer-free canvas. */
 export class SiteTheme {
   private paletteStyle = document.createElement('style');
-  private colorScheme = matchMedia('(prefers-color-scheme: light)');
+  private nativeAppearance: NativeAppearance | null = null;
+  private resolvedAppearance: Appearance = 'dark';
+  private parentAppearance: Appearance | null = null;
   private style = document.createElement('style');
   private surface = document.createElement('div');
   private root: Root | null = null;
@@ -35,8 +38,10 @@ export class SiteTheme {
     document.dispatchEvent(new Event('soundsky:theme-dispose'));
     document.addEventListener('soundsky:theme-dispose',()=>this.destroy(),{signal:this.events.signal});
     this.paletteStyle.dataset.soundskyPaletteStyle='';this.paletteStyle.textContent=appearanceCSS;document.head.append(this.paletteStyle);
-    this.colorScheme.addEventListener('change',()=>{this.applyAppearance();this.applyAccent();this.broadcast();},{signal:this.events.signal});
-    this.applyAppearance();
+    this.nativeAppearance=new NativeAppearance(theme=>{
+      this.resolvedAppearance=theme;if(declaredAppearance())this.parentAppearance=null;
+      this.applyAppearance();this.applyAccent();this.broadcast();
+    });
     this.style.dataset.soundskySiteStyle=''; this.style.textContent=css;
     this.surface.dataset.soundskySiteShader=''; this.surface.setAttribute('aria-hidden','true');
     document.addEventListener('visibilitychange',()=>this.render(),{signal:this.events.signal});
@@ -48,6 +53,7 @@ export class SiteTheme {
         if(frame&&this.sameOriginFrame(frame)){this.frames.add(frame);frame.contentWindow?.postMessage(this.packet(),location.origin);}
       } else if(!this.top && event.source===window.parent && event.data?.type==='soundsky:site-theme'){
         const data=event.data;
+        if(data.appearance==='light'||data.appearance==='dark')this.parentAppearance=data.appearance;
         if(data.settings && typeof data.settings==='object') this.setPreferences(loadSavedSettings(data.settings));
         if(typeof data.enabled==='boolean')this.setEnabled(data.enabled);
         if(typeof data.hue==='number'&&Number.isFinite(data.hue))this.setAccent(data.hue);
@@ -62,7 +68,7 @@ export class SiteTheme {
     },{signal:this.events.signal});
     if(!this.top)window.parent.postMessage({type:'soundsky:theme-ready'},location.origin);
   }
-  private packet(){return {type:'soundsky:site-theme',enabled:this.enabled,hue:this.hue,colors:this.colors,settings:this.preferences,open:this.open,cover:this.coverState};}
+  private packet(){return {type:'soundsky:site-theme',enabled:this.enabled,hue:this.hue,colors:this.colors,settings:this.preferences,appearance:this.parentAppearance??this.resolvedAppearance,open:this.open,cover:this.coverState};}
   private sameOriginFrame(frame:HTMLIFrameElement){
     // src alone is insufficient: sandboxed frames and redirects can have opaque origins.
     try{return frame.isConnected&&frame.contentWindow?.location.origin===location.origin;}catch{return false;}
@@ -101,7 +107,7 @@ export class SiteTheme {
     this.applyAccent();
   }
   private applyAppearance(){
-    document.documentElement.dataset.soundskyAppearance=this.preferences.appearance==='system'?(this.colorScheme.matches?'light':'dark'):this.preferences.appearance;
+    document.documentElement.dataset.soundskyAppearance=this.parentAppearance??this.resolvedAppearance;
   }
   setPreferences(settings:SoundSkySettings) {
     this.preferences={...defaultSettings,...settings};
@@ -135,5 +141,5 @@ export class SiteTheme {
     const moving=this.inView&&!this.open&&!document.hidden&&!this.motion.matches;
     this.root?.render(createElement(MeshGradient,{width:'100%',height:'100%',colors:this.colors,speed:moving?.22:0,distortion:.65,swirl:.25,grainMixer:.02,grainOverlay:.018,scale:1.25,minPixelRatio:1,maxPixelCount:60000,frame:18000}));
   }
-  destroy(){this.cover.destroy();this.gallery?.destroy();this.observer?.disconnect();this.events.abort();this.paletteStyle.remove();document.documentElement.removeAttribute('data-soundsky-appearance');this.setEnabled(false);unmountShader(this.root,this.surface);this.root=null;this.surface.remove();this.style.remove();}
+  destroy(){this.cover.destroy();this.gallery?.destroy();this.observer?.disconnect();this.events.abort();this.nativeAppearance?.destroy();this.paletteStyle.remove();document.documentElement.removeAttribute('data-soundsky-appearance');this.setEnabled(false);unmountShader(this.root,this.surface);this.root=null;this.surface.remove();this.style.remove();}
 }

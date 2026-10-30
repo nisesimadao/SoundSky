@@ -1,3 +1,6 @@
+import { ListeningMode } from './listening-mode';
+import { OverflowTitle } from './overflow-title';
+import { NativeAppearance, declaredAppearance } from './native-appearance';
 import appearanceCSS from './appearance.css';
 import { NativePreferences } from './native-preferences';
 import { AccountSettings } from './account-settings';
@@ -19,7 +22,7 @@ import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.3.23';
+const VERSION = '1.3.24';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
@@ -98,8 +101,10 @@ class SoundSky {
   });
   private pendingActions = new Set<Action>();
   private settings: SoundSkySettings = { ...defaultSettings };
-  private colorScheme = window.matchMedia('(prefers-color-scheme: light)');
+  private nativeAppearance: NativeAppearance | null = null;
   private appearanceStyle = document.createElement('style');
+  private listeningMode: ListeningMode | null = null;
+  private overflowTitle: OverflowTitle | null = null;
   private settingsOpen = false;
   private nativePreferences: NativePreferences | null = null;
   private accountSettings: AccountSettings | null = null;
@@ -110,7 +115,6 @@ class SoundSky {
     // Old isolated worlds survive an extension reload until page navigation.
     // A DOM-only teardown signal allows their instance to release all resources.
     document.dispatchEvent(new CustomEvent('soundsky:dispose'));
-    this.colorScheme.addEventListener('change', () => {this.applyAppearance();this.siteTheme.setPreferences(this.settings);}, {signal:this.events.signal});
     this.reducedMotion.addEventListener('change', () => this.clearTrackAnimations(), { signal: this.events.signal });
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.clearTrackAnimations(); }, { signal: this.events.signal });
     document.addEventListener('soundsky:dispose', () => this.destroy(), { signal: this.events.signal });
@@ -155,8 +159,7 @@ class SoundSky {
               </div>
             </div>
             <div class="settings-section" role="tabpanel" id="settings-background" aria-labelledby="tab-background" hidden>
-              <div class="settings-section-heading"><h3>背景</h3><p>空間の明るさと、ゆらぎ。</p></div>
-              <div class="settings-group"><div class="settings-label-row"><label for="setting-appearance">カラーモード</label><select class="settings-choice" id="setting-appearance"><option value="system">システムに合わせる</option><option value="light">ライト</option><option value="dark">ダーク</option></select></div></div>
+              <div class="settings-section-heading"><h3>背景</h3><p>SoundCloudのテーマに合わせた、光とゆらぎ。</p></div>
               ${settingControl('ambientSpeed', '背景の動く速さ', 0, 8, .1, '画面全体に広がる模様の流速。', '停止', '速く')}
               ${settingControl('sceneSway', '画面のゆらぎ', 0, 1, .05, '画面がゆっくり揺れ、低音に合わせて動きます。', 'オフ', '最大 約14px')}
               ${settingControl('ambientGlow', '背景の明るさ', 0, 2, .05, '音に反応する背景の光量。', '消灯', '明るく')}
@@ -193,6 +196,7 @@ class SoundSky {
             </div>
             <div class="settings-section" role="tabpanel" id="settings-controls" aria-labelledby="tab-controls" hidden>
               <div class="settings-section-heading"><h3>再生・操作</h3><p>再生の質感と、次の曲の準備。</p></div>
+              <div class="settings-group"><div class="settings-label-row settings-toggle"><label for="setting-focusMode">集中表示</label><input id="setting-focusMode" type="checkbox" role="switch" aria-describedby="hint-focusMode"><output id="val-focusMode"></output></div><p class="settings-hint" id="hint-focusMode">再生中にマウス操作がないと、操作部を静かに隠します。音量スライダーはマウスを重ねると表示されます。</p></div>
               ${settingControl('materialSpeed', '再生ボタンの質感', 0, 8, .1, '金属の表面が流れる速さ。', '停止', '速く')}
               ${settingControl('consoleSpeed', '操作パネルの煙', 0, 2, .1, '再生ボタンの周りに流れる煙の速さ。', '停止', '速く')}
               <div class="settings-group"><div class="settings-label-row settings-toggle"><label for="setting-turntable">レコードのように再生・停止</label><input id="setting-turntable" type="checkbox" role="switch" aria-describedby="hint-turntable"><output id="val-turntable"></output></div><p class="settings-hint" id="hint-turntable">再生・一時停止の前後で、レコードのように音程と速度を変えます。</p></div>
@@ -225,18 +229,22 @@ class SoundSky {
               <button class="play-toggle" data-command="play" aria-label="Play" title="Play · Space"><span class="metal-fallback" aria-hidden="true"></span><div class="metal-surface" aria-hidden="true"></div><span class="play-glyph-outline" aria-hidden="true"></span><span class="play-glyph">${icon('play')}</span></button>
               <button class="icon-button" data-command="next" aria-label="Next track" title="Next">${icon('next')}</button></div>
             <div class="volume"><button class="icon-button" data-command="mute" aria-label="Mute" title="Mute">${icon('volume')}</button><input class="volume-range" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="Volume"></div>
-          </div><div class="seek-row"><span class="time current">0:00</span><div class="seek-surface"><div class="seek-light" aria-hidden="true"><div class="seek-fallback"></div><div class="seek-shader"></div></div><input class="seek" type="range" step="any" min="0" max="1000" step="any" value="0" aria-label="Seek position"></div><span class="time duration">0:00</span></div>
+          </div><div class="seek-row"><span class="time current">0:00</span><div class="seek-surface"><div class="seek-light" aria-hidden="true"><div class="seek-fallback"></div><div class="seek-shader"></div></div><input class="seek" type="range" step="any" min="0" max="1000" value="0" aria-label="Seek position"></div><span class="time duration">0:00</span></div>
           </footer>
         </div><div class="toast" role="status" hidden></div>
       </section>`;
     document.body.append(this.host);
     this.appearanceStyle.dataset.soundskyAppearanceStyle='';this.appearanceStyle.textContent=appearanceCSS;document.head.append(this.appearanceStyle);
     this.nativePreferences = new NativePreferences(this.el('.settings-panel'));
-    this.accountSettings = new AccountSettings(this.el('#settings-account'));
+    this.accountSettings = new AccountSettings(this.el('#settings-account'), theme => {
+      document.body.classList.toggle('theme-dark',theme==='dark');document.body.classList.toggle('theme-light',theme==='light');
+    });
     this.settingsRouteObserver.observe(document.body, {childList:true, subtree:true});
     window.addEventListener('popstate', () => this.syncSettingsPage(), {signal:this.events.signal});
     window.addEventListener('hashchange', () => this.syncSettingsPage(), {signal:this.events.signal});
 
+    this.listeningMode = new ListeningMode(this.el('.player'));
+    this.overflowTitle = new OverflowTitle(this.el('.title-link'),this.el('h1'));
     this.queue = new NativeQueue(this.adapter, this.el('.queue-aperture'));
     this.queue.onUpdate = info => {
       this.el('.queue-empty').hidden = info.available && info.hasTracks && !!this.state.track.key;
@@ -261,6 +269,7 @@ class SoundSky {
       if (controls && !this.backgroundInert.has(controls)) { this.backgroundInert.set(controls, controls.inert); controls.inert = true; }
     };
     this.unsubscribe = this.adapter.subscribe(state => this.render(state));
+    this.nativeAppearance = new NativeAppearance(() => this.applyAppearance());
     this.loadSettings();
     this.bindEvents();
     this.nativeModalObserver.observe(document.body, { childList: true, subtree: true });
@@ -356,10 +365,6 @@ class SoundSky {
         this.saveSettings();
       }, { signal });
     });
-    this.el<HTMLSelectElement>('#setting-appearance').addEventListener('change', event => {
-      this.settings.appearance = (event.target as HTMLSelectElement).value as SoundSkySettings['appearance'];
-      this.updateSettingsUI();this.applySettings();this.saveSettings();
-    }, {signal});
     this.el<HTMLInputElement>('#setting-heatEnabled').addEventListener('change', event => {
       this.settings.heatEnabled = (event.target as HTMLInputElement).checked;
       this.updateSettingsUI(); this.applySettings(); this.saveSettings();
@@ -386,12 +391,15 @@ class SoundSky {
       this.settings.prefetchSeconds=Number((event.target as HTMLSelectElement).value);
       this.updateSettingsUI();this.applySettings();this.saveSettings();
     },{signal});
+    this.el<HTMLInputElement>('#setting-focusMode').addEventListener('change',event=>{
+      this.settings.focusMode=(event.target as HTMLInputElement).checked;this.updateSettingsUI();this.applySettings();this.saveSettings();
+    },{signal});
     this.el<HTMLInputElement>('#setting-turntable').addEventListener('change', event => {
       this.settings.turntable = (event.target as HTMLInputElement).checked;
       this.updateSettingsUI(); this.applySettings(); this.saveSettings();
     }, { signal });
     const seek = this.el<HTMLInputElement>('.seek');
-    seek.addEventListener('pointerdown', () => { this.scrubbing = true; this.scrubKey = this.state.track.key; }, { signal });
+    seek.addEventListener('pointerdown', () => { this.scrubbing = true; this.scrubKey = this.state.track.key; this.syncListeningMode(); }, { signal });
     seek.addEventListener('input', () => {
       if (!this.scrubbing) { this.scrubbing = true; this.scrubKey = this.state.track.key; }
       seek.style.setProperty('--progress', `${Number(seek.value) / 10}%`);
@@ -407,15 +415,15 @@ class SoundSky {
     seek.addEventListener('blur', () => { this.scrubbing = false; this.scrubKey = ''; this.adapter.emit(); }, { signal });
     const volume = this.el<HTMLInputElement>('.volume-range');
     volume.addEventListener('input', () => {
-      this.volumeEditing = true;
+      this.volumeEditing = true; this.syncListeningMode();
       volume.style.setProperty('--progress', `${Number(volume.value) * 100}%`);
       this.adapter.setVolume(Number(volume.value));
     }, { signal });
     volume.addEventListener('change', () => {
       if (!this.adapter.setVolume(Number(volume.value))) this.toast('Volume is unavailable until SoundCloud loads its player.');
-      this.volumeEditing = false;
+      this.volumeEditing = false; this.syncListeningMode();
     }, { signal });
-    volume.addEventListener('blur', () => { this.volumeEditing = false; this.adapter.emit(); }, { signal });
+    volume.addEventListener('blur', () => { this.volumeEditing = false; this.syncListeningMode(); this.adapter.emit(); }, { signal });
     document.addEventListener('keydown', this.keydown, { capture: true, signal });
     document.addEventListener('fullscreenchange', () => {
       const on = !!document.fullscreenElement;
@@ -501,7 +509,8 @@ class SoundSky {
       this.scrubbing = false; this.scrubKey = '';
       if (this.active) void this.adapter.probeRepost();
     }
-    this.setText('h1', state.track.title);
+    this.setText('h1', state.track.title);this.overflowTitle?.sync(state.track.title);
+    this.syncListeningMode();
     this.el('.title-link').title = state.track.key ? `${state.track.title} — open on SoundCloud` : state.track.title;
     this.el<HTMLButtonElement>('.title-link').disabled = !state.track.key;
     this.setText('.artist', state.track.artist);
@@ -553,6 +562,7 @@ class SoundSky {
     const volume = this.el<HTMLInputElement>('.volume-range'); volume.disabled = !state.canVolume;
     if (!this.volumeEditing) { volume.value = String(state.volume); volume.style.setProperty('--progress', `${state.volume * 100}%`); volume.setAttribute('aria-valuetext', `${Math.round(state.volume * 100)} percent`); }
   }
+  private syncListeningMode(){this.listeningMode?.sync(this.settings.focusMode,this.active,this.state.playing,this.settingsOpen||this.scrubbing||this.volumeEditing);}
   private animate = (now: number) => {
     if (!this.active || this.disposed || document.hidden) return;
     if (!this.scrubbing) {
@@ -661,6 +671,7 @@ class SoundSky {
     if (this.disposed || this.active) return;
     if (this.closeTimer) { clearTimeout(this.closeTimer); this.closeTimer = null; }
     this.active = true;
+    this.syncListeningMode();
     this.syncSettingsPage();
     this.syncAnimation();
     this.focusBefore = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -684,6 +695,7 @@ class SoundSky {
   private close() {
     if (!this.active) return;
     this.active = false;
+    this.syncListeningMode();
     this.clearTrackAnimations();
     this.toggleSettings(false);
     this.syncSettingsPage();
@@ -709,6 +721,7 @@ class SoundSky {
   private syncSettingsPage() { if (!this.disposed) this.nativePreferences?.sync(); }
   private toggleSettings(show = !this.settingsOpen) {
     this.settingsOpen = show;
+    this.syncListeningMode();
     const panel = this.shadow.querySelector<HTMLElement>('.settings-panel');
     const btn = this.shadow.querySelector<HTMLButtonElement>('[data-command="settings"]');
     if (!panel) {
@@ -749,7 +762,8 @@ class SoundSky {
     this.saveSettings();
   }
   private updateSettingsUI() {
-    this.el<HTMLSelectElement>('#setting-appearance').value=this.settings.appearance;
+    this.el<HTMLInputElement>('#setting-focusMode').checked=this.settings.focusMode;
+    this.el('#val-focusMode').textContent=this.settings.focusMode?'オン':'オフ';
     for (const [key, val] of Object.entries(this.settings)) {
       if (typeof val !== 'number') continue;
       const slider = this.shadow.querySelector<HTMLInputElement>(`[data-setting="${key}"]`);
@@ -813,13 +827,14 @@ class SoundSky {
       playbackState:this.state.track.key ? (this.state.playing ? 'playing' : 'paused') : 'none'},location.origin);
   }
   private applyAppearance() {
-    const theme=this.settings.appearance==='system'?(this.colorScheme.matches?'light':'dark'):this.settings.appearance;
+    const theme=declaredAppearance() ?? (window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
     this.host.dataset.appearance=theme;
     document.documentElement.dataset.soundskyAppearance=theme;
     this.accountSettings?.setTheme(theme);
 
   }
   private applySettings() {
+    this.syncListeningMode();
     this.applyAppearance();
     this.nativePreferences?.update();
     this.syncTurntable();
@@ -879,6 +894,7 @@ class SoundSky {
     this.nativeModalObserver.disconnect(); this.queuePrefetch.destroy(); this.queue.destroy(); this.ambient.destroy(); this.atmosphere.destroy(); this.materials.destroy(); this.accent.destroy(); this.siteTheme.destroy(); this.transport.destroy(); this.adapter.destroy();
     try { if (globalThis.chrome?.runtime?.id) chrome.runtime.onMessage.removeListener(this.message); } catch { /* extension was reloaded */ }
     delete document.documentElement.dataset.soundskyAppearance;
+    this.nativeAppearance?.destroy();this.listeningMode?.destroy();this.overflowTitle?.destroy();
     this.appearanceStyle.remove();
     this.host.remove();
   }

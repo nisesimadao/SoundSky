@@ -10,7 +10,7 @@ for(const chromeValue of [undefined,{}])test(`frame without ${chromeValue?'stora
  w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
  w.chrome=chromeValue;
  assert.doesNotThrow(()=>w.eval(bundle.outputFiles[0].text));
- w.dispatchEvent(new w.MessageEvent('message',{origin:'https://soundcloud.com',source:dom.window,data:{type:'soundsky:site-theme',enabled:true,hue:140,open:false,settings:{appearance:'light'}}}));
+ w.dispatchEvent(new w.MessageEvent('message',{origin:'https://soundcloud.com',source:dom.window,data:{type:'soundsky:site-theme',enabled:true,hue:140,open:false,appearance:'light'}}));
  assert.ok(w.document.documentElement.hasAttribute('data-soundsky-theme'));
  assert.match(w.document.documentElement.style.getPropertyValue('--sky-site-accent'),/140/);
  assert.equal(w.document.documentElement.dataset.soundskyAppearance,'light');

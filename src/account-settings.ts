@@ -1,11 +1,13 @@
+import { NativeAppearance, type Appearance } from './native-appearance';
 import appearanceCSS from './appearance.css';
 
 /** An isolated native page keeps SoundCloud's own form CSS and save handlers intact. */
 export class AccountSettings {
   private frame: HTMLIFrameElement | null = null;
   private events = new AbortController();
+  private nativeAppearance: NativeAppearance | null = null;
   private theme: 'light'|'dark' = 'dark';
-  constructor(private mount: HTMLElement) {}
+  constructor(private mount: HTMLElement, private onThemeChange?: (theme: Appearance)=>void) {}
   setTheme(theme: 'light'|'dark') {
     this.theme=theme;
     try{if(this.frame?.contentDocument?.documentElement)this.frame.contentDocument.documentElement.dataset.soundskyAppearance=theme;}catch{/* authentication may leave this origin */}
@@ -18,6 +20,8 @@ export class AccountSettings {
       try{
         const doc=frame.contentDocument;if(!doc?.head)return;
         doc.documentElement.dataset.soundskyAppearance=this.theme;
+        this.nativeAppearance?.destroy();let initial=true;
+        this.nativeAppearance=new NativeAppearance(theme=>{doc.documentElement.dataset.soundskyAppearance=theme;if(!initial)this.onThemeChange?.(theme);initial=false;},doc);
         const style=doc.createElement('style');style.dataset.soundskyAccountFrame='';
         style.textContent=appearanceCSS+`
           .header,.playControls,.l-footer,header[role=banner],body>footer{display:none!important}
@@ -30,5 +34,5 @@ export class AccountSettings {
     },{signal:this.events.signal});
     frame.src='/settings';this.mount.append(frame);this.frame=frame;
   }
-  destroy(){this.events.abort();this.frame?.remove();this.frame=null;}
+  destroy(){this.nativeAppearance?.destroy();this.events.abort();this.frame?.remove();this.frame=null;}
 }

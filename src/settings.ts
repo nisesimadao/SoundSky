@@ -10,7 +10,8 @@ export function loadSavedSettings(saved: unknown): SoundSkySettings {
   const settings = { ...defaultSettings };
   if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return settings;
   const values = saved as Record<string, unknown>;
-  if (values.appearance === 'system' || values.appearance === 'light' || values.appearance === 'dark') settings.appearance = values.appearance;
+  // Old appearance overrides are intentionally ignored: SoundCloud owns the theme.
+  if (typeof values.focusMode === 'boolean') settings.focusMode = values.focusMode;
   for (const key of Object.keys(settingLimits) as (keyof typeof settingLimits)[]) {
     const value = key === 'heatSpeed' ? values.heatSpeed ?? values.materialSpeed : values[key];
     if (typeof value !== 'number' || !Number.isFinite(value)) continue;

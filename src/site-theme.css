@@ -208,7 +208,7 @@ html[data-soundsky-theme][data-sky-site-queue] .queue:not([data-soundsky-queue])
 @media (prefers-reduced-motion: reduce) { .queueItemView[data-soundsky-prefetching]::after { transition: none !important; } }
 
 html[data-soundsky-theme][data-soundsky-appearance="light"] { color-scheme: light; --sky-site-bg:#f5f4f0;--sky-site-surface:#fff;--sky-site-ink:#202a30;--sky-site-muted:#63717a;--sky-site-line:#24384420;--sky-site-accent:#326b87;--sky-site-input:#fff;--sky-site-header:#fafaf7f5;--sky-site-transport:#fafaf7f5;--sky-site-panel:#fafaf7f7;--sky-site-hover:#24384409;--sky-site-profile:#e9eceb; }
-html[data-soundsky-theme][data-soundsky-appearance="light"] :is(.header,header[role="banner"],.playControls,.queue,.dropdownMenu,.modal,.dialog,.volume__sliderWrapper) { background:#fafaf7f5!important;color:var(--sky-site-ink)!important; }
+html[data-soundsky-theme][data-soundsky-appearance="light"] :is(.header,header[role="banner"],.playControls,.queue:not([data-soundsky-queue]),.dropdownMenu,.modal,.dialog,.volume__sliderWrapper) { background:#fafaf7f5!important;color:var(--sky-site-ink)!important; }
 html[data-soundsky-theme][data-soundsky-appearance="light"] :is(input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),textarea,select,.headerSearch__input) { background-color:#fff!important;border-color:var(--sky-site-line)!important; }
 
 html[data-soundsky-theme][data-soundsky-appearance="light"] .tileGallery__sliderButton {color:var(--sky-site-ink)!important;border-color:var(--sky-site-line)!important;box-shadow:0 3px 16px #24384420;}

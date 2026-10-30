@@ -1,3 +1,10 @@
+// Settings frames emulate SoundCloud's native theme control without creating a second player.
+if (window !== window.top) {
+ document.body.className='theme-dark';
+ document.body.innerHTML='<main><h1>Settings fixture</h1><h3>Change theme</h3><label><input type="radio" name="theme" value="light"> Light</label> <label><input type="radio" name="theme" value="dark" checked> Dark</label></main>';
+ document.querySelectorAll('input[name="theme"]').forEach(input=>input.addEventListener('change',()=>{document.body.classList.toggle('theme-light',input.value==='light');document.body.classList.toggle('theme-dark',input.value==='dark');}));
+} else {
+ document.body.classList.add('theme-dark');
 const q = s => document.querySelector(s);
 q('.playbackSoundBadge__avatar span').style.backgroundImage='url("https://i1.sndcdn.com/artworks-7dVRWT0Yre5thf5c-54ZfkA-t120x120.png")';
 let index=0, playing=false, tick;
@@ -15,3 +22,5 @@ q('.queue').addEventListener('click',e=>{const more=e.target.closest('.queueItem
 q('.playbackTimeline__progressWrapper').onmousedown=e=>{const r=e.currentTarget.getBoundingClientRect();e.currentTarget.setAttribute('aria-valuenow',Math.round((e.clientX-r.left)/r.width*248));};
 q('.volume__sliderWrapper').onmousedown=e=>{const r=e.currentTarget.querySelector('.volume__sliderBackground').getBoundingClientRect();e.currentTarget.setAttribute('aria-valuenow',Math.max(0,Math.min(1,(r.bottom-e.clientY)/r.height)));};
 q('.volume__button').onclick=()=>q('.volume__sliderWrapper').setAttribute('aria-valuenow',q('.volume__sliderWrapper').getAttribute('aria-valuenow')==='0'?'0.4':'0');
+
+}

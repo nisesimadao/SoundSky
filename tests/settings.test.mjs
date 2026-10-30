@@ -53,7 +53,9 @@ test('record speed defaults to native duration and accepts only finite bounded m
  assert.equal(loadSavedSettings({turntableSpeed:NaN}).turntableSpeed,1);
 });
 
-test('appearance accepts light, dark or system without changing existing defaults',()=>{
- for(const appearance of ['light','dark','system'])assert.equal(loadSavedSettings({appearance}).appearance,appearance);
- assert.equal(loadSavedSettings({appearance:'invalid'}).appearance,'dark');
+test('obsolete independent themes are ignored and listening focus remains opt-in',()=>{
+ for(const appearance of ['light','dark','system'])assert.equal('appearance' in loadSavedSettings({appearance}),false);
+ assert.equal(loadSavedSettings({}).focusMode,false);
+ assert.equal(loadSavedSettings({focusMode:true}).focusMode,true);
+ assert.equal(loadSavedSettings({focusMode:'true'}).focusMode,false);
 });
