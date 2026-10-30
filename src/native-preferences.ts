@@ -35,24 +35,33 @@ export class NativePreferences {
       this.view=document.createElement('div');this.view.className='settingsMain__tabContent sc-mt-5x';this.view.dataset.soundskyNativePreferences='';
       for (const panel of this.source.querySelectorAll<HTMLElement>('.settings-section')) {
         if (panel.id === 'settings-account' || !panel.querySelector('h3')) continue;
-        const section=document.createElement('section');section.className='g-form-section';
-        const head=document.createElement('div');head.className='g-form-section-head sc-mb-2x';
-        const title=document.createElement('h3');title.textContent=panel.querySelector('h3')?.textContent??'';head.append(title);section.append(head);
+        const section=document.createElement('div');section.className='g-form-section';
+        const head=document.createElement('div');head.className='g-form-section-head g-flex-row-spread sc-mb-2x';
+        const title=document.createElement('h3');title.className='g-form-section-title';title.textContent=panel.querySelector('h3')?.textContent??'';head.append(title);
+        const saved=document.createElement('span');saved.className='sc-text-captions sc-text-secondary';saved.textContent='自動保存';head.append(saved);section.append(head);
+        const rows=document.createElement('div');rows.className='g-options-row g-flex-column';section.append(rows);
         for (const control of panel.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input,select')) {
-          const row=document.createElement('div');row.className='soundsky-native-row';
+          const row=document.createElement('div');row.className='g-options-cell sc-pr-2x';
           const label=document.createElement('label');label.htmlFor=`native-${control.id}`;label.textContent=this.source.querySelector(`label[for="${control.id}"]`)?.textContent??'';
           const input=control.cloneNode(true) as HTMLInputElement | HTMLSelectElement;input.id=label.htmlFor;input.className=control.type==='range'?'soundsky-native-range':control.type==='checkbox'?'':'sc-input';input.removeAttribute('style');input.removeAttribute('aria-describedby');
           input.addEventListener(control.type==='range'?'input':'change',()=>{control.value=input.value;if(control instanceof HTMLInputElement&&input instanceof HTMLInputElement)control.checked=input.checked;control.dispatchEvent(new Event(control.type==='range'?'input':'change',{bubbles:true}));this.update();});
           this.controls.set(input,control);
-          const labelRow=document.createElement('div');labelRow.className='soundsky-native-label';labelRow.append(label);
-          const controls=document.createElement('div');controls.className='soundsky-native-control';controls.append(input);
-          if(control.type==='range'){const output=document.createElement('output');output.htmlFor.value=input.id;labelRow.append(output);this.outputs.set(output,control);}
-          row.append(labelRow,controls);
-          const hint=control.getAttribute('aria-describedby');const text=hint?this.source.querySelector<HTMLElement>(`#${hint}`)?.textContent:null;
-          if(text){const description=document.createElement('p');description.className='soundsky-native-hint sc-type-light';description.textContent=text;row.append(description);}
+          const content=document.createElement('div');content.className='toggleRow g-flex-row-spread sc-mb-2x';
+          const text=document.createElement('div');text.className='toggleRow__text sc-mr-3x';
+          const labelRow=document.createElement('p');labelRow.className='sc-text-body';labelRow.append(label);text.append(labelRow);
+          const controls=document.createElement('div');controls.className=control.type==='checkbox'?'toggleRow__toggle':'soundsky-native-field';
+          if(control.type==='checkbox'){
+            const toggle=document.createElement('label');toggle.className='toggle sc-toggle toggleFormControl__toggle sc-toggle-active';
+            const handle=document.createElement('span');handle.className='sc-toggle-handle';
+            input.className='sc-toggle-input sc-visuallyhidden';toggle.append(handle,input);controls.append(toggle);
+          }else controls.append(input);
+          if(control.type==='range'){const output=document.createElement('output');output.htmlFor.value=input.id;controls.append(output);this.outputs.set(output,control);}
+          content.append(text,controls);row.append(content);
+          const hint=control.getAttribute('aria-describedby');const help=hint?this.source.querySelector<HTMLElement>(`#${hint}`)?.textContent:null;
+          if(help){const description=document.createElement('p');description.className='sc-text-secondary';description.textContent=help;text.append(description);}
           const reset=control.closest('.settings-group')?.querySelector<HTMLButtonElement>('[data-command="setting-default"]');
-          if(reset){const button=document.createElement('button');button.type='button';button.className='sc-button sc-button-small';button.textContent='標準に戻す';button.addEventListener('click',()=>{reset.click();this.update();});controls.append(button);this.resets.set(button,control);}
-          section.append(row);
+          if(reset){const button=document.createElement('button');button.type='button';button.className='sc-button sc-button-small';button.textContent='標準';button.setAttribute('aria-label',`${label.textContent}を標準に戻す`);button.addEventListener('click',()=>{reset.click();this.update();});controls.append(button);this.resets.set(button,control);}
+          rows.append(row);
         }
         this.view.append(section);
       }
@@ -63,7 +72,11 @@ export class NativePreferences {
   update(){
     for(const [input,source]of this.controls){
       input.value=source.value;input.disabled=source.disabled;
-      if(input instanceof HTMLInputElement&&source instanceof HTMLInputElement)input.checked=source.checked;
+      if(input instanceof HTMLInputElement&&source instanceof HTMLInputElement){
+        input.checked=source.checked;
+        input.closest('.sc-toggle')?.classList.toggle('sc-toggle-on',source.checked);
+        input.closest('.sc-toggle')?.classList.toggle('sc-toggle-disabled',source.disabled);
+      }
       if(input.type==='range'){const range=input as HTMLInputElement;const ratio=(Number(range.value)-Number(range.min))/(Number(range.max)-Number(range.min));range.style.setProperty('--progress',`${Math.max(0,Math.min(1,ratio))*100}%`);}
     }
     for(const [output,source]of this.outputs)output.value=source.closest('.settings-group')?.querySelector('.settings-val')?.textContent??source.value;

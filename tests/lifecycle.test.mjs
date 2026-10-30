@@ -60,6 +60,14 @@ test('reopening and reinjecting retain one instance and release every observer/t
  const sharedPanel=ui.querySelector('.settings-panel');
  const nativeView=w.document.querySelector('[data-soundsky-native-preferences]');
  assert.ok(nativeView);assert.equal(nativeView.shadowRoot,null);
+ assert.ok(nativeView.querySelector('.g-form-section-title'));
+ const nativeToggle=nativeView.querySelector('#native-setting-turntable');
+ const toggle=nativeToggle.closest('.sc-toggle');assert.ok(toggle);
+ toggle.querySelector('.sc-toggle-handle').click();
+ assert.equal(nativeToggle.checked,true);assert.equal(toggle.classList.contains('sc-toggle-on'),true);
+ assert.equal(ui.querySelector('#setting-turntable').checked,true);
+ toggle.querySelector('.sc-toggle-handle').click();assert.equal(nativeToggle.checked,false);
+
  assert.equal(w.document.querySelector('main').contains(w.document.querySelector('soundsky-player')),false);
  const nativeSpeed=nativeView.querySelector('#native-setting-turntableSpeed');nativeSpeed.value='1.6';nativeSpeed.dispatchEvent(new w.Event('input',{bubbles:true}));
  assert.equal(JSON.parse(w.localStorage.getItem('soundsky:settings')).turntableSpeed,1.6);
