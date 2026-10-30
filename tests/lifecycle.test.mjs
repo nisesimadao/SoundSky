@@ -20,7 +20,7 @@ test('reopening and reinjecting retain one instance and release every observer/t
  w.MutationObserver=class extends ActualMutationObserver{observe(...args){observers.add(this);super.observe(...args);}disconnect(){observers.delete(this);super.disconnect();}};
  w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
  w.HTMLCanvasElement.prototype.getContext=()=>null;
- const queue=w.document.querySelector('.queue');w.document.querySelector('.playbackSoundBadge__showQueue').onclick=()=>queue.classList.toggle('m-visible');w.document.querySelector('.queue__hide').onclick=()=>queue.classList.remove('m-visible');
+ const queue=w.document.querySelector('.queue');w.document.querySelector('.playbackSoundBadge__showQueue').onclick=event=>{event.preventDefault();queue.classList.toggle('m-visible');};w.document.querySelector('.queue__hide').onclick=()=>queue.classList.remove('m-visible');
  w.localStorage.setItem('soundsky:settings',JSON.stringify({pulseSensitivity:5,materialSpeed:4}));
  w.eval(code);assert.equal(w.document.querySelectorAll('soundsky-player').length,1);assert.equal(intervals.size,1);
  const ui=w.document.querySelector('soundsky-player').shadowRoot;
@@ -55,6 +55,31 @@ test('reopening and reinjecting retain one instance and release every observer/t
  ui.querySelector('#tab-background').dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true,composed:true}));
  assert.equal(ui.querySelector('.settings-panel').hidden,true);
  assert.equal(ui.activeElement,ui.querySelector('[data-command="settings"]'));
+ w.__soundsky.toggle();
+ w.history.pushState({},'', '/settings#soundsky');w.dispatchEvent(new w.PopStateEvent('popstate'));
+ const sharedPanel=ui.querySelector('.settings-panel');
+ const nativeView=w.document.querySelector('[data-soundsky-native-preferences]');
+ assert.ok(nativeView);assert.equal(nativeView.shadowRoot,null);
+ assert.equal(w.document.querySelector('main').contains(w.document.querySelector('soundsky-player')),false);
+ const nativeSpeed=nativeView.querySelector('#native-setting-turntableSpeed');nativeSpeed.value='1.6';nativeSpeed.dispatchEvent(new w.Event('input',{bubbles:true}));
+ assert.equal(JSON.parse(w.localStorage.getItem('soundsky:settings')).turntableSpeed,1.6);
+ w.__soundsky.toggle();ui.querySelector('[data-command="settings"]').click();
+ assert.equal(ui.querySelector('.settings-panel'),sharedPanel);
+ assert.equal(ui.querySelector('#setting-turntableSpeed').value,'1.6');
+ assert.equal(ui.querySelector('.settings-page-link'),null,'sidebar must not navigate the playing page');
+ const before=w.location.href;ui.querySelector('#tab-account').click();
+ assert.equal(w.location.href,before);assert.equal(ui.querySelector('#settings-account iframe').getAttribute('src'),'/settings');
+ const nativeMode=nativeView.querySelector('#native-setting-appearance');nativeMode.value='light';nativeMode.dispatchEvent(new w.Event('change',{bubbles:true}));
+ assert.equal(w.document.querySelector('soundsky-player').dataset.appearance,'light');
+ assert.equal(ui.querySelector('#setting-appearance').value,'light');
+ ui.querySelector('#setting-appearance').value='dark';ui.querySelector('#setting-appearance').dispatchEvent(new w.Event('change',{bubbles:true}));
+ assert.equal(nativeMode.value,'dark');assert.equal(w.location.href,before);
+
+ w.__soundsky.toggle();
+ w.history.pushState({},'', '/discover');w.dispatchEvent(new w.PopStateEvent('popstate'));
+ assert.equal(w.document.querySelector('[data-soundsky-settings-entry]'),null);
+ assert.equal(w.document.querySelector('[data-soundsky-native-preferences]'),null);
+ w.__soundsky.toggle();
  const openObservers=observers.size;w.eval(code);assert.equal(w.document.querySelectorAll('soundsky-player').length,1);assert.equal(observers.size,openObservers);assert.equal(intervals.size,2);
  w.__soundsky.toggle();assert.equal(queue.hasAttribute('data-soundsky-queue'),false);assert.equal(queue.classList.contains('m-visible'),false);assert.equal(w.document.getElementById('content').inert,false);assert.equal(w.document.documentElement.style.overflow,'');
  // Simulate the new isolated world created by reloading an extension.

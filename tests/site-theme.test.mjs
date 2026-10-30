@@ -69,3 +69,40 @@ test('appearance regions, corner scale and fixed accent apply without leaking af
  assert.equal(w.document.querySelectorAll('[data-soundsky-site-style]').length,0);
  theme.destroy();dom.window.close();
 });
+
+
+test('desktop wide layout reaches the modern track frame and restores its native width when switched off',()=>{
+ const dom=create(),w=dom.window,theme=new w.themeTest.SiteTheme(false,false);
+ const preferences={siteHeader:true,siteArtwork:true,siteQueue:true,siteTransport:true,siteBackground:true,siteWide:true,siteCorners:'soft',siteAccent:'artwork',siteBackdropOpacity:.3};
+ try {
+  const base=w.document.createElement('style');
+  base.textContent='.native-track-main { width:1240px; margin:0 auto 100px; }';
+  w.document.head.append(base);
+  w.document.body.innerHTML='<div id="navigation-shell-right-side-container"><main id="main" class="native-track-main"><section aria-label="Track header"></section></main></div><aside><main id="unrelated">Other content</main></aside>';
+  const main=w.document.getElementById('main');
+  theme.setPreferences(preferences);theme.setEnabled(true);
+  // jsdom does not evaluate viewport media queries. Activate the shipped desktop
+  // rules explicitly to check their selectors, cascade and preference scoping.
+  const media=[...w.document.querySelector('[data-soundsky-site-style]').sheet.cssRules].find(rule=>rule.conditionText==='(min-width: 1100px)');
+  const desktop=w.document.createElement('style');desktop.textContent=[...media.cssRules].map(rule=>rule.cssText).join('\n');w.document.head.append(desktop);
+  assert.equal(w.getComputedStyle(main).width,'calc(100% - 80px)');
+  assert.equal(w.getComputedStyle(main).maxWidth,'1760px');
+  assert.notEqual(w.getComputedStyle(w.document.getElementById('unrelated')).maxWidth,'1760px');
+  theme.setPreferences({...preferences,siteWide:false});
+  assert.equal(w.getComputedStyle(main).width,'1240px');
+  theme.setPreferences({...preferences,siteWide:true});
+  assert.equal(w.getComputedStyle(main).width,'calc(100% - 80px)');
+  theme.setEnabled(false);
+  assert.equal(w.getComputedStyle(main).width,'1240px');
+ } finally { theme.destroy();dom.window.close(); }
+});
+
+
+test('light palette is available without the modern skin and reaches every native surface',()=>{
+ const dom=create(),w=dom.window,theme=new w.themeTest.SiteTheme();
+ theme.setPreferences({appearance:'light'});assert.equal(w.document.documentElement.dataset.soundskyAppearance,'light');
+ assert.ok(w.document.querySelector('[data-soundsky-palette-style]'));
+ theme.setEnabled(true);assert.match(w.document.documentElement.style.getPropertyValue('--sky-site-accent'),/35%/);
+ theme.setPreferences({appearance:'dark'});assert.equal(w.document.documentElement.dataset.soundskyAppearance,'dark');
+ theme.destroy();assert.equal(w.document.querySelector('[data-soundsky-palette-style]'),null);dom.window.close();
+});

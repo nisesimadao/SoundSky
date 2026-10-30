@@ -1,3 +1,4 @@
+import appearanceCSS from './appearance.css';
 import { createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MeshGradient } from '@paper-design/shaders-react';
@@ -12,6 +13,8 @@ import { SiteGallery } from './site-gallery';
 
 /** Reversible skin: a scoped stylesheet and one decorative, pointer-free canvas. */
 export class SiteTheme {
+  private paletteStyle = document.createElement('style');
+  private colorScheme = matchMedia('(prefers-color-scheme: light)');
   private style = document.createElement('style');
   private surface = document.createElement('div');
   private root: Root | null = null;
@@ -31,6 +34,9 @@ export class SiteTheme {
   constructor(private top = window === window.top,private decorative=true) {
     document.dispatchEvent(new Event('soundsky:theme-dispose'));
     document.addEventListener('soundsky:theme-dispose',()=>this.destroy(),{signal:this.events.signal});
+    this.paletteStyle.dataset.soundskyPaletteStyle='';this.paletteStyle.textContent=appearanceCSS;document.head.append(this.paletteStyle);
+    this.colorScheme.addEventListener('change',()=>{this.applyAppearance();this.applyAccent();this.broadcast();},{signal:this.events.signal});
+    this.applyAppearance();
     this.style.dataset.soundskySiteStyle=''; this.style.textContent=css;
     this.surface.dataset.soundskySiteShader=''; this.surface.setAttribute('aria-hidden','true');
     document.addEventListener('visibilitychange',()=>this.render(),{signal:this.events.signal});
@@ -94,8 +100,12 @@ export class SiteTheme {
     html.style.setProperty('--sky-site-background-opacity',String(p.siteBackdropOpacity));
     this.applyAccent();
   }
+  private applyAppearance(){
+    document.documentElement.dataset.soundskyAppearance=this.preferences.appearance==='system'?(this.colorScheme.matches?'light':'dark'):this.preferences.appearance;
+  }
   setPreferences(settings:SoundSkySettings) {
-    this.preferences={...settings};
+    this.preferences={...defaultSettings,...settings};
+    this.applyAppearance();
     this.cover.setEnabled(this.enabled && settings.siteArtwork);
     this.gallery?.setEnabled(this.enabled && settings.siteArtwork);
     this.applyPreferences();this.render();this.broadcast();
@@ -104,7 +114,7 @@ export class SiteTheme {
     if(!this.enabled)return;
     const option=this.preferences.siteAccent;
     document.documentElement.style.setProperty('--sky-site-accent',
-      option==='sky'?'#97d7ec':option==='warm'?'#f2b585':accentColor(this.hue));
+      document.documentElement.dataset.soundskyAppearance==='light'?(option==='warm'?'#936037':`hsl(${option==='sky'?200:this.hue} 38% 35%)`):option==='sky'?'#97d7ec':option==='warm'?'#f2b585':accentColor(this.hue));
   }
   setAccent(hue:number){this.hue=hue;this.applyAccent();this.broadcast();}
   setPalette(colors:string[]){this.colors=[...colors];this.render();this.broadcast();}
@@ -125,5 +135,5 @@ export class SiteTheme {
     const moving=this.inView&&!this.open&&!document.hidden&&!this.motion.matches;
     this.root?.render(createElement(MeshGradient,{width:'100%',height:'100%',colors:this.colors,speed:moving?.22:0,distortion:.65,swirl:.25,grainMixer:.02,grainOverlay:.018,scale:1.25,minPixelRatio:1,maxPixelCount:60000,frame:18000}));
   }
-  destroy(){this.cover.destroy();this.gallery?.destroy();this.observer?.disconnect();this.events.abort();this.setEnabled(false);unmountShader(this.root,this.surface);this.root=null;this.surface.remove();this.style.remove();}
+  destroy(){this.cover.destroy();this.gallery?.destroy();this.observer?.disconnect();this.events.abort();this.paletteStyle.remove();document.documentElement.removeAttribute('data-soundsky-appearance');this.setEnabled(false);unmountShader(this.root,this.surface);this.root=null;this.surface.remove();this.style.remove();}
 }

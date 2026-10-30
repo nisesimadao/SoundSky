@@ -1,0 +1,21 @@
+/* Share one palette with SoundCloud's native semantic colors, including embeds. */
+html[data-soundsky-appearance="light"] { --ss-page:#f5f4f0;--ss-surface:#ffffff;--ss-raised:#e9eceb;--ss-ink:#202a30;--ss-muted:#63717a;--ss-line:#c9d0d2;--ss-link:#326b87;color-scheme:light!important; }
+html[data-soundsky-appearance="dark"] { --ss-page:#101214;--ss-surface:#181c20;--ss-raised:#282e34;--ss-ink:#eeeae2;--ss-muted:#9da5a5;--ss-line:#424b52;--ss-link:#97c9df;color-scheme:dark!important; }
+html[data-soundsky-appearance],html[data-soundsky-appearance] body {
+ --primary-color:var(--ss-ink)!important;--secondary-color:var(--ss-muted)!important;
+ --font-primary-color:var(--ss-ink)!important;--font-secondary-color:var(--ss-muted)!important;
+ --surface-color:var(--ss-page)!important;--background-surface-color:var(--ss-page)!important;--background-dark-color:var(--ss-page)!important;--background-highlight-color:var(--ss-raised)!important;
+ --input-default-background-color:var(--ss-surface)!important;--input-focused-background-color:var(--ss-surface)!important;--input-disabled-background-color:var(--ss-raised)!important;
+ --input-default-font-color:var(--ss-ink)!important;--input-focused-font-color:var(--ss-ink)!important;--input-disabled-font-color:var(--ss-muted)!important;
+ --input-default-border-color:var(--ss-line)!important;--input-focused-border-color:var(--ss-muted)!important;--input-placeholder-font-color:var(--ss-muted)!important;
+ --button-primary-background-color:var(--ss-ink)!important;--button-primary-font-color:var(--ss-page)!important;
+ --button-secondary-background-color:transparent!important;--button-secondary-font-color:var(--ss-ink)!important;--button-secondary-border-color:var(--ss-line)!important;
+ --button-tertiary-background-color:transparent!important;--button-tertiary-font-color:var(--ss-ink)!important;
+ --link-primary-color:var(--ss-ink)!important;--link-secondary-color:var(--ss-muted)!important;--link-standard-color:var(--ss-link)!important;--font-link-color:var(--ss-link)!important;
+ background-color:var(--ss-page)!important;color:var(--ss-ink)!important;
+}
+html[data-soundsky-appearance="light"] { --surface-rgb:245,244,240!important; }
+html[data-soundsky-appearance="dark"] { --surface-rgb:16,18,20!important; }
+html[data-soundsky-appearance="light"] :is(.MuiPaper-root,.MuiCard-root) { background-color:var(--ss-surface)!important;color:var(--ss-ink)!important; }
+html[data-soundsky-appearance="light"] :is(.header,.playControls,.playControls__inner,.queue,.queue__panel,.volume__sliderWrapper,.dropdownMenu,.modal__modal) {background-color:var(--ss-surface)!important;color:var(--ss-ink)!important;}
+html[data-soundsky-appearance="light"] .header :is(.header__navMenu a,.header__userNavButton) {color:var(--ss-ink)!important;}

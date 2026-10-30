@@ -45,3 +45,15 @@ test('native page appearance sections and style choices validate independently',
  assert.equal(loadSavedSettings({siteBackdropOpacity:-5}).siteBackdropOpacity,0);
  assert.equal(loadSavedSettings({siteBackdropOpacity:5}).siteBackdropOpacity,.7);
 });
+
+test('record speed defaults to native duration and accepts only finite bounded multipliers',()=>{
+ assert.equal(loadSavedSettings({}).turntableSpeed,1);
+ assert.equal(loadSavedSettings({turntableSpeed:2.5}).turntableSpeed,2);
+ assert.equal(loadSavedSettings({turntableSpeed:0}).turntableSpeed,.5);
+ assert.equal(loadSavedSettings({turntableSpeed:NaN}).turntableSpeed,1);
+});
+
+test('appearance accepts light, dark or system without changing existing defaults',()=>{
+ for(const appearance of ['light','dark','system'])assert.equal(loadSavedSettings({appearance}).appearance,appearance);
+ assert.equal(loadSavedSettings({appearance:'invalid'}).appearance,'dark');
+});

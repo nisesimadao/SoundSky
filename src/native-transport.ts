@@ -1,3 +1,4 @@
+import { PlaybackClock } from './playback-clock';
 import {unmountShader} from './shader-lifecycle';
 import {createElement} from 'react';
 import {createRoot,type Root} from 'react-dom/client';
@@ -15,8 +16,7 @@ export class NativeTransport {
  private enabled=false;
  private open=false;
  private state:PlayerState|null=null;
- private at=0;
- private current=0;
+ private clock=new PlaybackClock();
  private frame=0;
  private dragging=false;
  private level=0;
@@ -54,7 +54,7 @@ export class NativeTransport {
  }
  sync(state:PlayerState){
   const now=performance.now();
-  if(!this.state||state.track.key!==this.state.track.key||state.current!==this.state.current||state.playing!==this.state.playing){this.current=state.current;this.at=now;}
+  this.clock.sync(state.track.key,state.current,state.playing,now,this.dragging);
   const playingChanged=this.state?.playing!==state.playing||this.state?.muted!==state.muted;
   this.state=state;
   const controls=this.adapter.query<HTMLElement>('.playControls__elements');
@@ -108,7 +108,7 @@ export class NativeTransport {
   const progress=this.adapter.query<HTMLElement>('.playbackTimeline__progressWrapper');
   if(progress&&!this.dragging){
    // Native aria values are authoritative; extrapolate only between updates, never beyond 1.25s.
-   const current=Math.min(this.state.duration,this.current+(this.state.playing?Math.min(1.25,Math.max(0,now-this.at)/1000):0));
+   const current=Math.min(this.state.duration,this.clock.read(now));
    const ratio=this.state.duration?Math.min(1,Math.max(0,current/this.state.duration)):0;
    progress.style.setProperty('--soundsky-seek-width', `${progress.getBoundingClientRect().width}px`);
    progress.style.setProperty('--soundsky-progress',`${ratio*100}%`);progress.setAttribute('data-soundsky-progress','');

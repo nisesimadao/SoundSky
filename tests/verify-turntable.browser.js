@@ -1,7 +1,7 @@
 async page=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('http://127.0.0.1:4173');await page.evaluate(()=>localStorage.removeItem('soundsky:settings'));await page.reload();await page.addScriptTag({path:'dist/audio.js'});
- await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();await page.getByRole('button',{name:'見た目の設定',exact:true}).click();await page.getByRole('tab',{name:'操作部分',exact:true}).click();
+ await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();await page.getByRole('button',{name:'見た目の設定',exact:true}).click();await page.getByRole('tab',{name:'再生・操作',exact:true}).click();
  const toggle=page.getByRole('switch',{name:'レコードのように再生・停止',exact:true});if(await toggle.isChecked())throw new Error('Record effect is enabled by default');await toggle.check();await page.waitForTimeout(50);
  if(!await page.evaluate(()=>JSON.parse(localStorage.getItem('soundsky:settings')).turntable))throw new Error('Record preference is not saved');await page.getByRole('button',{name:'Back to SoundCloud',exact:true}).click();
  await page.evaluate(()=>{
@@ -18,7 +18,7 @@ async page=>{
  await page.locator('.playControl').click();await page.waitForTimeout(50);await page.locator('.playControl').click();await page.waitForTimeout(500);if(await page.evaluate(()=>window.recordClicks)!==3)throw new Error('Fast reversal still commits an old pause');
  await page.locator('.playControl').click();await page.waitForTimeout(40);await page.evaluate(()=>window.postMessage({type:'soundsky:turntable',enabled:false},location.origin));await page.waitForTimeout(500);
  if(!await page.evaluate(()=>window.recordClicks===3&&Math.abs(window.recordSource.playbackRate.value-1)<.001))throw new Error('Disabling an active curve retains pitch change or commits a stale pause');
- await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();await page.getByRole('button',{name:'見た目の設定',exact:true}).click();await page.getByRole('tab',{name:'操作部分',exact:true}).click();await toggle.uncheck();await page.getByRole('button',{name:'Back to SoundCloud',exact:true}).click();await page.waitForTimeout(60);await page.locator('.playControl').click();
+ await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();await page.getByRole('button',{name:'見た目の設定',exact:true}).click();await page.getByRole('tab',{name:'再生・操作',exact:true}).click();await toggle.uncheck();await page.getByRole('button',{name:'Back to SoundCloud',exact:true}).click();await page.waitForTimeout(60);await page.locator('.playControl').click();
  if(await page.evaluate(()=>window.recordClicks)!==4)throw new Error('Disabled effect delays native pause');
  // Verify actual rendered pitch with an OfflineAudioContext, independent of clock and UI timing.
  const pitch=await page.evaluate(async()=>{

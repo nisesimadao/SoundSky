@@ -23,6 +23,7 @@ export interface PlayerState {
 }
 
 export interface SoundSkySettings {
+  appearance: 'system' | 'light' | 'dark';
   /** Maximum artwork scale expansion (0–0.30, default 0.15 = 15%). */
   pulseMax: number;
   /** Multiplier for beat-pulse sensitivity (0.2–12.0, default 3.0). */
@@ -50,6 +51,7 @@ export interface SoundSkySettings {
   siteBackdropOpacity: number;
   /** Record-style pitch glide on manual play/pause, opt-in. */
   turntable: boolean;
+  turntableSpeed: number;
   /** Upcoming audio tracks to prepare in memory, 0 off through 3. */
   prefetchCount: number;
   /** Per-track prepared duration in seconds; 0 means the whole track. */
@@ -67,6 +69,7 @@ export interface SoundSkySettings {
 }
 
 export const defaultSettings: SoundSkySettings = {
+  appearance: 'dark',
   pulseMax: 0.15,
   pulseSensitivity: 3.0,
   ambientSpeed: 0.1,
@@ -84,6 +87,7 @@ export const defaultSettings: SoundSkySettings = {
   siteAccent: 'artwork',
   siteBackdropOpacity: .3,
   turntable: false,
+  turntableSpeed: 1,
   prefetchCount: 3,
   prefetchSeconds: 0,
   heatResponse: 1,

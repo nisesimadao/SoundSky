@@ -77,3 +77,32 @@ test('a failed repost probe is retried when the owned menu becomes available',as
  await adapter.probeRepost();assert.equal(adapter.read().actions.repost.available,false);
  available=true;await adapter.probeRepost(true);assert.equal(adapter.read().actions.repost.available,true);
 });
+
+test('repeated tab returns immediately rebind controls replaced while inactive',()=>{
+ let latest;
+ adapter.subscribe(state=>latest=state);
+ for(let i=0;i<12;i++){
+  adapter.setActive(false);
+  const replacement=adapter.root.cloneNode(true),key=`/artist/returned-${i}`;
+  replacement.querySelector('.playbackSoundBadge__titleLink').setAttribute('href',key);
+  adapter.root.replaceWith(replacement);
+  let plays=0;replacement.querySelector('.playControl').onclick=()=>plays++;
+  adapter.setActive(true);
+  assert.equal(adapter.root,replacement);
+  assert.equal(latest.track.key,key);
+  assert.equal(latest.canPlay,true);
+  assert.equal(adapter.click('play'),true);
+  assert.equal(plays,1);
+ }
+});
+
+test('play targets the live controls when the native player changes before discovery runs',()=>{
+ const old=adapter.root,replacement=old.cloneNode(true);
+ let oldClicks=0,newClicks=0;
+ old.querySelector('.playControl').onclick=()=>oldClicks++;
+ replacement.querySelector('.playControl').onclick=()=>newClicks++;
+ old.replaceWith(replacement);
+ assert.equal(adapter.click('play'),true);
+ assert.equal(newClicks,1);
+ assert.equal(oldClicks,0);
+});

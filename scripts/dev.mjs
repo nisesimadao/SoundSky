@@ -3,7 +3,7 @@ import { readFile, mkdir } from 'node:fs/promises';
 import { build } from 'esbuild';
 await mkdir('artifacts', { recursive: true });
 await build({ entryPoints: ['src/content.ts'], outfile: 'artifacts/preview.js', bundle: true, target: 'chrome120', format: 'iife', loader: { '.css': 'text' }, define: { 'process.env.NODE_ENV': '"production"' } });
-const files = { '/': ['tests/fixture.html','text/html'], '/responsive': ['tests/responsive.html','text/html'], '/preview.js': ['artifacts/preview.js','text/javascript'], '/fixture.js': ['tests/fixture.js','text/javascript'], '/artwork.jpg': ['tests/artwork.jpg','image/jpeg'] };
+const files = { '/settings': ['tests/fixture.html','text/html'], '/': ['tests/fixture.html','text/html'], '/responsive': ['tests/responsive.html','text/html'], '/preview.js': ['artifacts/preview.js','text/javascript'], '/fixture.js': ['tests/fixture.js','text/javascript'], '/artwork.jpg': ['tests/artwork.jpg','image/jpeg'] };
 createServer(async (req,res) => {
   const file = files[new URL(req.url,'http://localhost').pathname];
   if (!file) { res.writeHead(404); res.end(); return; }

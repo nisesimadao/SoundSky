@@ -120,3 +120,11 @@ html body[data-soundsky-open] [data-soundsky-player] :is(.playControls__inner,.p
 }
 
 @media (prefers-reduced-motion: reduce) { .queueItemView[data-soundsky-prefetching]::after { transition: none !important; } }
+
+html[data-soundsky-appearance="light"] [data-soundsky-queue] { color:#202a30!important; }
+html[data-soundsky-appearance="light"] [data-soundsky-queue] .queueItemView__title a { color:#202a30!important; }
+html[data-soundsky-appearance="light"] [data-soundsky-queue] :is(.queueItemView__username,.queueItemView__duration,.queueFallback__subheading) { color:#63717a!important; }
+html[data-soundsky-appearance="light"] [data-soundsky-queue] .queueFallback__heading { color:#202a30!important; }
+html[data-soundsky-appearance="light"] [data-soundsky-queue] .queueItemView { border-color:#24384418!important; }
+html[data-soundsky-appearance="light"] [data-soundsky-queue] .queueItemView:hover { background:#24384408!important; }
+html[data-soundsky-appearance="light"] [data-soundsky-menu] { background:#fafaf7!important;color:#202a30!important; }

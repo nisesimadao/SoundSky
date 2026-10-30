@@ -4,7 +4,7 @@ import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-an
 
 /** Observe the final output in parallel; never replace SoundCloud's output path. */
 (() => {
-  const version = '1.3.17';
+  const version = '1.3.22';
   const bridgeKey = Symbol.for('soundsky:audio-bridge');
   const previousBridge = Reflect.get(window, bridgeKey) as { version: string; destroy(): void } | undefined;
   if (previousBridge?.version === version) return;
@@ -157,9 +157,10 @@ import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-an
   window.addEventListener('message', event => {
     if (event.source !== window || event.origin !== location.origin) return;
     if (event.data?.type === 'soundsky:turntable') {
+      if (typeof event.data.speed === 'number') turntable.setSpeed(event.data.speed);
       if (typeof event.data.enabled === 'boolean') turntable.setEnabled(event.data.enabled);
       const state = event.data.playbackState;
-      if (state === 'playing' || state === 'paused' || state === 'none') turntable.syncPlaybackState(state);
+      if (state === 'playing' || state === 'paused' || state === 'none') turntable.syncNativePlaybackState(state);
       return;
     }
     if (event.data?.type !== 'soundsky:analysis') return;

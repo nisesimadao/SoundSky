@@ -84,7 +84,11 @@ export class SoundCloudAdapter {
   setActive(active: boolean) {
     if (this.timer) clearInterval(this.timer);
     this.timer = active ? setInterval(() => this.emit(), 250) : null;
-    if (active) this.emit();
+    if (active) {
+      // Background discovery timers can be throttled while SoundCloud replaces its player.
+      this.discover();
+      this.emit();
+    }
   }
   emit() {
     if (this.disposed) return;
@@ -176,6 +180,8 @@ export class SoundCloudAdapter {
     this.ownedMore = null;
   }
   click(control: 'play' | 'previous' | 'next' | 'mute' | 'track' | 'artist') {
+    if (this.disposed) return false;
+    if (!this.root?.isConnected) this.discover();
     const selectors = { play: '.playControl', previous: '.skipControl__previous', next: '.skipControl__next',
       mute: '.volume__button', track: '.playbackSoundBadge__titleLink', artist: '.playbackSoundBadge__lightLink' };
     const target = this.query<HTMLElement>(selectors[control]);

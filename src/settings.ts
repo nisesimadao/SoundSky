@@ -1,5 +1,6 @@
 import { defaultSettings, type SoundSkySettings } from './types';
 export const settingLimits = {
+  turntableSpeed: [.5, 2],
   pulseMax: [0, .3], pulseSensitivity: [.2, 12], ambientSpeed: [0, 8],
   materialSpeed: [0, 8], heatSpeed: [0, 8], heatResponse: [0, 3],
   ambientGlow: [0, 2], consoleSpeed: [0, 2], seekSpeed: [0, 3], sceneSway: [0, 1], prefetchCount: [0, 3], siteBackdropOpacity: [0, .7],
@@ -9,6 +10,7 @@ export function loadSavedSettings(saved: unknown): SoundSkySettings {
   const settings = { ...defaultSettings };
   if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return settings;
   const values = saved as Record<string, unknown>;
+  if (values.appearance === 'system' || values.appearance === 'light' || values.appearance === 'dark') settings.appearance = values.appearance;
   for (const key of Object.keys(settingLimits) as (keyof typeof settingLimits)[]) {
     const value = key === 'heatSpeed' ? values.heatSpeed ?? values.materialSpeed : values[key];
     if (typeof value !== 'number' || !Number.isFinite(value)) continue;

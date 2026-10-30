@@ -4,6 +4,7 @@ import soundcloud from './soundcloud-mark.json';
 const paths: Record<string, string> = {
   queue: '<path d="M4 6h12M4 11h12M4 16h8m4-2 5 3-5 3Z"/>',
   shuffle: '<path d="M3 6h3c4 0 6 12 10 12h5m-4-4 4 4-4 4M3 18h3c2 0 3-3 4-5m3-2c1-3 2-5 4-5h4m-4-4 4 4-4 4"/>',
+  reset: '<path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/>',
   repeat: '<path d="m17 2 4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4m14-1v2a3 3 0 0 1-3 3H3"/>',
   close: '<path d="m7 7 10 10M17 7 7 17"/>',
   down: '<path d="m6 9 6 6 6-6"/>',

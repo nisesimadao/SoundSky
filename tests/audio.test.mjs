@@ -102,3 +102,11 @@ test('audio teardown cancels work and restores only the hooks owned by SoundSky'
  const thirdParty=function(...args){return wrapped.apply(this,args);};other.Node.prototype.connect=thirdParty;
  other.w[Symbol.for('soundsky:audio-bridge')].destroy();assert.equal(other.Node.prototype.connect,thirdParty);
 });
+
+test('delayed content playback notifications cannot overwrite newer native state',t=>{
+ const h=graphHarness(t),control=h.w.document.createElement('button');control.className='playControl playing';control.title='Pause current';h.w.document.body.append(control);
+ const send=state=>h.w.dispatchEvent(new h.w.MessageEvent('message',{source:h.w,origin:h.w.location.origin,data:{type:'soundsky:turntable',enabled:true,playbackState:state}}));
+ send('paused');assert.equal(h.session.playbackState,'playing');
+ control.className='playControl';control.title='Play current';send('playing');assert.equal(h.session.playbackState,'paused');
+ h.w[Symbol.for('soundsky:audio-bridge')].destroy();
+});
