@@ -103,7 +103,27 @@ test('native theme changes drive the palette without independent saved overrides
  w.document.body.className='theme-light';await Promise.resolve();
  assert.equal(w.document.documentElement.dataset.soundskyAppearance,'light');
  assert.ok(w.document.querySelector('[data-soundsky-palette-style]'));
- theme.setEnabled(true);assert.match(w.document.documentElement.style.getPropertyValue('--sky-site-accent'),/35%/);
+ theme.setEnabled(true);assert.match(w.document.documentElement.style.getPropertyValue('--sky-site-accent'),/28%/);
  w.document.body.className='theme-dark';await Promise.resolve();assert.equal(w.document.documentElement.dataset.soundskyAppearance,'dark');
  theme.destroy();assert.equal(w.document.querySelector('[data-soundsky-palette-style]'),null);dom.window.close();
+});
+
+
+test('every light artwork accent stays readable over the darkest allowed page backdrop',async()=>{
+ const dom=create(),w=dom.window,theme=new w.themeTest.SiteTheme();
+ const luminance=rgb=>rgb.map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
+ const page=luminance([245,244,240].map(v=>v/255*.92));
+ try {
+  w.document.body.className='theme-light';await Promise.resolve();theme.setEnabled(true);
+  for(let hue=0;hue<360;hue++){
+   theme.setAccent(hue);
+   const color=w.document.documentElement.style.getPropertyValue('--sky-site-accent');
+   const [h,s,l]=color.match(/[\d.]+/g).map(Number);const saturation=s/100,light=l/100;
+   const a=saturation*Math.min(light,1-light);
+   const rgb=[0,8,4].map(n=>{const k=(n+h/30)%12;return light-a*Math.max(-1,Math.min(k-3,9-k,1));});
+   const ink=luminance(rgb);
+   assert.ok((page+.05)/(ink+.05)>=4.5,`page link contrast at hue ${hue}`);
+   assert.ok(1.05/(ink+.05)>=4.5,`white button label contrast at hue ${hue}`);
+  }
+ } finally {theme.destroy();dom.window.close();}
 });

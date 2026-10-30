@@ -207,9 +207,23 @@ html[data-soundsky-theme][data-sky-site-queue] .queue:not([data-soundsky-queue])
 
 @media (prefers-reduced-motion: reduce) { .queueItemView[data-soundsky-prefetching]::after { transition: none !important; } }
 
-html[data-soundsky-theme][data-soundsky-appearance="light"] { color-scheme: light; --sky-site-bg:#f5f4f0;--sky-site-surface:#fff;--sky-site-ink:#202a30;--sky-site-muted:#63717a;--sky-site-line:#24384420;--sky-site-accent:#326b87;--sky-site-input:#fff;--sky-site-header:#fafaf7f5;--sky-site-transport:#fafaf7f5;--sky-site-panel:#fafaf7f7;--sky-site-hover:#24384409;--sky-site-profile:#e9eceb; }
+html[data-soundsky-theme][data-soundsky-appearance="light"] { color-scheme: light; --sky-site-bg:#f5f4f0;--sky-site-surface:#fff;--sky-site-ink:#202a30;--sky-site-muted:#505e67;--sky-site-line:#24384420;--sky-site-accent:#326b87;--sky-site-input:#fff;--sky-site-header:#fafaf7f5;--sky-site-transport:#fafaf7f5;--sky-site-panel:#fafaf7f7;--sky-site-hover:#24384409;--sky-site-profile:#e9eceb; }
 html[data-soundsky-theme][data-soundsky-appearance="light"] :is(.header,header[role="banner"],.playControls,.queue:not([data-soundsky-queue]),.dropdownMenu,.modal,.dialog,.volume__sliderWrapper) { background:#fafaf7f5!important;color:var(--sky-site-ink)!important; }
 html[data-soundsky-theme][data-soundsky-appearance="light"] :is(input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),textarea,select,.headerSearch__input) { background-color:#fff!important;border-color:var(--sky-site-line)!important; }
 
 html[data-soundsky-theme][data-soundsky-appearance="light"] .tileGallery__sliderButton {color:var(--sky-site-ink)!important;border-color:var(--sky-site-line)!important;box-shadow:0 3px 16px #24384420;}
 html[data-soundsky-theme][data-soundsky-appearance="light"] .profileHeaderBackground::after {background:linear-gradient(90deg,#f5f4f060,transparent 75%);}
+
+/* Keep light pages bright even when the artwork palette contains black. */
+html[data-soundsky-theme][data-soundsky-appearance="light"][data-sky-site-background] [data-soundsky-site-shader] { opacity:min(var(--sky-site-background-opacity, .3), .08); }
+/* Native tiles carry both primary and secondary utility classes. The title wins. */
+html[data-soundsky-theme] .playableTile .playableTile__mainHeading { color:var(--sky-site-ink)!important;font-weight:500; }
+html[data-soundsky-theme] .playableTile :is(.playableTile__usernameHeading,.playableTile__usernameHeadingContainer) { color:var(--sky-site-muted)!important; }
+html[data-soundsky-theme] .playableTile a.playableTile__mainHeading:hover { color:var(--sky-site-accent)!important; }
+html[data-soundsky-theme][data-soundsky-appearance="light"] ::placeholder { color:var(--sky-site-muted)!important;opacity:1; }
+/* Light-mode accents are dark: their labels and playback glyphs need light ink. */
+html[data-soundsky-theme][data-soundsky-appearance="light"] :is(.sc-button-selected,.sc-button-active,.sc-button-primary,.sc-button-cta,button[aria-pressed="true"],button[aria-selected="true"]) { color:#fff!important; }
+html[data-soundsky-theme][data-soundsky-appearance="light"][data-sky-site-transport] :is(.sc-button-play,.playButton,.playControl) { color:#fff!important; }
+html[data-soundsky-theme][data-soundsky-appearance="light"] .sc-button-selected::before { filter:brightness(0) invert(1); }
+html[data-soundsky-theme][data-soundsky-appearance="light"] .playableTile__actions .sc-button:not(.sc-button-selected):not(.sc-button-active) { background-color:var(--sky-site-surface)!important;color:var(--sky-site-ink)!important;border-color:var(--sky-site-line)!important; }
+html[data-soundsky-theme][data-soundsky-appearance="light"][data-sky-site-transport] .playbackTimeline__background { background-color:var(--sky-site-line)!important; }

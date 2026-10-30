@@ -120,7 +120,7 @@ export class SiteTheme {
     if(!this.enabled)return;
     const option=this.preferences.siteAccent;
     document.documentElement.style.setProperty('--sky-site-accent',
-      document.documentElement.dataset.soundskyAppearance==='light'?(option==='warm'?'#936037':`hsl(${option==='sky'?200:this.hue} 38% 35%)`):option==='sky'?'#97d7ec':option==='warm'?'#f2b585':accentColor(this.hue));
+      document.documentElement.dataset.soundskyAppearance==='light'?(option==='warm'?'#936037':`hsl(${option==='sky'?200:this.hue} 38% 28%)`):option==='sky'?'#97d7ec':option==='warm'?'#f2b585':accentColor(this.hue));
   }
   setAccent(hue:number){this.hue=hue;this.applyAccent();this.broadcast();}
   setPalette(colors:string[]){this.colors=[...colors];this.render();this.broadcast();}

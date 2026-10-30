@@ -1,5 +1,5 @@
 /* Share one palette with SoundCloud's native semantic colors, including embeds. */
-html[data-soundsky-appearance="light"] { --ss-page:#f5f4f0;--ss-surface:#ffffff;--ss-raised:#e9eceb;--ss-ink:#202a30;--ss-muted:#63717a;--ss-line:#c9d0d2;--ss-link:#326b87;color-scheme:light!important; }
+html[data-soundsky-appearance="light"] { --ss-page:#f5f4f0;--ss-surface:#ffffff;--ss-raised:#e9eceb;--ss-ink:#202a30;--ss-muted:#505e67;--ss-line:#c9d0d2;--ss-link:#326b87;color-scheme:light!important; }
 html[data-soundsky-appearance="dark"] { --ss-page:#101214;--ss-surface:#181c20;--ss-raised:#282e34;--ss-ink:#eeeae2;--ss-muted:#9da5a5;--ss-line:#424b52;--ss-link:#97c9df;color-scheme:dark!important; }
 html[data-soundsky-appearance],html[data-soundsky-appearance] body {
  --primary-color:var(--ss-ink)!important;--secondary-color:var(--ss-muted)!important;
