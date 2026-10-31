@@ -16,3 +16,8 @@ test('seeks, track changes and large corrections still update immediately',()=>{
  assert.equal(clock.sync('b',0,true,900),0);
  assert.equal(clock.sync('b',40,true,1000),40);
 });
+test('small paused seeks and short backwards seeks stay authoritative',()=>{
+ const clock=new PlaybackClock();clock.sync('a',10,true,0);assert.equal(clock.sync('a',10,false,780),10.78);
+ assert.equal(clock.sync('a',11,false,900),11);assert.equal(clock.sync('a',10.6,false,1000),10.6);
+ assert.equal(clock.sync('a',10.6,true,1100),10.6);assert.equal(clock.sync('a',10.1,true,1200),10.1);
+});

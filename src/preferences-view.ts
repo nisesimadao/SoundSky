@@ -1,3 +1,4 @@
+import { VERSION } from './version';
 import { icon } from './icons';
 export type NumericSetting = 'turntableSpeed' | 'pulseMax' | 'pulseSensitivity' | 'ambientSpeed' | 'materialSpeed' | 'heatSpeed' | 'prefetchCount' | 'heatResponse' | 'ambientGlow' | 'consoleSpeed' | 'seekSpeed' | 'sceneSway' | 'siteBackdropOpacity';
 export type SiteToggle = 'siteHeader' | 'siteArtwork' | 'siteQueue' | 'siteTransport' | 'siteBackground' | 'siteWide';
@@ -25,7 +26,7 @@ const settingControl = (key: NumericSetting, label: string, min: number, max: nu
 export const preferencesMarkup = `
           <section class="settings-panel" id="visual-settings" popover="manual" aria-labelledby="settings-title" hidden>
             <div class="settings-header">
-              <div><p class="settings-eyebrow">SoundSky <span>/</span> Preferences</p><h2 class="settings-title" id="settings-title">設定</h2></div>
+              <div><p class="settings-eyebrow">SoundSky <span>/</span> ${VERSION}</p><h2 class="settings-title" id="settings-title">設定</h2></div>
               <button class="icon-button" data-command="settings-close" aria-label="設定を閉じる" title="設定を閉じる · Escape">${icon('close')}</button>
             </div>
             <div class="settings-tabs" role="tablist" aria-orientation="horizontal" aria-label="設定のカテゴリ">

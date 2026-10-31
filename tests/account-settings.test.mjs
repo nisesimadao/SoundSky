@@ -17,3 +17,29 @@ test('embedded settings keep one frame, preserve native forms and never navigate
  assert.ok(doc.querySelector('[data-soundsky-account-frame]'));settings.setTheme('dark');assert.equal(doc.documentElement.dataset.soundskyAppearance,'dark');assert.equal(w.location.href,url);
  settings.destroy();assert.equal(mount.querySelector('iframe'),null);
 });
+
+test('slow and failed settings loads offer recovery without navigating or replacing the playing page',t=>{
+ const dom=new JSDOM('<div id="mount"></div>',{url:'https://soundcloud.com/artist/track',runScripts:'outside-only'}),w=dom.window;w.eval(bundle.outputFiles[0].text);
+ const timers=new Map();let id=0;w.setTimeout=callback=>{timers.set(++id,callback);return id;};w.clearTimeout=id=>timers.delete(id);
+ const mount=w.document.querySelector('#mount'),settings=new w.AccountTest.AccountSettings(mount);t.after(()=>{settings.destroy();w.close();});
+ settings.open();const frame=mount.querySelector('iframe'),url=w.location.href;
+ assert.equal(mount.dataset.loadState,'loading');assert.equal(mount.getAttribute('aria-busy'),'true');assert.equal(timers.size,1);
+ for(const [id,callback]of [...timers]){timers.delete(id);callback();}
+ assert.equal(mount.dataset.loadState,'slow');assert.equal(mount.querySelector('button').hidden,false);
+ const external=mount.querySelector('a');assert.equal(external.target,'_blank');assert.equal(external.getAttribute('href'),'/settings');
+ mount.querySelector('button').click();assert.equal(mount.querySelectorAll('iframe').length,1);assert.equal(mount.querySelector('iframe'),frame);assert.equal(timers.size,1);
+ frame.dispatchEvent(new w.Event('error'));assert.equal(mount.dataset.loadState,'error');assert.equal(timers.size,0);
+ mount.querySelector('button').click();frame.dispatchEvent(new w.Event('load'));assert.equal(mount.dataset.loadState,'ready');assert.equal(timers.size,0);
+ assert.equal(mount.querySelector('[role="status"]').hidden,true);assert.equal(w.location.href,url);
+ settings.destroy();assert.equal(mount.children.length,0);assert.equal(timers.size,0);
+});
+
+test('Escape inside the settings frame closes the drawer once and respects native dialogs',t=>{
+ const dom=new JSDOM('<div id="mount"></div>',{url:'https://soundcloud.com/artist/track',runScripts:'outside-only'}),w=dom.window;w.eval(bundle.outputFiles[0].text);
+ let closed=0;const settings=new w.AccountTest.AccountSettings(w.document.querySelector('#mount'),undefined,()=>closed++);t.after(()=>{settings.destroy();w.close();});
+ settings.open();const frame=w.document.querySelector('iframe'),doc=frame.contentDocument;doc.open();doc.write('<html><head></head><body></body></html>');doc.close();frame.dispatchEvent(new w.Event('load'));frame.dispatchEvent(new w.Event('load'));
+ doc.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));assert.equal(closed,1,'reloads must replace the key listener');
+ doc.addEventListener('keydown',event=>event.preventDefault());frame.dispatchEvent(new w.Event('load'));
+ doc.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));assert.equal(closed,1,'native dialog dismissal owns Escape first');
+ settings.destroy();doc.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));assert.equal(closed,1);
+});

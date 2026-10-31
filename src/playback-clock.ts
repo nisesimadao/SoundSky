@@ -8,7 +8,10 @@ export class PlaybackClock {
   read(now: number) { return this.current + (this.playing ? Math.min(1.25, Math.max(0, now - this.at) / 1000) : 0); }
   sync(key: string, sample: number, playing: boolean, now: number, seeking = false) {
     const predicted = this.read(now);
-    const changed = key !== this.key || seeking || Math.abs(sample - predicted) > 1.25;
+    // With playback already paused, a new native value is an explicit seek.
+    // Treat backwards movement as authoritative too; it is never a normal tick.
+    const seeked = (!playing && !this.playing && sample !== this.sample) || sample < this.sample;
+    const changed = key !== this.key || seeking || seeked || Math.abs(sample - predicted) > 1.25;
     if (changed || playing !== this.playing || sample !== this.sample) {
       this.current = changed ? sample : playing !== this.playing || !playing ? predicted : sample;
       this.at = now;

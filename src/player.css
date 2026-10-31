@@ -398,3 +398,10 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
 .settings-save-status[data-state="error"] {color:var(--ink);}
 .settings-save-status[data-state="error"]::before {background:#c17d50;}
 .settings-footer {flex-wrap:wrap;}
+
+.settings-account {display:flex;flex-direction:column;}
+.settings-account iframe {flex:1;min-height:0;height:auto;}
+.account-settings-status {flex:none;margin:0;padding:20px 24px 12px;color:var(--muted);font-size:12px;line-height:1.7;}
+.account-settings-recovery {flex:none;display:flex;flex-wrap:wrap;gap:12px 20px;padding:0 24px 20px;font-size:12px;line-height:1.6;}
+.account-settings-recovery :is(button,a) {color:var(--ink);text-decoration:underline;text-underline-offset:4px;}
+.account-settings-recovery a:focus-visible {outline:2px solid var(--accent);outline-offset:3px;}

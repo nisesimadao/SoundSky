@@ -1,10 +1,11 @@
+import { VERSION } from './version';
 import { AudioPrefetch } from './prefetch';
 import { Turntable } from './turntable';
 import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-analysis';
 
 /** Observe the final output in parallel; never replace SoundCloud's output path. */
 (() => {
-  const version = '1.3.26';
+  const version = VERSION;
   const bridgeKey = Symbol.for('soundsky:audio-bridge');
   const previousBridge = Reflect.get(window, bridgeKey) as { version: string; destroy(): void } | undefined;
   if (previousBridge?.version === version) return;

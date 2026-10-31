@@ -1,3 +1,4 @@
+import { VERSION } from './version';
 import { preferencesMarkup, settingValue, type NumericSetting, type SiteToggle } from './preferences-view';
 import { ListeningMode } from './listening-mode';
 import { OverflowTitle } from './overflow-title';
@@ -23,7 +24,6 @@ import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.3.26';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
@@ -140,7 +140,7 @@ class SoundSky {
     this.nativePreferences = new NativePreferences(this.el('.settings-panel'));
     this.accountSettings = new AccountSettings(this.el('#settings-account'), theme => {
       document.body.classList.toggle('theme-dark',theme==='dark');document.body.classList.toggle('theme-light',theme==='light');
-    });
+    },()=>this.toggleSettings(false));
     this.settingsRouteObserver.observe(document.body, {childList:true, subtree:true});
     window.addEventListener('popstate', () => this.syncSettingsPage(), {signal:this.events.signal});
     window.addEventListener('hashchange', () => this.syncSettingsPage(), {signal:this.events.signal});
@@ -181,6 +181,7 @@ class SoundSky {
   private el<T extends HTMLElement = HTMLElement>(selector: string) { return this.shadow.querySelector<T>(selector)!; }
   private setText(selector: string, value: string) { const el = this.el(selector); if (el.textContent !== value) el.textContent = value; }
   private message = (message: { type?: string }, _sender: chrome.runtime.MessageSender, respond: (value: unknown) => void) => {
+    if (message.type === 'soundsky:status') {respond({open:this.active,version:VERSION});return;}
     if (message.type !== 'soundsky:toggle') return;
     this.toggle(); respond({ open: this.active, version: VERSION });
   };
