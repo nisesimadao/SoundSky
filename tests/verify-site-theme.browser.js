@@ -3,8 +3,8 @@ async page=>{
  await page.evaluate(()=>localStorage.removeItem('soundsky:settings'));await page.reload();
  const original=await page.evaluate(()=>getComputedStyle(document.body).backgroundColor);
  await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();
- await page.getByRole('button',{name:'見た目の設定',exact:true}).click();
- await page.getByRole('tab',{name:'SoundCloud',exact:true}).click();
+ await page.getByRole('button',{name:'SoundSkyの設定',exact:true}).click();
+ await page.getByRole('tab',{name:'サイト',exact:true}).click();
  const toggle=page.getByRole('switch',{name:'SoundCloudの見た目を整える',exact:true});
  if(await toggle.isChecked())throw new Error('Site theme is not opt-in');await toggle.check();
  await page.getByRole('button',{name:'Back to SoundCloud',exact:true}).click();await page.waitForTimeout(1200);
@@ -23,7 +23,7 @@ async page=>{
  const embedded=await frame.evaluate(()=>({theme:document.documentElement.hasAttribute('data-soundsky-theme'),accent:document.documentElement.style.getPropertyValue('--sky-site-accent'),shader:!!document.querySelector('[data-soundsky-site-shader] canvas')}));
  if(embedded.shader)throw new Error('Embedded page allocates a duplicate WebGL background');
  if(!embedded.theme||embedded.accent!==await page.evaluate(()=>document.documentElement.style.getPropertyValue('--sky-site-accent')))throw new Error('Embedded page misses theme or current accent');
- await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();await page.getByRole('button',{name:'見た目の設定',exact:true}).click();await page.getByRole('tab',{name:'SoundCloud',exact:true}).click();
+ await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();await page.getByRole('button',{name:'SoundSkyの設定',exact:true}).click();await page.getByRole('tab',{name:'サイト',exact:true}).click();
  await page.getByRole('switch',{name:'SoundCloudの見た目を整える',exact:true}).uncheck();await page.waitForTimeout(100);
  if(await frame.evaluate(()=>document.documentElement.hasAttribute('data-soundsky-theme')))throw new Error('Embedded theme does not switch off');
  await page.getByRole('switch',{name:'SoundCloudの見た目を整える',exact:true}).check();
@@ -37,7 +37,7 @@ async page=>{
  if(!await toolsFrame.evaluate(()=>document.documentElement.hasAttribute('data-soundsky-embed')&&!document.querySelector('[data-soundsky-site-shader]')&&getComputedStyle(document.body).backgroundColor==='rgba(0, 0, 0, 0)'&&getComputedStyle(document.querySelector('.MuiBox-root')).backgroundColor==='rgba(0, 0, 0, 0)'))throw new Error('Artist Tools keeps its old background or adds a duplicate shader');
  await page.reload();await page.waitForTimeout(300);
  if(!await page.evaluate(()=>document.documentElement.hasAttribute('data-soundsky-theme')))throw new Error('Site theme preference lost');
- await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();await page.getByRole('button',{name:'見た目の設定',exact:true}).click();await page.getByRole('tab',{name:'SoundCloud',exact:true}).click();
+ await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();await page.getByRole('button',{name:'SoundSkyの設定',exact:true}).click();await page.getByRole('tab',{name:'サイト',exact:true}).click();
  await page.setViewportSize({width:390,height:844});
  if(!await page.evaluate(()=>{const p=document.querySelector('soundsky-player').shadowRoot.querySelector('.settings-panel');return p.scrollWidth<=p.clientWidth;}))throw new Error('New setting overflows mobile');
  await page.getByRole('switch',{name:'SoundCloudの見た目を整える',exact:true}).uncheck();

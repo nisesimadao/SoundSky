@@ -29,8 +29,8 @@ async page => {
  await page.emulateMedia({reducedMotion:'reduce'});await change('still');await page.waitForTimeout(180);
  if(await page.locator('soundsky-player').locator('.art-transition-outgoing').count())throw new Error('Reduced motion still animates');
  await page.emulateMedia({reducedMotion:'no-preference'});
- await page.getByRole('button',{name:'見た目の設定',exact:true}).click();
- await page.getByRole('tab',{name:'SoundCloud',exact:true}).click();
+ await page.getByRole('button',{name:'SoundSkyの設定',exact:true}).click();
+ await page.getByRole('tab',{name:'サイト',exact:true}).click();
  await page.getByRole('switch',{name:'SoundCloudの見た目を整える',exact:true}).check();
  await page.getByRole('button',{name:'Back to SoundCloud',exact:true}).click();
  await page.evaluate(()=>window.motionRecords=[]);

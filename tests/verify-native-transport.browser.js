@@ -5,7 +5,7 @@ async page=>{
  const entry=page.locator('[data-soundsky-entry]');
  if(await entry.count()!==1||!await entry.isVisible())throw new Error('Entry is not docked');
  if(await page.locator('soundsky-player').locator('.launcher').isVisible())throw new Error('Floating entry remains');
- await entry.click();await page.getByRole('button',{name:'見た目の設定',exact:true}).click();await page.getByRole('tab',{name:'SoundCloud',exact:true}).click();await page.getByRole('switch',{name:'SoundCloudの見た目を整える',exact:true}).check();
+ await entry.click();await page.getByRole('button',{name:'SoundSkyの設定',exact:true}).click();await page.getByRole('tab',{name:'サイト',exact:true}).click();await page.getByRole('switch',{name:'SoundCloudの見た目を整える',exact:true}).check();
  const overlay=await page.evaluate(()=>Array.from(document.querySelectorAll('.playControls,.playControls__inner')).map(e=>({background:getComputedStyle(e).backgroundColor,blur:getComputedStyle(e).backdropFilter})));
  if(overlay.some(s=>s.background!=='rgba(0, 0, 0, 0)'||s.blur!=='none'))throw new Error('Native transport obscures SoundSky: '+JSON.stringify(overlay));
  await page.getByRole('button',{name:'Back to SoundCloud',exact:true}).click();
@@ -75,7 +75,7 @@ async page=>{
  if(await page.locator('[data-soundsky-progress]').count())throw new Error('Smoothing fights native drag');
  await page.locator('.playbackTimeline__progressWrapper').dispatchEvent('pointerup');await page.waitForTimeout(50);
  if(!await page.locator('[data-soundsky-progress]').count())throw new Error('Smoothing fails to resume');
- await entry.click();await page.getByRole('button',{name:'見た目の設定',exact:true}).click();await page.getByRole('tab',{name:'SoundCloud',exact:true}).click();await page.getByRole('switch',{name:'SoundCloudの見た目を整える',exact:true}).uncheck();await page.getByRole('button',{name:'Back to SoundCloud',exact:true}).click();
+ await entry.click();await page.getByRole('button',{name:'SoundSkyの設定',exact:true}).click();await page.getByRole('tab',{name:'サイト',exact:true}).click();await page.getByRole('switch',{name:'SoundCloudの見た目を整える',exact:true}).uncheck();await page.getByRole('button',{name:'Back to SoundCloud',exact:true}).click();
  if(await page.locator('[data-soundsky-control],[data-soundsky-metal],[data-soundsky-seek],[data-soundsky-progress]').count())throw new Error('Theme leaves native overrides');
  const restoredTypography=await page.evaluate(()=>({queueDecoration:getComputedStyle(document.querySelector('.queueItemView__title a')).textDecorationLine,badgeDecoration:getComputedStyle(document.querySelector('.playbackSoundBadge__titleLink')).textDecorationLine}));
  if(JSON.stringify(restoredTypography)!==JSON.stringify(nativeTypography))throw new Error('Theme leaves native typography overrides: '+JSON.stringify({nativeTypography,restoredTypography}));

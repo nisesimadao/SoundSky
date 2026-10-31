@@ -17,3 +17,8 @@
  [data-soundsky-native-preferences] .toggleRow:has(.soundsky-native-field){flex-wrap:wrap;gap:12px;}
  [data-soundsky-native-preferences] .soundsky-native-field{flex-basis:100%;min-width:0;}
 }
+
+[data-soundsky-native-preferences] .soundsky-native-details {border-top:1px solid var(--input-default-border-color,#ccc);padding-block:16px;}
+[data-soundsky-native-preferences] .soundsky-native-details summary {cursor:pointer;color:var(--primary-color,inherit);}
+[data-soundsky-native-preferences] .soundsky-native-details[open] summary {margin-bottom:24px;}
+[data-soundsky-native-preferences] .soundsky-native-details summary:focus-visible {outline:2px solid var(--primary-color,#333);outline-offset:4px;}

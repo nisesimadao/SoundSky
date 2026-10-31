@@ -46,13 +46,20 @@ test('reopening and reinjecting retain one instance and release every observer/t
  assert.equal(ui.querySelector('#setting-siteBackdropOpacity').disabled,true);
  master.checked=false;master.dispatchEvent(new w.Event('change',{bubbles:true}));
  assert.equal(w.document.documentElement.hasAttribute('data-soundsky-theme'),false);
- ui.querySelector('#tab-light').click();
- assert.equal(ui.querySelector('#settings-light').hidden,false);
- ui.querySelector('#tab-light').dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,composed:true}));
- assert.equal(ui.querySelector('#settings-background').hidden,false);
- assert.equal(ui.querySelector('#settings-light').hidden,true);
- assert.equal(ui.activeElement,ui.querySelector('#tab-background'));
- ui.querySelector('#tab-background').dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true,composed:true}));
+ let plays=0,nativeSpaces=0;w.document.querySelector('.playControl').onclick=()=>plays++;
+ w.document.addEventListener('keydown',event=>{if(event.code==='Space')nativeSpaces++;});
+ const summary=ui.querySelector('summary');
+ assert.equal(summary.dispatchEvent(new w.KeyboardEvent('keydown',{key:' ',code:'Space',bubbles:true,composed:true,cancelable:true})),true,'Space must retain disclosure activation');
+ assert.equal(plays,0);assert.equal(nativeSpaces,0,'settings Space cannot reach the site playback shortcut');
+ ui.querySelector('[data-command="settings-close"]').dispatchEvent(new w.KeyboardEvent('keydown',{key:' ',code:'Space',bubbles:true,composed:true,cancelable:true}));
+ assert.equal(plays,0);
+ ui.querySelector('#tab-visual').click();
+ assert.equal(ui.querySelector('#settings-visual').hidden,false);
+ ui.querySelector('#tab-visual').dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,composed:true}));
+ assert.equal(ui.querySelector('#settings-site').hidden,false);
+ assert.equal(ui.querySelector('#settings-visual').hidden,true);
+ assert.equal(ui.activeElement,ui.querySelector('#tab-site'));
+ ui.querySelector('#tab-site').dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true,composed:true}));
  assert.equal(ui.querySelector('.settings-panel').hidden,true);
  assert.equal(ui.activeElement,ui.querySelector('[data-command="settings"]'));
  w.__soundsky.toggle();
@@ -69,6 +76,7 @@ test('reopening and reinjecting retain one instance and release every observer/t
  toggle.querySelector('.sc-toggle-handle').click();assert.equal(nativeToggle.checked,false);
 
  assert.equal(w.document.querySelector('main').contains(w.document.querySelector('soundsky-player')),false);
+ assert.ok(nativeView.querySelector('details.soundsky-native-details'));
  const nativeSpeed=nativeView.querySelector('#native-setting-turntableSpeed');nativeSpeed.value='1.6';nativeSpeed.dispatchEvent(new w.Event('input',{bubbles:true}));
  assert.equal(JSON.parse(w.localStorage.getItem('soundsky:settings')).turntableSpeed,1.6);
  w.__soundsky.toggle();ui.querySelector('[data-command="settings"]').click();

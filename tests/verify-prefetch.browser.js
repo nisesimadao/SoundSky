@@ -15,11 +15,11 @@ async page=>{
  if(await page.locator('.queueItemView.m-active[data-soundsky-prefetched]').count())throw new Error('Playing row has a preload marker');
  if(![1,2,3].every(i=>imageRequests.includes(`https://i1.sndcdn.com/artworks-prefetch-${i}-t500x500.jpg`)))throw new Error('Upcoming high-resolution artwork was not requested');
  const preparedRequests=audioRequests.length;if(preparedRequests!==21)throw new Error('Three complete HLS tracks were not fetched: '+preparedRequests);
- await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();await page.getByRole('button',{name:'見た目の設定',exact:true}).click();await page.getByRole('tab',{name:'再生・操作',exact:true}).click();
+ await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();await page.getByRole('button',{name:'SoundSkyの設定',exact:true}).click();await page.getByRole('tab',{name:'再生',exact:true}).click();if((await page.locator('soundsky-player details').first().getAttribute('open'))===null)await page.locator('summary').filter({hasText:'次の曲の先読み'}).click();
  const rail=await page.locator('[data-soundsky-prefetched]').first().evaluate(row=>{const css=getComputedStyle(row,'::after');return{width:css.width,background:css.backgroundImage,height:row.getBoundingClientRect().height};});
  if(rail.width!=='2px'||!rail.background.includes('repeating-linear-gradient')||rail.height!==56)throw new Error('Prepared rail changes row layout or is not dashed: '+JSON.stringify(rail));
  const setting=page.locator('soundsky-player').locator('[data-setting="prefetchCount"]');if(await setting.inputValue()!=='3')throw new Error('Wrong default lookahead count');
- await page.getByRole('tab',{name:'SoundCloud',exact:true}).click();await page.getByRole('switch',{name:'SoundCloudの見た目を整える',exact:true}).check();await page.getByRole('button',{name:'Back to SoundCloud',exact:true}).click();
+ await page.getByRole('tab',{name:'サイト',exact:true}).click();await page.getByRole('switch',{name:'SoundCloudの見た目を整える',exact:true}).check();await page.getByRole('button',{name:'Back to SoundCloud',exact:true}).click();
  const nativeRail=await page.locator('.queue:not([data-soundsky-queue]) [data-soundsky-prefetched]').first().evaluate(row=>getComputedStyle(row,'::after').backgroundImage);
  if(!nativeRail.includes('repeating-linear-gradient'))throw new Error('Native themed queue lacks ready rail');
  // Advance native queue first; its former next track must remain cached when it becomes current.
@@ -39,7 +39,7 @@ async page=>{
  });
  await page.waitForTimeout(250);if(!await page.evaluate(()=>window.prefetchTestAudio.currentTime>25))throw new Error('Cached audio could not play while offline');if(audioRequests.length!==preparedRequests)throw new Error('Offline playback attempted to redownload audio');
  await page.evaluate(()=>{window.prefetchTestAudio.pause();URL.revokeObjectURL(window.prefetchTestAudio.src);});await page.context().setOffline(false);offline=false;
- await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();await page.getByRole('button',{name:'見た目の設定',exact:true}).click();await page.getByRole('tab',{name:'再生・操作',exact:true}).click();await setting.fill('0');await setting.dispatchEvent('input');
+ await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();await page.getByRole('button',{name:'SoundSkyの設定',exact:true}).click();await page.getByRole('tab',{name:'再生',exact:true}).click();if((await page.locator('soundsky-player details').first().getAttribute('open'))===null)await page.locator('summary').filter({hasText:'次の曲の先読み'}).click();await setting.fill('0');await setting.dispatchEvent('input');
  if(await page.locator('[data-soundsky-prefetched]').count())throw new Error('Disabled preload leaves ready markers');
  if(!await page.locator('soundsky-player').locator('#prefetch-status').isHidden())throw new Error('Disabled preload status remains');
  const scope=page.getByLabel('各曲の読み込み量',{exact:true});if(!await scope.isDisabled())throw new Error('Disabled count leaves duration active');await setting.fill('1');await setting.dispatchEvent('input');await scope.selectOption('30');

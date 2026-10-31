@@ -4,12 +4,13 @@ async page => {
  await page.evaluate(()=>localStorage.removeItem('soundsky:settings'));
  await page.reload();
  await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();
- await page.getByRole('button',{name:'見た目の設定',exact:true}).click();
- await page.getByRole('tab',{name:'背景',exact:true}).click();
+ await page.getByRole('button',{name:'SoundSkyの設定',exact:true}).click();
+ await page.getByRole('tab',{name:'見た目',exact:true}).click();
+ await page.locator('summary').filter({hasText:'背景の動きを調整'}).click();
  const slider=page.getByRole('slider',{name:'画面のゆらぎ',exact:true});
  if(await slider.inputValue()!=='0')throw new Error('Scene sway is enabled by default');
  await page.evaluate(()=>{const input=document.querySelector('soundsky-player').shadowRoot.querySelector('#setting-sceneSway');input.value='1';input.dispatchEvent(new Event('input',{bubbles:true}));});
- await page.getByRole('button',{name:'見た目の設定',exact:true}).click();
+ await page.getByRole('button',{name:'SoundSkyの設定',exact:true}).click();
  await page.getByRole('button',{name:'Play',exact:true}).last().click();
  await page.waitForTimeout(1200);
  const compare=()=>page.evaluate(()=>{
@@ -61,8 +62,9 @@ async page => {
  const clean=await page.evaluate(()=>!document.querySelector('soundsky-player').style.getPropertyValue('--soundsky-scene-x')&&!document.querySelector('[data-soundsky-queue]'));
  if(!clean)throw new Error('Sway persists after close');
  await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();
- await page.getByRole('button',{name:'見た目の設定',exact:true}).click();
- await page.getByRole('tab',{name:'背景',exact:true}).click();
+ await page.getByRole('button',{name:'SoundSkyの設定',exact:true}).click();
+ await page.getByRole('tab',{name:'見た目',exact:true}).click();
+ await page.locator('summary').filter({hasText:'背景の動きを調整'}).click();
  await page.getByRole('button',{name:'画面のゆらぎを標準に戻す',exact:true}).click();
  return {...kickResult,backgroundEdgesCovered:true,subtleSway:true,queueAligned:true,mobileAligned:true,reducedMotion:true,pauseSettles:true,closeClean:true};
 }

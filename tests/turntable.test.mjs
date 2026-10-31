@@ -72,6 +72,15 @@ test('Space inside SoundSky shadow player reaches the turntable once; settings r
  assert.equal(h.clicks,2,'Space in settings must not start playback');
 });
 
+test('Space on native SoundSky preferences never starts the record transport',t=>{
+ const h=setup(t);h.turntable.setEnabled(true);
+ const view=h.w.document.createElement('div');view.dataset.soundskyNativePreferences='';view.innerHTML='<details><summary>先読み</summary><button>標準</button></details>';h.w.document.body.append(view);
+ for(const element of view.querySelectorAll('summary,button')){
+  assert.equal(element.dispatchEvent(new h.w.KeyboardEvent('keydown',{key:' ',code:'Space',bubbles:true,composed:true,cancelable:true})),true);
+ }
+ assert.equal(h.clicks,0);
+});
+
 test('track and queue pause controls slow the current output before committing native pause',t=>{
  const h=setup(t);h.turntable.setEnabled(true);
  for(const className of ['sc-button-play sc-button-pause','playButton m-playing']){

@@ -1,3 +1,4 @@
+import { preferencesMarkup, settingValue, type NumericSetting, type SiteToggle } from './preferences-view';
 import { ListeningMode } from './listening-mode';
 import { OverflowTitle } from './overflow-title';
 import { NativeAppearance, declaredAppearance } from './native-appearance';
@@ -12,7 +13,7 @@ import { Ambient } from './ambient';
 import { Atmosphere } from './atmosphere';
 import { NativeTransport } from './native-transport';
 import { SiteTheme } from './site-theme';
-import { loadSavedSettings } from './settings';
+import { SettingsStorage, type SaveState } from './settings-storage';
 import { CoverPulse } from './cover-pulse';
 import { SceneFlow } from './scene-flow';
 import { Materials } from './materials';
@@ -22,36 +23,13 @@ import { icon } from './icons';
 import css from './player.css';
 import { type Action, type PlayerState, type Track, type SoundSkySettings, defaultSettings } from './types';
 
-const VERSION = '1.3.25';
+const VERSION = '1.3.26';
 declare global { interface Window { __soundsky?: { version: string; toggle(): void; destroy(): void }; } }
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
   return s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2,'0')}`;
 };
 
-type NumericSetting = 'turntableSpeed' | 'pulseMax' | 'pulseSensitivity' | 'ambientSpeed' | 'materialSpeed' | 'heatSpeed' | 'prefetchCount' | 'heatResponse' | 'ambientGlow' | 'consoleSpeed' | 'seekSpeed' | 'sceneSway' | 'siteBackdropOpacity';
-type SiteToggle = 'siteHeader' | 'siteArtwork' | 'siteQueue' | 'siteTransport' | 'siteBackground' | 'siteWide';
-const siteToggle = (key: SiteToggle, label: string, help: string) => `
-  <div class="settings-site-item">
-    <div class="settings-label-row settings-toggle"><label for="setting-${key}">${label}</label><input class="settings-site-toggle" id="setting-${key}" data-site-toggle="${key}" type="checkbox" role="switch" aria-describedby="hint-${key}"><output id="val-${key}"></output></div>
-    <p class="settings-hint" id="hint-${key}" hidden>${help}</p>
-  </div>`;
-const settingValue = (key: NumericSetting, value: number) => {
-  if (key === 'turntableSpeed') return `${value.toFixed(1)}×`;
-  if (key === 'prefetchCount') return value === 0 ? 'オフ' : `${value}曲`;
-  if (key === 'sceneSway' || key === 'siteBackdropOpacity') return value === 0 ? 'オフ' : `${Math.round(value * 100)}%`;
-  if (value === 0) return key === 'pulseMax' ? 'なし' : key === 'ambientGlow' ? '消灯' : key === 'heatResponse' ? '反応なし' : '停止';
-  return key === 'pulseMax' ? `+${(value * 100).toFixed(1)}%` : key === 'ambientGlow' ? `${Math.round(value * 100)}%` : `${value.toFixed(1)}倍`;
-};
-const settingControl = (key: NumericSetting, label: string, min: number, max: number, step: number, hint: string, low: string, high: string) => `
-  <div class="settings-group">
-    <div class="settings-label-row"><label for="setting-${key}">${label}</label><div class="settings-value-actions"><output class="settings-val" id="val-${key}" for="setting-${key}"></output><button class="settings-default" data-command="setting-default" data-setting-key="${key}" aria-label="${label}を標準に戻す" title="標準に戻す">${icon('reset')}</button></div></div>
-    <p class="settings-hint" id="hint-${key}">${hint}</p>
-    <div class="settings-range-wrap">
-      <input class="settings-slider" id="setting-${key}" type="range" min="${min}" max="${max}" step="${step}" data-setting="${key}" aria-describedby="hint-${key}" title="${low} – ${high}">
-    </div>
-    <div class="settings-scale" aria-hidden="true"><span>${low}</span><span>${high}</span></div>
-  </div>`;
 class SoundSky {
   private host = document.createElement('soundsky-player');
   private shadow = this.host.attachShadow({ mode: 'open' });
@@ -106,6 +84,8 @@ class SoundSky {
   private listeningMode: ListeningMode | null = null;
   private overflowTitle: OverflowTitle | null = null;
   private settingsOpen = false;
+  private settingsStorage: SettingsStorage | null = null;
+  private settingsSaveState: SaveState = 'saved';
   private nativePreferences: NativePreferences | null = null;
   private accountSettings: AccountSettings | null = null;
   private settingsRouteObserver = new MutationObserver(() => this.syncSettingsPage());
@@ -125,90 +105,12 @@ class SoundSky {
         <div class="shell">
           <header class="topbar"><div class="brand">${icon('soundcloud')}<span>SoundCloud</span></div>
             <div class="top-actions">
-              <button class="icon-button" data-command="settings" aria-label="見た目の設定" aria-expanded="false" aria-controls="visual-settings" title="見た目の設定">${icon('tune')}</button>
+              <button class="icon-button" data-command="settings" aria-label="SoundSkyの設定" aria-expanded="false" aria-controls="visual-settings" title="SoundSkyの設定">${icon('tune')}</button>
               <button class="return" data-command="close" aria-label="Back to SoundCloud" title="Return to SoundCloud · Escape">${icon('down')}<span>Back to SoundCloud</span></button>
               <button class="icon-button" data-command="fullscreen" aria-label="Enter fullscreen" title="Fullscreen">${icon('expand')}</button>
             </div>
           </header>
-          <section class="settings-panel" id="visual-settings" popover="manual" aria-labelledby="settings-title" hidden>
-            <div class="settings-header">
-              <div><p class="settings-eyebrow">SoundSky <span>/</span> Preferences</p><h2 class="settings-title" id="settings-title">設定</h2></div>
-            </div>
-            <div class="settings-tabs" role="tablist" aria-orientation="horizontal" aria-label="設定のカテゴリ">
-              <button class="settings-tab" role="tab" id="tab-cover" aria-controls="settings-cover" aria-selected="true" tabindex="0" data-settings-tab="cover">カバー</button>
-              <button class="settings-tab" role="tab" id="tab-light" aria-controls="settings-light" aria-selected="false" tabindex="-1" data-settings-tab="light">周囲の光</button>
-              <button class="settings-tab" role="tab" id="tab-background" aria-controls="settings-background" aria-selected="false" tabindex="-1" data-settings-tab="background">背景</button>
-              <button class="settings-tab" role="tab" id="tab-controls" aria-controls="settings-controls" aria-selected="false" tabindex="-1" data-settings-tab="controls">再生・操作</button>
-              <button class="settings-tab" role="tab" id="tab-site" aria-controls="settings-site" aria-selected="false" tabindex="-1" data-settings-tab="site">サイトの見た目</button>
-              <button class="settings-tab" role="tab" id="tab-account" aria-controls="settings-account" aria-selected="false" tabindex="-1" data-settings-tab="account">SoundCloud設定</button>
-            </div>
-            <div class="settings-section" role="tabpanel" id="settings-cover" aria-labelledby="tab-cover">
-              <div class="settings-section-heading"><h3>カバー</h3><p>ジャケットの拡大と、音への反応。</p></div>
-              ${settingControl('pulseMax', '拡大の上限', 0, .3, .005, '音が強いときの最大サイズ。', '拡大なし', '最大 +30%')}
-              ${settingControl('pulseSensitivity', '音への反応', .2, 12, .1, '上げるほど、小さな音にも反応します。', '控えめ', '強く')}
-            </div>
-            <div class="settings-section" role="tabpanel" id="settings-light" aria-labelledby="tab-light" hidden>
-              <div class="settings-section-heading"><h3>周囲の光</h3><p>カバーを縁取る光の動き。</p></div>
-              <div class="settings-effect-toggle">
-                <div class="settings-label-row settings-toggle"><label for="setting-heatEnabled">カバー周囲の光</label><input id="setting-heatEnabled" type="checkbox" role="switch" aria-describedby="hint-heatEnabled"><output id="val-heatEnabled"></output></div>
-                <p class="settings-hint" id="hint-heatEnabled">音に反応する赤い光と、流れる空色の帯。</p>
-              </div>
-              <div class="settings-heat-controls">
-                ${settingControl('heatResponse', '赤い光の反応', 0, 3, .1, '上げるほど、赤い光が広がります。', '反応なし', '強く')}
-                ${settingControl('heatSpeed', '光が流れる速さ', 0, 8, .1, '赤い光と空色の帯の流速。', '停止', '速く')}
-              </div>
-            </div>
-            <div class="settings-section" role="tabpanel" id="settings-background" aria-labelledby="tab-background" hidden>
-              <div class="settings-section-heading"><h3>背景</h3><p>SoundCloudのテーマに合わせた、光とゆらぎ。</p></div>
-              ${settingControl('ambientSpeed', '背景の動く速さ', 0, 8, .1, '画面全体に広がる模様の流速。', '停止', '速く')}
-              ${settingControl('sceneSway', '画面のゆらぎ', 0, 1, .05, '画面がゆっくり揺れ、低音に合わせて動きます。', 'オフ', '最大 約14px')}
-              ${settingControl('ambientGlow', '背景の明るさ', 0, 2, .05, '音に反応する背景の光量。', '消灯', '明るく')}
-            </div>
-            <div class="settings-section" role="tabpanel" id="settings-site" aria-labelledby="tab-site" hidden>
-              <div class="settings-section-heading"><h3>SoundCloud</h3><p>通常ページにもSoundSkyの質感を。</p></div>
-              <div class="settings-effect-toggle">
-                <div class="settings-label-row settings-toggle"><label for="setting-modernSoundCloud">SoundCloudの見た目を整える</label><input id="setting-modernSoundCloud" type="checkbox" role="switch" aria-describedby="hint-modernSoundCloud"><output id="val-modernSoundCloud"></output></div>
-                <p class="settings-hint" id="hint-modernSoundCloud">プレイヤーを閉じた後も適用されます。</p>
-              </div>
-              <div class="settings-site-details">
-                <h3 class="settings-subheading">適用する場所</h3>
-                <div class="settings-site-grid">
-                  ${siteToggle('siteHeader', 'ヘッダー・検索', 'ヘッダーと検索欄の配色')}
-                  ${siteToggle('siteArtwork', 'カバー・一覧', 'ジャケットと曲一覧の表示')}
-                  ${siteToggle('siteQueue', 'Next Up', '次に再生する曲の一覧')}
-                  ${siteToggle('siteTransport', '下部プレイヤー', '再生バーと操作ボタン')}
-                  ${siteToggle('siteBackground', '背景の光', '通常ページの背景に表示する光')}
-                  ${siteToggle('siteWide', 'ワイドレイアウト', 'ページの表示幅を広げる')}
-                </div>
-                <h3 class="settings-subheading">表示</h3>
-                <div class="settings-site-options">
-                  <div class="settings-group settings-site-option"><div class="settings-label-row"><label for="setting-siteCorners">パーツの丸み</label>
-                    <select class="settings-choice settings-site-choice" id="setting-siteCorners" data-site-choice="siteCorners">
-                      <option value="subtle">シャープ</option><option value="soft">標準</option><option value="round">やわらかい</option>
-                    </select></div><p class="settings-hint">ボタンやカード、入力欄の輪郭。</p></div>
-                  <div class="settings-group settings-site-option"><div class="settings-label-row"><label for="setting-siteAccent">アクセントカラー</label>
-                    <select class="settings-choice settings-site-choice" id="setting-siteAccent" data-site-choice="siteAccent">
-                      <option value="artwork">再生中のジャケット</option><option value="sky">スカイブルー</option><option value="warm">アンバー</option>
-                    </select></div><p class="settings-hint">リンクや再生バーの強調色を選びます。</p></div>
-                  ${settingControl('siteBackdropOpacity', '背景の光の強さ', 0, .7, .05, '通常ページに重ねる光の濃さ。', 'オフ', '強く')}
-                </div>
-              </div>
-            </div>
-            <div class="settings-section" role="tabpanel" id="settings-controls" aria-labelledby="tab-controls" hidden>
-              <div class="settings-section-heading"><h3>再生・操作</h3><p>再生の質感と、次の曲の準備。</p></div>
-              <div class="settings-group"><div class="settings-label-row settings-toggle"><label for="setting-focusMode">集中表示</label><input id="setting-focusMode" type="checkbox" role="switch" aria-describedby="hint-focusMode"><output id="val-focusMode"></output></div><p class="settings-hint" id="hint-focusMode">再生中にマウス操作がないと、操作部を静かに隠します。音量スライダーはマウスを重ねると表示されます。</p></div>
-              ${settingControl('materialSpeed', '再生ボタンの質感', 0, 8, .1, '金属の表面が流れる速さ。', '停止', '速く')}
-              ${settingControl('consoleSpeed', '操作パネルの煙', 0, 2, .1, '再生ボタンの周りに流れる煙の速さ。', '停止', '速く')}
-              <div class="settings-group"><div class="settings-label-row settings-toggle"><label for="setting-turntable">レコードのように再生・停止</label><input id="setting-turntable" type="checkbox" role="switch" aria-describedby="hint-turntable"><output id="val-turntable"></output></div><p class="settings-hint" id="hint-turntable">再生・一時停止の前後で、レコードのように音程と速度を変えます。</p></div>
-              ${settingControl('turntableSpeed', 'レコード効果の速さ', .5, 2, .1, '再生・停止時の音程変化。上げるほど短く、下げるほどゆっくり変化します。', 'ゆっくり', '速く')}
-              ${settingControl('prefetchCount', '次の曲を先読み', 0, 3, 1, '音声はタブを閉じると破棄されます。', 'オフ', '3曲')}
-              <div class="settings-group"><div class="settings-label-row"><label for="setting-prefetchSeconds">各曲の読み込み量</label><select class="settings-choice" id="setting-prefetchSeconds" aria-describedby="hint-prefetchSeconds"><option value="15">冒頭15秒</option><option value="30">冒頭30秒</option><option value="60">冒頭1分</option><option value="120">冒頭2分</option><option value="0">曲全体</option></select></div><p class="settings-hint" id="hint-prefetchSeconds">冒頭だけなら通信量を抑えられます。</p></div>
-              <p class="settings-hint" id="prefetch-status" aria-live="polite">次の曲の準備待ち</p>
-              ${settingControl('seekSpeed', 'シークバーの色の流れ', 0, 3, .1, '再生済みの部分を流れる色。曲の再生速度は変わりません。', '停止', '速く')}
-            </div>
-            <div class="settings-section settings-account" role="tabpanel" id="settings-account" aria-labelledby="tab-account" hidden></div>
-            <div class="settings-footer"><span>自動保存</span><button class="settings-reset" data-command="settings-reset">すべて標準に戻す</button></div>
-          </section>
+          ${preferencesMarkup}
           <main class="stage">
             <div class="artwork-area reveal"><div class="artwork-frame"><div class="cover-heat" aria-hidden="true" hidden></div><div class="artwork"><div class="artwork-placeholder">${icon('music')}</div><img class="art-image" alt="" hidden></div></div></div>
             <div class="details"><div class="metadata reveal">
@@ -270,7 +172,8 @@ class SoundSky {
     };
     this.unsubscribe = this.adapter.subscribe(state => this.render(state));
     this.nativeAppearance = new NativeAppearance(() => this.applyAppearance());
-    this.loadSettings();
+    this.settingsStorage = new SettingsStorage(settings=>{this.settings=settings;this.updateSettingsUI();this.applySettings();},state=>{this.settingsSaveState=state;this.renderSaveState();});
+    void this.settingsStorage.load();
     this.bindEvents();
     this.nativeModalObserver.observe(document.body, { childList: true, subtree: true });
     if (globalThis.chrome?.runtime?.id) chrome.runtime.onMessage.addListener(this.message);
@@ -296,7 +199,7 @@ class SoundSky {
       const range=seconds?`冒頭${seconds>=60?`${seconds/60}分`:`${seconds}秒`}まで`:'音声';
       const progress=`${total}曲中${ready}曲の${range}を準備済み`;
       const text=!total?'次の曲が未確定のため待機中':ready===total?progress:phase==='loading'?`${total}曲の${range}を先読み中（${ready}曲完了）`:phase==='capacity'?`${progress}。保存上限に達しました`:phase==='unavailable'?`${progress}。残りの音声を取得できませんでした`:phase==='offline'?'通信が戻るまで先読みを待機中':phase==='playback'?'現在の曲の通信が落ち着くまで待機中':phase==='metadata'?'SoundCloudの再生情報を取得するまで待機中':`${total}曲の先読みを待機中`;
-      this.el('#prefetch-status').textContent=text;
+      this.el('#prefetch-status').textContent=text;this.nativePreferences?.update();
     }, {signal});
     window.addEventListener('message', event => {
       if (event.source !== window || event.origin !== location.origin || event.data?.type !== 'soundsky:audio') return;
@@ -332,6 +235,7 @@ class SoundSky {
       if (command === 'close') this.close();
       else if (command === 'fullscreen') void this.fullscreen();
       else if (command === 'settings') this.toggleSettings();
+      else if (command === 'settings-close') this.toggleSettings(false);
       else if (command === 'setting-default') {
         const key = button.dataset.settingKey as NumericSetting;
         if (key && typeof defaultSettings[key] === 'number') {
@@ -409,10 +313,10 @@ class SoundSky {
     }, { signal });
     seek.addEventListener('change', () => {
       if (!this.adapter.seek(Number(seek.value) / 1000, this.scrubKey || this.state.track.key)) this.toast('Seek is unavailable for this track.');
-      this.scrubbing = false; this.scrubKey = '';
+      this.scrubbing = false; this.scrubKey = ''; this.syncListeningMode();this.adapter.emit();
     }, { signal });
-    seek.addEventListener('pointercancel', () => { this.scrubbing = false; this.scrubKey = ''; this.adapter.emit(); }, { signal });
-    seek.addEventListener('blur', () => { this.scrubbing = false; this.scrubKey = ''; this.adapter.emit(); }, { signal });
+    seek.addEventListener('pointercancel', () => { this.scrubbing = false; this.scrubKey = ''; this.syncListeningMode(); this.adapter.emit(); }, { signal });
+    seek.addEventListener('blur', () => { this.scrubbing = false; this.scrubKey = ''; this.syncListeningMode(); this.adapter.emit(); }, { signal });
     const volume = this.el<HTMLInputElement>('.volume-range');
     volume.addEventListener('input', () => {
       this.volumeEditing = true; this.syncListeningMode();
@@ -431,7 +335,7 @@ class SoundSky {
       if (!on) this.ownsFullscreen = false;
     }, { signal });
     window.addEventListener('pagehide', event => { if (event.persisted) this.close(); else this.destroy(); }, { signal });
-    document.addEventListener('visibilitychange', () => { this.adapter.setActive(this.active && !document.hidden); this.syncAnimation(); }, { signal });
+    document.addEventListener('visibilitychange', () => { if(document.hidden){this.scrubbing=false;this.scrubKey='';this.volumeEditing=false;this.syncListeningMode();} this.adapter.setActive(this.active && !document.hidden); this.syncAnimation(); }, { signal });
     window.addEventListener('focus', () => { if (this.active) { this.adapter.emit(); void this.adapter.probeRepost(true); } }, { signal });
     document.addEventListener('click', event => {
       if (!this.active) return;
@@ -457,7 +361,7 @@ class SoundSky {
       return;
     }
     if (event.key === 'Tab') {
-      const own = [...this.shadow.querySelectorAll<HTMLElement>('button:not(:disabled):not([tabindex="-1"]),input:not(:disabled),select:not(:disabled)')]
+      const own = [...this.shadow.querySelectorAll<HTMLElement>('button:not(:disabled):not([tabindex="-1"]),input:not(:disabled),select:not(:disabled),summary,iframe')]
         .filter(el => el.getBoundingClientRect().width > 0 && !el.closest('[hidden]'));
       const queue = this.queue.focusables();
       const afterQueue = own.findIndex(el => el.dataset.command === 'previous');
@@ -467,6 +371,12 @@ class SoundSky {
       return;
     }
     if (target.matches('[role="tab"]')) return;
+    if (target.getRootNode() === this.shadow && (target.closest('.settings-panel') || target.matches('button:not(.play-toggle),a,summary'))) {
+      // Preserve native activation and range/select navigation without letting
+      // SoundCloud's document shortcut also toggle playback.
+      if (event.code === 'Space' || ['ArrowLeft','ArrowRight'].includes(event.key)) event.stopImmediatePropagation();
+      return;
+    }
     if (editing || event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) return;
     if (event.code === 'Space') { event.preventDefault(); event.stopImmediatePropagation(); if (!event.repeat) this.adapter.click('play'); }
     else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
@@ -746,7 +656,7 @@ class SoundSky {
   }
   private selectSettingsTab(group: string) {
     if (group === 'account') this.accountSettings?.open();
-    this.el('.settings-footer span').textContent=group==='account'?'SoundCloudの保存ボタンで反映':'自動保存';
+    this.renderSaveState(group==='account');
     this.el('.settings-reset').hidden=group==='account';
     this.shadow.querySelectorAll<HTMLButtonElement>('.settings-tab').forEach(tab => {
       const selected = tab.dataset.settingsTab === group;
@@ -759,7 +669,7 @@ class SoundSky {
     this.settings = { ...defaultSettings };
     this.updateSettingsUI();
     this.applySettings();
-    this.saveSettings();
+    this.saveSettings(true);
   }
   private updateSettingsUI() {
     this.el<HTMLInputElement>('#setting-focusMode').checked=this.settings.focusMode;
@@ -797,6 +707,8 @@ class SoundSky {
     this.el<HTMLButtonElement>('[data-setting-key="siteBackdropOpacity"]').disabled = !this.settings.modernSoundCloud || !this.settings.siteBackground;
     this.el('.settings-site-details').classList.toggle('is-disabled', !this.settings.modernSoundCloud);
     this.el<HTMLInputElement>('#setting-turntable').checked=this.settings.turntable;
+    this.el<HTMLInputElement>('#setting-turntableSpeed').disabled=!this.settings.turntable;
+    this.el<HTMLButtonElement>('[data-setting-key="turntableSpeed"]').disabled=!this.settings.turntable;
     this.el('#val-turntable').textContent=this.settings.turntable?'オン':'オフ';
     this.el('#val-modernSoundCloud').textContent=this.settings.modernSoundCloud?'オン':'オフ';
     this.el<HTMLInputElement>('#setting-heatEnabled').checked = this.settings.heatEnabled;
@@ -849,30 +761,13 @@ class SoundSky {
     this.atmosphere.setSettings(this.settings.ambientSpeed, this.settings.ambientGlow, this.settings.consoleSpeed, this.settings.seekSpeed);
     this.materials.setSettings(this.settings.materialSpeed, this.settings.heatSpeed, this.settings.heatEnabled, this.settings.heatResponse);
   }
-  private async loadSettings() {
-    try {
-      let saved: Partial<SoundSkySettings> | undefined;
-      if (globalThis.chrome?.storage?.local) {
-        saved = (await chrome.storage.local.get('soundsky:settings'))?.['soundsky:settings'] as Partial<SoundSkySettings> | undefined;
-      } else {
-        const raw = localStorage.getItem('soundsky:settings');
-        if (raw) saved = JSON.parse(raw);
-      }
-      this.settings = loadSavedSettings(saved);
-    } catch { /* use defaults */ }
-    if (this.disposed) return;
-    this.updateSettingsUI();
-    this.applySettings();
+  private renderSaveState(account=this.el('#tab-account').getAttribute('aria-selected')==='true') {
+    const label=this.settingsSaveState==='saving'?'保存中…':this.settingsSaveState==='error'?'保存できませんでした。設定を変更すると再試行します':'自動保存';
+    this.el('.settings-save-status').textContent=account?'SoundCloudの保存ボタンで反映':label;
+    this.el('.settings-save-status').dataset.state=this.settingsSaveState;
+    this.nativePreferences?.setSaveLabel(label);
   }
-  private saveSettings() {
-    try {
-      if (globalThis.chrome?.storage?.local) {
-        void chrome.storage.local.set({ 'soundsky:settings': this.settings }).catch(() => {});
-      } else {
-        localStorage.setItem('soundsky:settings', JSON.stringify(this.settings));
-      }
-    } catch { /* ignore storage error */ }
-  }
+  private saveSettings(replace=false) { this.settingsStorage?.save(this.settings,replace); }
   private async fullscreen() {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
@@ -890,7 +785,7 @@ class SoundSky {
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.toastTimer) clearTimeout(this.toastTimer);
     this.artworkGeneration++; this.clearTrackAnimations(); this.events.abort(); this.unsubscribe();
-    this.settingsRouteObserver.disconnect();this.nativePreferences?.destroy();this.accountSettings?.destroy();
+    this.settingsStorage?.destroy();this.settingsRouteObserver.disconnect();this.nativePreferences?.destroy();this.accountSettings?.destroy();
     this.nativeModalObserver.disconnect(); this.queuePrefetch.destroy(); this.queue.destroy(); this.ambient.destroy(); this.atmosphere.destroy(); this.materials.destroy(); this.accent.destroy(); this.siteTheme.destroy(); this.transport.destroy(); this.adapter.destroy();
     try { if (globalThis.chrome?.runtime?.id) chrome.runtime.onMessage.removeListener(this.message); } catch { /* extension was reloaded */ }
     delete document.documentElement.dataset.soundskyAppearance;

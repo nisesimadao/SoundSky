@@ -1,5 +1,5 @@
 // Settings frames emulate SoundCloud's native theme control without creating a second player.
-if (window !== window.top) {
+if (window !== window.top && location.pathname === '/settings') {
  document.body.className='theme-dark';
  document.body.innerHTML='<main><h1>Settings fixture</h1><h3>Change theme</h3><label><input type="radio" name="theme" value="light"> Light</label> <label><input type="radio" name="theme" value="dark" checked> Dark</label></main>';
  document.querySelectorAll('input[name="theme"]').forEach(input=>input.addEventListener('change',()=>{document.body.classList.toggle('theme-light',input.value==='light');document.body.classList.toggle('theme-dark',input.value==='dark');}));

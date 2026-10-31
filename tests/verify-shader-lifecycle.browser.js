@@ -5,8 +5,8 @@ async page => {
  // Retain contexts deliberately: this verifies explicit release instead of relying on GC.
  await page.evaluate(()=>{window.ownedContexts=new Set();const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){const context=original.call(this,type,...args);if(context&&type==='webgl2')window.ownedContexts.add(context);return context;};});
  await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();
- await page.getByRole('button',{name:'見た目の設定',exact:true}).click();
- await page.getByRole('tab',{name:'SoundCloud',exact:true}).click();
+ await page.getByRole('button',{name:'SoundSkyの設定',exact:true}).click();
+ await page.getByRole('tab',{name:'サイト',exact:true}).click();
  const toggle=page.getByRole('switch',{name:'SoundCloudの見た目を整える',exact:true});
  for(let i=0;i<8;i++){
    await toggle.check();await page.waitForTimeout(160);

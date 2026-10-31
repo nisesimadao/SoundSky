@@ -7,7 +7,7 @@ async page => {
  await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();
  const player=page.locator('soundsky-player');
  await player.locator('[data-command="settings"]').click();
- await page.getByRole('tab',{name:'再生・操作',exact:true}).click();
+ await page.getByRole('tab',{name:'再生',exact:true}).click();
  await page.getByRole('switch',{name:'集中表示',exact:true}).check();
  await page.getByRole('tab',{name:'SoundCloud設定',exact:true}).click();
  const url=page.url();

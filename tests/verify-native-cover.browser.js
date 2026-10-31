@@ -10,7 +10,7 @@ async page=>{
  await page.goto('https://soundcloud.com/artist/track');
  await page.evaluate(()=>localStorage.removeItem('soundsky:settings'));
  await page.addScriptTag({path:'tests/fixture.js'});await page.addScriptTag({path:'artifacts/preview.js'});
- await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();await page.getByRole('button',{name:'見た目の設定',exact:true}).click();await page.getByRole('tab',{name:'SoundCloud',exact:true}).click();await page.getByRole('switch',{name:'SoundCloudの見た目を整える',exact:true}).check();await page.getByRole('button',{name:'Back to SoundCloud',exact:true}).click();
+ await page.getByRole('button',{name:'Open SoundSky',exact:true}).click();await page.getByRole('button',{name:'SoundSkyの設定',exact:true}).click();await page.getByRole('tab',{name:'サイト',exact:true}).click();await page.getByRole('switch',{name:'SoundCloudの見た目を整える',exact:true}).check();await page.getByRole('button',{name:'Back to SoundCloud',exact:true}).click();
  const frame=await (await page.locator('#cover-frame').elementHandle()).contentFrame();await frame.waitForLoadState();await frame.addScriptTag({path:'dist/theme-frame.js'});
  await page.locator('.playControl').click();
  const send=async()=>page.evaluate(async()=>{for(let i=0;i<20;i++){window.postMessage({type:'soundsky:audio',level:.2,onset:0},location.origin);await new Promise(r=>setTimeout(r,20));}});

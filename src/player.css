@@ -1,4 +1,4 @@
-:host { all: initial; color-scheme: dark; font-family: 'Avenir Next', Avenir, 'Helvetica Neue', sans-serif; color: #eeeae2; --ink: #eeeae2; --muted: #9da5a5; --line: #dce5e514; --accent: hsl(210 55% 72%); }
+:host { all: initial; color-scheme: dark; font-family: 'Avenir Next', Avenir, 'Helvetica Neue', sans-serif; color: #eeeae2; --settings-surface:#13161a; --ink: #eeeae2; --muted: #9da5a5; --line: #dce5e514; --accent: hsl(210 55% 72%); }
 * { box-sizing: border-box; }
 button, input { font: inherit; }
 button { cursor: pointer; color: inherit; }
@@ -341,11 +341,11 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
 
 .settings-account { padding: 0; overflow: hidden; }
 
-:host([data-appearance="light"]) { color-scheme: light; color: #202a30; --ink: #202a30; --muted: #63717a; --line: #24384420; --accent: #326b87 !important; }
+:host([data-appearance="light"]) { color-scheme: light; color: #202a30; --settings-surface:#fff; --ink: #202a30; --muted: #505e67; --line: #24384420; --accent: #326b87 !important; }
 :host([data-appearance="light"]) .player { background: #f5f4f0; }
 :host([data-appearance="light"]) .veil { background: linear-gradient(#f5f4f0b8,#f5f4f0dc); }
 :host([data-appearance="light"]) .ambient { opacity: .18; }
-:host([data-appearance="light"]) .settings-panel { background: #f8f8f4f7; border-color: var(--line); box-shadow: -16px 0 64px #273b4710; }
+:host([data-appearance="light"]) .settings-panel { --settings-surface:#fff; background: #f8f8f4f7; border-color: var(--line); box-shadow: -16px 0 64px #273b4710; }
 :host([data-appearance="light"]) :is(.settings-title,.settings-section-heading h3,h1,.artist,.brand,.return,.icon-button,.social,.time) { color: var(--ink); }
 :host([data-appearance="light"]) :is(.settings-choice,.toast,.launcher) { color: var(--ink); background: #fff; border-color: var(--line); }
 :host([data-appearance="light"]) .settings-tab { color: var(--muted); }
@@ -383,3 +383,18 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
 }
 /* The entrance animation's fill state must not pin transport opacity at 1. */
 .player[data-focus-mode] .controls {animation:none;}
+
+.settings-details {border-bottom:1px solid var(--line);}
+.settings-details:last-child {border-bottom:0;}
+.settings-details>summary {min-height:48px;padding:15px 0;cursor:pointer;color:var(--ink);font-size:12px;font-weight:500;line-height:1.6;}
+.settings-details[open]>summary {padding-bottom:6px;}
+.settings-details .settings-group {padding-block:18px;}
+.settings-panel summary:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
+.settings-panel input:disabled {opacity:.45;}
+:host([data-appearance="light"]) .settings-toggle input {background:#24384410;border-color:var(--line);}
+:host([data-appearance="light"]) .settings-toggle input:checked {background:color-mix(in srgb,var(--accent) 24%,transparent);border-color:var(--accent);}
+:host([data-appearance="light"]) .settings-section {scrollbar-color:#24384440 transparent;}
+
+.settings-save-status[data-state="error"] {color:var(--ink);}
+.settings-save-status[data-state="error"]::before {background:#c17d50;}
+.settings-footer {flex-wrap:wrap;}
