@@ -154,3 +154,46 @@ test('format records follow reusable bytes through promotion and expiry',async t
  assert.equal(h.preload.preparedFormats.size,0);
  assert.equal(h.preload.cache.size,0);
 });
+
+test('a synchronous native XHR send failure releases playback priority and preserves its exception',async t=>{
+ const h=setup(t);await h.seed();const failure=new DOMException('Native send failed','InvalidStateError');
+ h.preload.xhrSend=()=>{throw failure;};
+ const xhr=new h.w.XMLHttpRequest();xhr.open('GET','https://api-v2.soundcloud.com/media/1/stream/hls?client_id=client');
+ assert.throws(()=>xhr.send(),error=>error===failure);
+ assert.equal(h.preload.foreground,0);
+ assert.equal(h.preload.requests.get(xhr).listener,undefined);
+ h.preload.configure(1,true,['/artist/track-1']);await h.tick();assert.equal(h.messages.at(-1).ready,1);
+});
+
+test('reopening an active XHR without loadend releases only its own playback priority',async t=>{
+ const h=setup(t);h.preload.xhrSend=function(){this.readyState=2;};
+ const first=new h.w.XMLHttpRequest(),second=new h.w.XMLHttpRequest();
+ first.open('GET','https://cf-hls-media.sndcdn.com/first.m4s');first.send();
+ second.open('GET','https://cf-hls-media.sndcdn.com/second.m4s');second.send();assert.equal(h.preload.foreground,2);
+ first.open('GET','https://soundcloud.com/unrelated');assert.equal(h.preload.foreground,1);
+ first.dispatchEvent(new h.w.Event('loadend'));assert.equal(h.preload.foreground,1);
+ second.dispatchEvent(new h.w.Event('loadend'));assert.equal(h.preload.foreground,0);
+});
+
+test('duplicate send and abort do not count or release another native request',t=>{
+ const h=setup(t),failure=new DOMException('Already sent','InvalidStateError');
+ h.preload.xhrSend=function(){if(this.sent)throw failure;this.sent=true;};
+ h.preload.xhrAbort=function(){this.dispatchEvent(new h.w.Event('loadend'));};
+ const xhr=new h.w.XMLHttpRequest();xhr.open('GET','https://cf-hls-media.sndcdn.com/first.m4s');xhr.send();
+ assert.equal(h.preload.foreground,1);assert.throws(()=>xhr.send(),error=>error===failure);assert.equal(h.preload.foreground,1);
+ xhr.abort();assert.equal(h.preload.foreground,0);xhr.dispatchEvent(new h.w.Event('loadend'));assert.equal(h.preload.foreground,0);
+});
+
+test('completed cached XHR send preserves native InvalidStateError instead of starting playback again',async t=>{
+ const h=setup(t);await h.seed();h.preload.configure(1,true,['/artist/track-1']);await h.tick();
+ const failure=new DOMException('Not opened','InvalidStateError');h.preload.xhrSend=()=>{throw failure;};
+ const xhr=new h.w.XMLHttpRequest();xhr.open('GET','https://cf-hls-media.sndcdn.com/1/audio.m4s');xhr.readyState=4;
+ assert.throws(()=>xhr.send(),error=>error===failure);assert.equal(h.preload.cachedXHR.size,0);
+});
+
+test('destroy releases pending XHR observations without aborting native playback',t=>{
+ const h=setup(t);let aborted=false;h.preload.xhrSend=()=>{};h.preload.xhrAbort=()=>{aborted=true;};
+ const xhr=new h.w.XMLHttpRequest();xhr.open('GET','https://cf-hls-media.sndcdn.com/first.m4s');xhr.send();
+ assert.equal(h.preload.foreground,1);h.preload.destroy();assert.equal(h.preload.foreground,0);assert.equal(h.preload.foregroundXHR.size,0);assert.equal(aborted,false);
+ xhr.dispatchEvent(new h.w.Event('loadend'));assert.equal(h.preload.foreground,0);
+});

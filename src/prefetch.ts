@@ -29,6 +29,7 @@ export class AudioPrefetch {
   private controller: AbortController | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private foreground = 0;
+  private foregroundXHR = new Map<XMLHttpRequest, () => void>();
   private disposed = false;
   private revision = 0;
   private retryAt = 0;
@@ -70,12 +71,14 @@ export class AudioPrefetch {
     };
     window.fetch = this.hook;
     this.openHook = function(this: XMLHttpRequest, ...args: unknown[]) {
-      owner.cachedXHR.delete(this);
       const previousInfo=owner.requests.get(this);
+      const previousForeground=owner.foregroundXHR.get(this);
+      const result=Reflect.apply(owner.xhrOpen,this,args);
+      previousForeground?.();
+      owner.cachedXHR.delete(this);
       if(previousInfo){previousInfo.aborted=true;if(previousInfo.blobURL)URL.revokeObjectURL(previousInfo.blobURL);}
       if(previousInfo?.blobURL)delete (this as unknown as Record<string, unknown>).responseURL;
-      const result=Reflect.apply(owner.xhrOpen,this,args);
-      const previous=owner.requests.get(this)?.listener;if(previous)this.removeEventListener('readystatechange',previous,true);
+      if(previousInfo?.listener)this.removeEventListener('readystatechange',previousInfo.listener,true);
       if (!owner.disposed) owner.requests.set(this,{url:new URL(String(args[1]),location.href).href,method:String(args[0]).toUpperCase(),async:args[2]!==false,headers:new Headers()});
       return result;
     } as XMLHttpRequest['open'];
@@ -84,6 +87,8 @@ export class AudioPrefetch {
     };
     this.sendHook = function(this: XMLHttpRequest,...args) {
       const info=owner.requests.get(this);
+      // Let native XHR reject completed or already-sent requests unchanged.
+      if(this.readyState!==1||owner.foregroundXHR.has(this))return Reflect.apply(owner.xhrSend,this,args);
       if (!owner.disposed && info && info.method === 'GET' && info.async && mediaURL(info.url) && !info.headers.has('range')) {
         const hit=owner.cache.get(owner.key(info.url,info.headers))||owner.cache.get(owner.aliases.get(info.url)||'');
         if(hit&&Date.now()-hit.at<TTL){
@@ -103,10 +108,7 @@ export class AudioPrefetch {
           return;
         }
       }
-      if(!owner.disposed&&info&&(mediaURL(info.url)||apiURL(info.url)?.pathname.startsWith('/media/'))){
-        owner.foreground++;if(owner.controller)owner.stop();owner.status();
-        this.addEventListener('loadend',()=>{owner.foreground--;owner.schedule();owner.status();},{once:true});
-      }
+      const release=!owner.disposed&&info&&(mediaURL(info.url)||apiURL(info.url)?.pathname.startsWith('/media/'))?owner.trackForeground(this):null;
       if (!owner.disposed&&info&&apiURL(info.url)) {
         owner.observeRequest(info.url,info.headers);
         const listener:EventListener=()=>{
@@ -117,9 +119,14 @@ export class AudioPrefetch {
         };
         info.listener=listener;this.addEventListener('readystatechange',listener,{capture:true,signal:owner.events.signal});
       }
-      return Reflect.apply(owner.xhrSend,this,args);
+      try { return Reflect.apply(owner.xhrSend,this,args); }
+      catch(error) {
+        release?.();
+        if(info?.listener){this.removeEventListener('readystatechange',info.listener,true);info.listener=undefined;}
+        throw error;
+      }
     };
-    this.abortHook=function(this:XMLHttpRequest){const info=owner.requests.get(this);if(info){info.aborted=true;if(info.blobURL)URL.revokeObjectURL(info.blobURL);}owner.cachedXHR.delete(this);return owner.xhrAbort.call(this);};
+    this.abortHook=function(this:XMLHttpRequest){const info=owner.requests.get(this);if(info){info.aborted=true;if(info.blobURL)URL.revokeObjectURL(info.blobURL);}owner.cachedXHR.delete(this);const release=owner.foregroundXHR.get(this);try{return owner.xhrAbort.call(this);}finally{release?.();}};
     XMLHttpRequest.prototype.abort=this.abortHook;
     XMLHttpRequest.prototype.open=this.openHook;XMLHttpRequest.prototype.send=this.sendHook;XMLHttpRequest.prototype.setRequestHeader=this.headerHook;
     const signal=this.events.signal;
@@ -133,6 +140,19 @@ export class AudioPrefetch {
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hydration,{once:true,signal});else hydration();
     window.addEventListener('offline',()=>{this.stop();this.status();},{signal});
     window.addEventListener('online',()=>{this.retryAt=0;this.schedule();},{signal});
+  }
+  private trackForeground(xhr: XMLHttpRequest) {
+    let active=true;
+    const release=()=>{
+      if(!active)return;active=false;
+      xhr.removeEventListener('loadend',release);
+      if(this.foregroundXHR.get(xhr)===release)this.foregroundXHR.delete(xhr);
+      this.foreground--;this.schedule();this.status();
+    };
+    this.foregroundXHR.set(xhr,release);this.foreground++;
+    xhr.addEventListener('loadend',release,{once:true,signal:this.events.signal});
+    if(this.controller)this.stop();this.status();
+    return release;
   }
   private key(value: string, headers: Headers) { const url=new URL(value);url.searchParams.sort();return url.href+'\n'+(apiURL(value)?headers.get('authorization')||'':'')+'\n'+(headers.get('range')||''); }
   private observeRequest(value: string, headers: Headers) {
@@ -317,6 +337,7 @@ export class AudioPrefetch {
   }
   destroy() {
     if(this.disposed)return;this.stop();this.disposed=true;for(const xhr of this.cachedXHR)xhr.abort();this.cachedXHR.clear();this.events.abort();this.preparedFormats.clear();this.artwork.clear();this.cache.clear();this.aliases.clear();this.metadata.clear();this.ready.clear();this.progress.clear();this.bytes=0;this.headers=new Headers();this.params=new URLSearchParams();this.requests=new WeakMap();
+    for(const release of this.foregroundXHR.values())release();
     if(window.fetch===this.hook)window.fetch=this.nativeFetch;
     if(XMLHttpRequest.prototype.abort===this.abortHook)XMLHttpRequest.prototype.abort=this.xhrAbort;
     if(XMLHttpRequest.prototype.open===this.openHook)XMLHttpRequest.prototype.open=this.xhrOpen;
