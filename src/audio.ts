@@ -1,3 +1,4 @@
+import { AudioLifetime } from './audio-lifetime';
 import { VERSION } from './version';
 import { AudioPrefetch } from './prefetch';
 import { Turntable } from './turntable';
@@ -21,6 +22,11 @@ import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-an
   let fallbackAnalyser: AnalyserNode | null = null;
   type Route = { destination: AudioDestinationNode; output: number; input: number };
   const outputs = new Map<AudioNode, { routes: Route[]; taps: Map<number, AnalyserNode> }>();
+  const lifetime = new AudioLifetime<AudioNode>(node=>{
+    const entry=outputs.get(node);outputs.delete(node);
+    for(const [output,analyser]of entry?.taps??[])detachTap(node,output,analyser);
+    entry?.taps.clear();
+  });
   const connect = AudioNode.prototype.connect;
   const disconnect = AudioNode.prototype.disconnect;
   const play = HTMLMediaElement.prototype.play;
@@ -29,9 +35,12 @@ import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-an
   const detectors = new WeakMap<AnalyserNode, SpectrumDetector>();
   const events = new AbortController();
 
+  function disconnectAnalyser(analyser: AnalyserNode | null) {
+    try { analyser?.disconnect(); } catch { /* telemetry cleanup must not change native playback behavior */ }
+  }
   function detachTap(node: AudioNode, output: number, analyser: AnalyserNode) {
     try { Reflect.apply(disconnect, node, [analyser, output]); } catch { /* native disconnect may already have removed the edge */ }
-    analyser.disconnect(); detectors.delete(analyser);
+    disconnectAnalyser(analyser); detectors.delete(analyser);
   }
   function tap(node: AudioNode) {
     const entry = outputs.get(node);
@@ -45,7 +54,7 @@ import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-an
         analyser.smoothingTimeConstant = 0;
         Reflect.apply(connect, node, [analyser, output]);
         entry.taps.set(output, analyser);
-      } catch { analyser?.disconnect(); }
+      } catch { disconnectAnalyser(analyser); }
     }
   }
   const connectHook = function(this: AudioNode, ...args: unknown[]) {
@@ -57,7 +66,8 @@ import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-an
       const entry = outputs.get(this) ?? { routes: [], taps: new Map<number, AnalyserNode>() };
       if (!entry.routes.some(route => route.destination === destination && route.output === output && route.input === input)) entry.routes.push({ destination, output, input });
       outputs.set(this, entry);
-      if (active) { tap(this); detachFallback(); }
+      lifetime.watch(this,typeof AudioScheduledSourceNode!=='undefined'&&this instanceof AudioScheduledSourceNode);
+      if (active && outputs.has(this)) { tap(this); detachFallback(); }
     }
     return result;
   } as AudioNode['connect'];
@@ -74,16 +84,17 @@ import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-an
     for (const [output, analyser] of entry.taps) if (!entry.routes.some(route => route.output === output)) {
       detachTap(this, output, analyser); entry.taps.delete(output);
     }
-    if (!entry.routes.length) outputs.delete(this);
+    if (!entry.routes.length) {outputs.delete(this);lifetime.unwatch(this);}
   } as AudioNode['disconnect'];
   AudioNode.prototype.connect = connectHook;
   AudioNode.prototype.disconnect = disconnectHook;
 
   function detachFallback() {
-    fallbackAnalyser?.disconnect(); fallbackAnalyser = null;
-    fallbackStream?.getTracks().forEach(track => track.stop()); fallbackStream = null;
-    if (fallbackContext) void fallbackContext.close().catch(() => {});
-    fallbackContext = null;
+    const analyser=fallbackAnalyser,stream=fallbackStream,context=fallbackContext;
+    fallbackAnalyser=null;fallbackStream=null;fallbackContext=null;
+    disconnectAnalyser(analyser);
+    try { for(const track of stream?.getTracks()??[])try{track.stop();}catch{/* continue releasing other tracks */} } catch {/* invalidated stream */}
+    try { if(context)void context.close().catch(()=>{}); } catch {/* already invalidated context */}
   }
   function attachFallback() {
     detachFallback();
@@ -114,14 +125,20 @@ import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-an
   HTMLMediaElement.prototype.play = playHook;
 
   function analyse(analyser: AnalyserNode) {
-    let detector = detectors.get(analyser);
-    if (!detector) {
-      detector = new SpectrumDetector(analyser.context.sampleRate, samples.length);
-      detectors.set(analyser, detector);
+    try {
+      let detector = detectors.get(analyser);
+      if (!detector) {
+        detector = new SpectrumDetector(analyser.context.sampleRate, samples.length);
+        detectors.set(analyser, detector);
+      }
+      analyser.getFloatTimeDomainData(samples);
+      analyser.getFloatFrequencyData(decibels);
+      return detector.read(samples, decibels);
+    } catch {
+      // A transient analyser failure yields silence for this sample. Keep the
+      // native output connected and let the next frame recover normally.
+      return silentFeatures();
     }
-    analyser.getFloatTimeDomainData(samples);
-    analyser.getFloatFrequencyData(decibels);
-    return detector.read(samples, decibels);
   }
   function combine(a: AudioFeatures, b: AudioFeatures) {
     for (const key of ['level', 'bass', 'mid', 'high', 'onset', 'highOnset', 'bassOnset'] as const) a[key] = Math.max(a[key], b[key]);
@@ -132,7 +149,7 @@ import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-an
       last = now;
       const features = silentFeatures();
       for (const [node, entry] of outputs) {
-        if (node.context.state === 'closed') { outputs.delete(node); continue; }
+        if (node.context.state === 'closed') {for(const [output,analyser]of entry.taps)detachTap(node,output,analyser);outputs.delete(node);lifetime.unwatch(node);continue;}
         if (node.context.state === 'running') for (const analyser of entry.taps.values()) combine(features, analyse(analyser));
       }
       if (!outputs.size && fallbackAnalyser && media && !media.paused && !media.muted) {
@@ -175,7 +192,7 @@ import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-an
   window.addEventListener('pagehide', event => { if (!event.persisted) destroy(); }, { signal: events.signal });
   function destroy() {
     if (disposed) return;
-    prefetch?.destroy(); turntable.destroy(); deactivate(); disposed = true; events.abort(); outputs.clear();
+    prefetch?.destroy(); turntable.destroy(); deactivate(); disposed = true; events.abort(); lifetime.clear(); outputs.clear();
     if (AudioNode.prototype.connect === connectHook) AudioNode.prototype.connect = connect;
     if (AudioNode.prototype.disconnect === disconnectHook) AudioNode.prototype.disconnect = disconnect;
     if (HTMLMediaElement.prototype.play === playHook) HTMLMediaElement.prototype.play = play;

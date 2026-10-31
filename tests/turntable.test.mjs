@@ -7,7 +7,7 @@ function setup(t, nativeState=false){
  const dom=new JSDOM('<button class="playControl" title="Play current"></button><a class="playbackSoundBadge__titleLink" href="/artist/track"></a><input>',{url:'https://soundcloud.com/discover',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;
  let time=0,id=0,clicks=0,source=null;const timers=new Map(),frames=new Map();w.performance.now=()=>time;w.setTimeout=(f,ms)=>{timers.set(++id,{f,at:time+ms});return id;};w.clearTimeout=i=>timers.delete(i);w.requestAnimationFrame=f=>{frames.set(++id,f);return id;};w.cancelAnimationFrame=i=>frames.delete(i);
  class Rate{value=1;calls=[];cancelScheduledValues(at){this.calls.push(['cancel',at]);}cancelAndHoldAtTime(at){this.calls.push(['hold',at]);}setValueAtTime(value,at){this.value=value;this.calls.push(['value',value,at]);}setValueCurveAtTime(curve,at,duration){this.value=curve[0];this.calls.push(['curve',[...curve],at,duration]);}}
- const context={state:'running',currentTime:0};
+ const context=Object.assign(new w.EventTarget(),{state:'running',currentTime:0});
  class Source extends w.EventTarget{context=context;playbackRate=new Rate();starts=[];stops=[];start(...args){if(args[0]<0)throw new Error('Invalid start');this.starts.push(args);}stop(...args){this.stops.push(args);}}
  const actions=new Map();const session={setActionHandler(action,handler){if(handler)actions.set(action,handler);else actions.delete(action);}};
  if(nativeState){let state='none';Object.defineProperty(session,'playbackState',{configurable:true,get(){return state;},set(value){state=value;}});}
@@ -386,4 +386,10 @@ test('record speed scales both spin-up and pause commit deadlines',t=>{
  assert.equal(h.source.playbackRate.calls.at(-1)[3],.12);
  h.actions.get('pause')({action:'pause'});assert.equal(h.source.playbackRate.calls.at(-1)[3],.21);
  h.advance(209);assert.equal(h.clicks,1);h.advance(1);assert.equal(h.clicks,2);
+});
+
+test('closing a source context restores owned pitch and does not leave a stale source in pause handling',t=>{
+ const h=setup(t);h.turntable.setEnabled(true);h.button.click();assert.ok(h.source.playbackRate.value<1);
+ h.context.state='closed';h.context.dispatchEvent(new h.w.Event('statechange'));assert.equal(h.source.playbackRate.value,1);
+ h.button.click();assert.equal(h.clicks,2,'without a live output the native pause must be immediate');assert.equal(h.timers.size,0);assert.equal(h.frames.size,0);
 });

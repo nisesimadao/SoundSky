@@ -51,7 +51,7 @@ function graphHarness(t) {
  class Destination extends Node{}
  class Analyser extends Node{getFloatTimeDomainData(samples){samples.fill(.2);}getFloatFrequencyData(bins){bins.fill(-Infinity);}}
  w.AudioNode=Node;w.AudioDestinationNode=Destination;
- const context={state:'running',sampleRate:48000,createAnalyser(){analysers++;return new Analyser(this);}};
+ const context=Object.assign(new w.EventTarget(),{state:'running',sampleRate:48000,createAnalyser(){analysers++;return new Analyser(this);}});
  const node=new Node(context),destination=new Destination(context);
  const nativeConnect=Node.prototype.connect,nativeDisconnect=Node.prototype.disconnect,nativePlay=w.HTMLMediaElement.prototype.play;
  const session={playbackState:'none',setActionHandler(){}};
@@ -108,5 +108,36 @@ test('delayed content playback notifications cannot overwrite newer native state
  const send=state=>h.w.dispatchEvent(new h.w.MessageEvent('message',{source:h.w,origin:h.w.location.origin,data:{type:'soundsky:turntable',enabled:true,playbackState:state}}));
  send('paused');assert.equal(h.session.playbackState,'playing');
  control.className='playControl';control.title='Play current';send('playing');assert.equal(h.session.playbackState,'paused');
+ h.w[Symbol.for('soundsky:audio-bridge')].destroy();
+});
+
+test('analysis cleanup failures cannot turn a successful native disconnect into a playback exception',t=>{
+ const h=graphHarness(t);h.node.connect(h.destination);h.send(true);
+ const tap=h.node.routes.find(route=>route.destination!==h.destination).destination;
+ tap.disconnect=()=>{throw new Error('Analysis cleanup failed');};
+ assert.doesNotThrow(()=>h.node.disconnect(h.destination));assert.equal(h.node.routes.length,0);
+ assert.doesNotThrow(()=>h.w[Symbol.for('soundsky:audio-bridge')].destroy());
+});
+
+test('analyser read failure emits silence for one sample and the analysis loop recovers',t=>{
+ const h=graphHarness(t);h.node.connect(h.destination);h.send(true);const messages=[];h.w.postMessage=data=>messages.push(data);
+ const tap=h.node.routes.find(route=>route.destination!==h.destination).destination;let failed=false;
+ tap.getFloatTimeDomainData=samples=>{if(!failed){failed=true;throw Error('Context changed during read');}samples.fill(.2);};
+ const tick=now=>{const pending=[...h.frames.values()];h.frames.clear();for(const callback of pending)callback(now);};
+ tick(40);assert.equal(messages.at(-1).level,0);assert.equal(h.frames.size,1);assert.ok(h.node.routes.some(route=>route.destination===h.destination));
+ tick(80);assert.ok(messages.at(-1).level>.19);assert.equal(h.frames.size,1);h.w[Symbol.for('soundsky:audio-bridge')].destroy();
+});
+
+test('teardown releases all owned hooks even when an analyser cannot disconnect',t=>{
+ const h=graphHarness(t);h.node.connect(h.destination);h.send(true);
+ const tap=h.node.routes.find(route=>route.destination!==h.destination).destination;tap.disconnect=()=>{throw Error('Analysis cleanup failed');};
+ assert.doesNotThrow(()=>h.w[Symbol.for('soundsky:audio-bridge')].destroy());
+ assert.equal(h.frames.size,0);assert.equal(h.Node.prototype.connect,h.nativeConnect);assert.equal(h.Node.prototype.disconnect,h.nativeDisconnect);assert.equal(h.w.HTMLMediaElement.prototype.play,h.nativePlay);assert.equal(h.node.routes.length,1);
+});
+
+test('closing a context removes its analysis edge before another animation frame arrives',t=>{
+ const h=graphHarness(t);h.node.connect(h.destination);h.send(true);assert.equal(h.node.routes.length,2);
+ h.context.state='closed';h.context.dispatchEvent(new h.w.Event('statechange'));
+ assert.deepEqual(h.node.routes,[{destination:h.destination,output:0,input:0}]);
  h.w[Symbol.for('soundsky:audio-bridge')].destroy();
 });

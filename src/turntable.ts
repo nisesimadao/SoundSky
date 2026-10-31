@@ -1,3 +1,4 @@
+import { AudioLifetime } from './audio-lifetime';
 /** Optional record-style transport. Native controls still perform the final play/pause. */
 export class Turntable {
   private enabled = false;
@@ -8,6 +9,7 @@ export class Turntable {
   private media: HTMLMediaElement | null = null;
   private watchedMedia = new WeakSet<HTMLMediaElement>();
   private sources = new Set<AudioBufferSourceNode>();
+  private lifetime = new AudioLifetime<AudioBufferSourceNode>(node=>{this.restoreSource(node);this.sources.delete(node);});
   private sourceRates = new Map<AudioBufferSourceNode, number>();
   private mediaRates = new Map<HTMLMediaElement, { rate: number; pitch: boolean }>();
   private frames = new Map<HTMLMediaElement, number>();
@@ -93,8 +95,8 @@ export class Turntable {
         const result = Reflect.apply(owner.startNative!, this, args);
         if (owner.disposed) return result;
         owner.sources.add(this);
-        this.addEventListener('ended', () => { owner.restoreSource(this); owner.sources.delete(this); }, { once: true, signal });
-        if (owner.enabled && performance.now() < owner.startingUntil) { owner.rampSource(this, false, false, Math.max(this.context.currentTime, args[0] || 0)); owner.startingUntil = 0; }
+        owner.lifetime.watch(this,true);
+        if (owner.sources.has(this) && owner.enabled && performance.now() < owner.startingUntil) { owner.rampSource(this, false, false, Math.max(this.context.currentTime, args[0] || 0)); owner.startingUntil = 0; }
         return result;
       };
       this.stopHook = function(this: AudioBufferSourceNode, ...args: Parameters<AudioBufferSourceNode['stop']>) {
@@ -103,7 +105,7 @@ export class Turntable {
         const immediate = args[0] === undefined || args[0] <= this.context.currentTime;
         // A stream can end or replace a chunk during spin-down. That is not a
         // cancellation of the user's pause; seeking/navigation cancel explicitly.
-        if (!owner.disposed && immediate) owner.sources.delete(this);
+        if (!owner.disposed && immediate) {owner.sources.delete(this);owner.lifetime.unwatch(this);owner.restoreSource(this);}
         return result;
       };
       AudioBufferSourceNode.prototype.start = this.startHook;
@@ -352,7 +354,7 @@ export class Turntable {
   destroy() {
     if (this.disposed) return; this.disposed = true;
     this.stateObserver.disconnect(); this.control = null;
-    this.enabled = false; this.cancel(); this.events.abort(); this.sources.clear(); this.media = null;
+    this.enabled = false; this.cancel(); this.events.abort(); this.lifetime.clear(); this.sources.clear(); this.media = null;
     if (HTMLMediaElement.prototype.pause === this.pauseHook) HTMLMediaElement.prototype.pause = this.pauseNative;
     if (this.session && this.actionHook && this.session.setActionHandler === this.actionHook) {
       for (const [action, handler] of this.actions) this.actionNative!.call(this.session, action, handler);
