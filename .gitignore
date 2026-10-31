@@ -12,3 +12,6 @@ output/
 *.key
 
 .soundsky-package-*/
+
+.soundsky-build-*/
+dist.previous-*/

@@ -68,6 +68,8 @@ npm run build
 npm run package
 ```
 
+型検証・テスト・配布ビルドをまとめて確認する場合は `npm run verify` を実行します。ビルドは別の作業フォルダーで生成・検証してから `dist` を置き換え、失敗時は直前のビルドを維持します。ZIPも検証が完了してから置き換えます。`npm run verify:package` で既存ZIPと現在のビルドの内容を照合できます。
+
 `npm run dev` で `http://127.0.0.1:4173` にローカル検証画面を起動できます。`/responsive` には画面サイズ切り替え用の検証画面があります。これらはレイアウトとフォールバックの検証用で、実SoundCloudでの動作証明を代替しません。
 
 現在の実環境テスト状況は [TEST-REPORT.md](TEST-REPORT.md) を参照してください。
