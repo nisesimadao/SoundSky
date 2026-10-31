@@ -1,4 +1,7 @@
+import { installSettingsWriter } from './settings-writer';
 import { VERSION } from './version';
+
+installSettingsWriter();
 
 async function toggle(tab: chrome.tabs.Tab) {
   if (!tab.id || !tab.url || !/^https:\/\/(www\.)?soundcloud\.com\//.test(tab.url)) {
