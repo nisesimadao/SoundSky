@@ -31,8 +31,8 @@ test('buffer-source audio is analysed without replacing output, and taps disconn
   send(false); dom.window.close();
 });
 
-function graphHarness(t) {
- const dom=new JSDOM('',{url:'https://soundcloud.com',runScripts:'outside-only'}),w=dom.window;
+function graphHarness(t, playImpl) {
+ const dom=new JSDOM('',{url:'https://soundcloud.com',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;
  t.after(()=>dom.window.close());
  const frames=new Map();let frameId=0,analysers=0;
  w.requestAnimationFrame=fn=>{frames.set(++frameId,fn);return frameId;};w.cancelAnimationFrame=id=>frames.delete(id);
@@ -53,6 +53,7 @@ function graphHarness(t) {
  w.AudioNode=Node;w.AudioDestinationNode=Destination;
  const context=Object.assign(new w.EventTarget(),{state:'running',sampleRate:48000,createAnalyser(){analysers++;return new Analyser(this);}});
  const node=new Node(context),destination=new Destination(context);
+ if(playImpl)w.HTMLMediaElement.prototype.play=playImpl;
  const nativeConnect=Node.prototype.connect,nativeDisconnect=Node.prototype.disconnect,nativePlay=w.HTMLMediaElement.prototype.play;
  const session={playbackState:'none',setActionHandler(){}};
  Object.defineProperty(w.navigator,'mediaSession',{value:session});
@@ -60,6 +61,51 @@ function graphHarness(t) {
  w.eval(compiled.outputFiles[0].text);
  return {w,Node,node,destination,context,frames,send,session,nativeConnect,nativeDisconnect,nativePlay,analysers:()=>analysers};
 }
+
+test('a rejected native play restores the paused element rate and preserves the original promise',async t=>{
+ const failure=new DOMException('Autoplay denied','NotAllowedError'),promise=Promise.reject(failure);
+ const h=graphHarness(t,()=>promise),media=h.w.document.createElement('audio');media.playbackRate=1.25;media.preservesPitch=true;
+ h.w.dispatchEvent(new h.w.MessageEvent('message',{source:h.w,origin:h.w.location.origin,data:{type:'soundsky:turntable',enabled:true}}));
+ assert.equal(media.play(),promise);assert.equal(media.playbackRate,.3125);
+ await assert.rejects(promise,error=>error===failure);await Promise.resolve();
+ assert.equal(media.playbackRate,1.25);assert.equal(media.preservesPitch,true);assert.equal(h.frames.size,0);
+});
+
+test('a synchronous native play exception restores the attempted ramp and propagates unchanged',t=>{
+ const failure=new Error('Native play failed'),h=graphHarness(t,()=>{throw failure;}),media=h.w.document.createElement('audio');media.playbackRate=1.5;media.preservesPitch=false;
+ h.w.dispatchEvent(new h.w.MessageEvent('message',{source:h.w,origin:h.w.location.origin,data:{type:'soundsky:turntable',enabled:true}}));
+ assert.throws(()=>media.play(),error=>error===failure);
+ assert.equal(media.playbackRate,1.5);assert.equal(media.preservesPitch,false);assert.equal(h.frames.size,0);
+});
+
+test('an older play rejection cannot restore over a newer pending record start',async t=>{
+ for(const alreadyPlaying of [false,true]){
+ const rejects=[],h=graphHarness(t,()=>new Promise((resolve,reject)=>rejects.push(reject))),media=h.w.document.createElement('audio');media.playbackRate=1.25;media.preservesPitch=true;
+ let paused=true;Object.defineProperty(media,'paused',{get:()=>paused});
+ h.w.dispatchEvent(new h.w.MessageEvent('message',{source:h.w,origin:h.w.location.origin,data:{type:'soundsky:turntable',enabled:true}}));
+ const first=media.play();paused=!alreadyPlaying;const second=media.play();rejects[0](new DOMException('Superseded','AbortError'));await assert.rejects(first,/Superseded/);await Promise.resolve();
+ assert.equal(media.playbackRate,.3125);assert.equal(media.preservesPitch,false);assert.equal(h.frames.size,1);
+ rejects[1](new DOMException('Unavailable','NotSupportedError'));await assert.rejects(second,/Unavailable/);await Promise.resolve();
+ assert.equal(media.playbackRate,1.25);assert.equal(media.preservesPitch,true);assert.equal(h.frames.size,0);
+ }
+});
+
+test('a rejected old play leaves a successful already-playing media ramp intact',async t=>{
+ let rejectFirst,plays=0;const h=graphHarness(t,()=>++plays===1?new Promise((resolve,reject)=>{rejectFirst=reject;}):Promise.resolve()),media=h.w.document.createElement('audio');let paused=true;
+ Object.defineProperty(media,'paused',{get:()=>paused});media.playbackRate=1.5;media.preservesPitch=true;
+ h.w.dispatchEvent(new h.w.MessageEvent('message',{source:h.w,origin:h.w.location.origin,data:{type:'soundsky:turntable',enabled:true}}));
+ const first=media.play();paused=false;await media.play();rejectFirst(new DOMException('Superseded','AbortError'));await assert.rejects(first,/Superseded/);await Promise.resolve();
+ assert.equal(media.playbackRate,.375);assert.equal(media.preservesPitch,false);assert.equal(h.frames.size,1);
+});
+
+test('native play rejection restores the rate even when the browser leaves paused false',async t=>{
+ let paused=true;
+ const failure=new DOMException('Invalid audio','NotSupportedError'),h=graphHarness(t,()=>{paused=false;return Promise.reject(failure);}),media=h.w.document.createElement('audio');
+ Object.defineProperty(media,'paused',{get:()=>paused});media.playbackRate=1.25;media.preservesPitch=true;
+ h.w.dispatchEvent(new h.w.MessageEvent('message',{source:h.w,origin:h.w.location.origin,data:{type:'soundsky:turntable',enabled:true}}));
+ await assert.rejects(media.play(),error=>error===failure);await Promise.resolve();
+ assert.equal(media.paused,false);assert.equal(media.playbackRate,1.25);assert.equal(media.preservesPitch,true);assert.equal(h.frames.size,0);
+});
 test('turntable bridge validates and forwards native playback state to the media session',t=>{
  const h=graphHarness(t);
  const send=(data,origin=h.w.location.origin)=>h.w.dispatchEvent(new h.w.MessageEvent('message',{source:h.w,origin,data:{type:'soundsky:turntable',...data}}));

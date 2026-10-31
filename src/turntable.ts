@@ -8,6 +8,7 @@ export class Turntable {
   private events = new AbortController();
   private media: HTMLMediaElement | null = null;
   private watchedMedia = new WeakSet<HTMLMediaElement>();
+  private mediaStarts = new WeakMap<HTMLMediaElement, object>();
   private sources = new Set<AudioBufferSourceNode>();
   private lifetime = new AudioLifetime<AudioBufferSourceNode>(node=>{this.restoreSource(node);this.sources.delete(node);});
   private sourceRates = new Map<AudioBufferSourceNode, number>();
@@ -179,6 +180,7 @@ export class Turntable {
   /** Called before native media.play(), so pitch correction is disabled before sound starts. */
   startMedia(media: HTMLMediaElement) {
     if (this.disposed) return;
+    const attempt={};this.mediaStarts.set(media,attempt);
     this.media = media;
     if (!this.watchedMedia.has(media)) {
       this.watchedMedia.add(media);
@@ -189,8 +191,14 @@ export class Turntable {
     // Also clear the previous pause's release timer. Otherwise it can reset the
     // rate in the middle of this new spin-up.
     if (this.pending || this.release) this.cancel();
-    if (!media.paused && performance.now() >= this.startingUntil) return;
-    this.rampMedia(media, false); this.startingUntil = 0;
+    if (media.paused || performance.now() < this.startingUntil) {
+      this.rampMedia(media, false); this.startingUntil = 0;
+    }
+    const ramp=this.mediaTicks.get(media);
+    if(!ramp)return;
+    // A rejected play belongs to this ramp only. A later play/pause may already
+    // own the element, so an old rejection must not reset its current effect.
+    return () => { if(this.mediaStarts.get(media)===attempt && this.mediaTicks.get(media)===ramp)this.restoreMedia(media); };
   }
   private click = (event: MouseEvent) => {
     if (!this.enabled || this.bypass) return;

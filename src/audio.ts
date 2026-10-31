@@ -114,11 +114,13 @@ import { SpectrumDetector, silentFeatures, type AudioFeatures } from './audio-an
     } catch { detachFallback(); }
   }
   const playHook = function(this: HTMLMediaElement) {
-    turntable.startMedia(this);
-    const result = play.call(this);
+    const cancelStart=turntable.startMedia(this);
+    let result: Promise<void>;
+    try { result=play.call(this); }
+    catch(error) { cancelStart?.();throw error; }
     if (!disposed) {
       media = this;
-      void result.then(() => { if (active && !disposed && media === this) attachFallback(); }, () => {});
+      void result.then(() => { if (active && !disposed && media === this) attachFallback(); }, () => cancelStart?.());
     }
     return result;
   };

@@ -1,6 +1,6 @@
 # 商用品質の完了条件
 
-対象: 1.3.33。目標は、日常のSoundCloud利用で再生を壊さず、設定と見た目が一貫し、検証済みの配布物を再現して届けられることです。
+対象: 1.3.34。目標は、日常のSoundCloud利用で再生を壊さず、設定と見た目が一貫し、検証済みの配布物を再現して届けられることです。
 
 商用品質の達成はまだ未証明です。自動テスト・ローカル画面の確認と、更新後の実SoundCloud・OSでの確認を別々に記録します。
 
@@ -8,7 +8,7 @@
 
 | 要件 | 現在の根拠 | 残る確認 |
 | --- | --- | --- |
-| 再生・一時停止・連打・反転時に音量、音程、再生状態を復元する | `tests/turntable.test.mjs`、`tests/audio.test.mjs` | 更新後の実SoundCloudとmacOSメディア操作UI。手前／背面の両方 |
+| 再生・一時停止・連打・反転時に音量、音程、再生状態を復元する | `tests/turntable.test.mjs`、`tests/audio.test.mjs`。実Chromeで無効な音声の再生拒否10回の直後に速度・音程補正を復元し、音量・ミュートを維持 | 更新後の実SoundCloudとmacOSメディア操作UI。手前／背面の両方 |
 | 停止・再開で位置を整数へ戻さず、短いシークにも追従する | `tests/playback-clock.test.mjs`、`tests/native-transport.test.mjs` | 実曲、停止中、曲終了付近、メディアUIからのシーク |
 | 初回・既存タブ・更新後の起動を回復し、入口を見失わない | `tests/background.test.mjs`、`tests/native-transport.test.mjs`。ローカルChromeの390px／通常幅で入口の切り替えを確認 | 実SoundCloudの初回導入、読み込み前のタブ、再生バー非表示 |
 | 設定ページとサイドバーが同じ値を共有し、曲を止めずに使える | `tests/native-preferences.test.mjs`、`tests/lifecycle.test.mjs`、`tests/account-settings.test.mjs` | 更新後の本家設定の保存、認証画面、ページ遷移、低速回線 |
