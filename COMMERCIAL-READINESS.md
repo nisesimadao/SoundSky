@@ -1,6 +1,6 @@
 # 商用品質の完了条件
 
-対象: 1.3.35。目標は、日常のSoundCloud利用で再生を壊さず、設定と見た目が一貫し、検証済みの配布物を再現して届けられることです。
+対象: 1.3.36。目標は、日常のSoundCloud利用で再生を壊さず、設定と見た目が一貫し、検証済みの配布物を再現して届けられることです。
 
 商用品質の達成はまだ未証明です。自動テスト・ローカル画面の確認と、更新後の実SoundCloud・OSでの確認を別々に記録します。
 
@@ -12,7 +12,7 @@
 | 停止・再開で位置を整数へ戻さず、短いシークにも追従する | `tests/playback-clock.test.mjs`、`tests/native-transport.test.mjs` | 実曲、停止中、曲終了付近、メディアUIからのシーク |
 | 初回・既存タブ・更新後の起動を回復し、入口を見失わない | `tests/background.test.mjs`、`tests/native-transport.test.mjs`。ローカルChromeの390px／通常幅で入口の切り替えを確認 | 実SoundCloudの初回導入、読み込み前のタブ、再生バー非表示 |
 | 設定ページとサイドバーが同じ値を共有し、曲を止めずに使える | `tests/native-preferences.test.mjs`、`tests/lifecycle.test.mjs`、`tests/account-settings.test.mjs` | 更新後の本家設定の保存、認証画面、ページ遷移、低速回線 |
-| 複数タブの同時変更で無関係な項目を消さない | `tests/settings-concurrency.test.mjs`。実際の保存側と表示側のコードを組み合わせ、遅延・返信順逆転・失敗後の再試行を検証 | 更新後の複数の実SoundCloudタブ。同じ項目への競合は最後の保存を反映 |
+| 複数タブの同時変更で無関係な項目を消さない | `tests/settings-concurrency.test.mjs`。実際の保存側と表示側のコードを組み合わせ、遅延・返信順逆転・失敗後の再試行を検証。`tests/theme-frame.test.mjs` で遅い初回読込が新しいフレーム設定を上書きしないことと、破棄後の通知の無効化を確認 | 更新後の複数の実SoundCloudタブ。同じ項目への競合は最後の保存を反映 |
 | SoundCloudのLight／Dark／Automaticに追従し、DiscoverとNext Upを読める | `tests/native-appearance.test.mjs`、`tests/site-theme.test.mjs`、ローカルChromeでLight切り替え・Next Upの背景を確認 | 更新後の実Discover、検索、曲・アーティスト・設定ページ、AutomaticのOS切り替え |
 | キーボード操作で背面へ迷い込まず、iframeから戻れる | `tests/focus.test.mjs`、`tests/account-settings.test.mjs`。ローカルChromeで390px幅のTab／Shift+Tabと設定維持を確認 | 実SoundCloudの各設定フォームと読み上げ環境 |
 | 長時間の再生・曲変更・開閉で重くならず、破棄時に資源を解放する | `tests/lifecycle.test.mjs` の開閉・再注入・Observer／タイマー解放、音声とキャッシュの上限・破棄テスト。音声寿命の2000コンテキストの模擬検証と、実Chromeで201件のOfflineAudioContextの波形・監視解放を確認 | 実音声での長時間利用、低性能端末、復帰後のCPU・メモリ・音切れ |
