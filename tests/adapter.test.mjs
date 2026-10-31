@@ -15,6 +15,41 @@ afterEach(()=>{adapter.destroy();dom.window.close();});
 test('reads actual player independently of the browsed page',()=>{
  const s=adapter.read();assert.equal(s.track.key,'/artist/one');assert.equal(s.track.artistKey,'/artist');assert.equal(s.playing,true);assert.equal(s.duration,189);assert.equal(s.current,29);assert.equal(s.actions.like.selected,true);assert.equal(s.actions.follow.selected,false);
 });
+
+test('temporarily missing volume data preserves the last native level without reporting a false mute',()=>{
+ const volume=document.querySelector('.volume__sliderWrapper');assert.equal(adapter.read().volume,.4);
+ for(const value of [null,'','  ','not-ready','Infinity']){
+  if(value===null)volume.removeAttribute('aria-valuenow');else volume.setAttribute('aria-valuenow',value);
+  const state=adapter.read();assert.equal(state.volume,.4);assert.equal(state.muted,false);
+ }
+ volume.setAttribute('aria-valuenow','0');assert.equal(adapter.read().muted,true);
+ volume.setAttribute('aria-valuenow','.7');assert.equal(adapter.read().volume,.7);assert.equal(adapter.read().muted,false);
+ document.querySelector('.volume').classList.add('m-muted');assert.equal(adapter.read().muted,true);assert.equal(adapter.read().volume,.7);
+});
+
+test('loading the player before its first volume value uses the intended neutral fallback',()=>{
+ document.querySelector('.volume__sliderWrapper').removeAttribute('aria-valuenow');
+ const state=adapter.read();assert.equal(state.volume,.5);assert.equal(state.muted,false);
+});
+
+test('native disabled and aria-disabled changes update subscribers without active polling',async t=>{
+ adapter.destroy();t.mock.timers.enable({apis:['setTimeout']});adapter=new SoundCloudAdapter(document);
+ const seen=[];adapter.subscribe(state=>seen.push(state.canNext));t.mock.timers.tick(90);
+ const next=document.querySelector('.skipControl__next');
+ for(const attribute of ['disabled','aria-disabled']){
+  const before=seen.length;next.setAttribute(attribute,attribute==='disabled'?'':'true');await Promise.resolve();t.mock.timers.tick(90);
+  assert.equal(seen.length,before+1);assert.equal(seen.at(-1),false);
+  next.removeAttribute(attribute);await Promise.resolve();t.mock.timers.tick(90);assert.equal(seen.at(-1),true);
+ }
+});
+
+test('disabled native sliders refuse seek and volume changes',()=>{
+ const progress=document.querySelector('.playbackTimeline__progressWrapper'),volume=document.querySelector('.volume__sliderWrapper');
+ for(const element of [progress,volume]){element.setAttribute('aria-disabled','true');element.getBoundingClientRect=()=>({left:0,top:0,bottom:100,width:100,height:100});}
+ let hits=0;progress.addEventListener('mousedown',()=>hits++);volume.addEventListener('mousedown',()=>hits++);
+ const state=adapter.read();assert.equal(state.canSeek,false);assert.equal(state.canVolume,false);
+ assert.equal(adapter.seek(.5,state.track.key),false);assert.equal(adapter.setVolume(.6),false);assert.equal(hits,0);
+});
 test('only current-track and current-artist native controls receive social actions',async()=>{
  let other=0,like=0,follow=0;document.querySelector('main').onclick=()=>other++;
  document.querySelector('.playbackSoundBadge__like').onclick=()=>like++;

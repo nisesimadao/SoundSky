@@ -30,9 +30,12 @@ const enabled = (element: Element | null) => element instanceof HTMLElement && e
   && !element.hasAttribute('disabled') && element.getAttribute('aria-disabled') !== 'true'
   && !element.classList.contains('m-disabled') && !element.classList.contains('disabled');
 const number = (element: Element | null, attribute: string, fallback = 0) => {
-  const value = Number(element?.getAttribute(attribute));
+  const raw = element?.getAttribute(attribute);
+  if(raw==null||!raw.trim())return fallback;
+  const value = Number(raw);
   return Number.isFinite(value) ? value : fallback;
 };
+const stateAttributes=['class','title','aria-label','aria-pressed','href','aria-valuenow','aria-valuemax','disabled','aria-disabled'];
 export const emptyTrack = (): Track => ({ key: '', title: 'Your music, in focus.', artist: 'Play something on SoundCloud to begin.', artistKey: '', artwork: '' });
 
 /** SoundCloud remains the only playback engine and the only source of truth. */
@@ -44,6 +47,7 @@ export class SoundCloudAdapter {
   private scheduled: ReturnType<typeof setTimeout> | null = null;
   private listeners = new Set<(state: PlayerState) => void>();
   private trackKey = '';
+  private volume = .5;
   private repostState: { key: string; selected: boolean | null; available: boolean } | null = null;
   private probing = false;
   private probeAt = 0;
@@ -54,7 +58,7 @@ export class SoundCloudAdapter {
   constructor(private doc: Document = document) {
     this.observer = new MutationObserver(records => {
       if (records.some(r => r.type === 'childList' || r.type === 'characterData' ||
-        ['class', 'title', 'aria-label', 'aria-pressed', 'href', 'aria-valuenow', 'aria-valuemax'].includes(r.attributeName || ''))) this.schedule();
+        stateAttributes.includes(r.attributeName || ''))) this.schedule();
     });
     this.discover();
     // A single selector every two seconds recovers replaced player roots; no page traversal.
@@ -68,7 +72,7 @@ export class SoundCloudAdapter {
     this.observer.disconnect();
     this.root = root;
     if (root) this.observer.observe(root, { subtree: true, childList: true, attributes: true, characterData: true,
-      attributeFilter: ['class', 'title', 'aria-label', 'aria-pressed', 'href', 'aria-valuenow', 'aria-valuemax', 'style', 'disabled'] });
+      attributeFilter: [...stateAttributes,'style'] });
     this.onRootChange?.();
     this.schedule();
   }
@@ -113,7 +117,8 @@ export class SoundCloudAdapter {
     const play = this.query('.playControl');
     const progress = this.query('.playbackTimeline__progressWrapper');
     const volume = this.query('.volume__sliderWrapper');
-    const volumeValue = Math.min(1, Math.max(0, number(volume, 'aria-valuenow', .5)));
+    const volumeValue = Math.min(1, Math.max(0, number(volume, 'aria-valuenow', this.volume)));
+    this.volume=volumeValue;
     return {
       track,
       playing: !!play && (play.classList.contains('playing') || /pause/i.test(play.getAttribute('title') || play.getAttribute('aria-label') || '')),
@@ -123,8 +128,8 @@ export class SoundCloudAdapter {
       canPlay: !!track.key && enabled(play),
       canPrevious: !!track.key && enabled(this.query('.skipControl__previous')),
       canNext: !!track.key && enabled(this.query('.skipControl__next')),
-      canSeek: !!track.key && number(progress, 'aria-valuemax') > 0 && !!this.query('.playbackTimeline.is-scrubbable'),
-      canVolume: !!volume,
+      canSeek: !!track.key && enabled(progress) && number(progress, 'aria-valuemax') > 0 && !!this.query('.playbackTimeline.is-scrubbable'),
+      canVolume: enabled(volume),
       actions: { like: this.actionState('like', track), follow: this.actionState('follow', track), repost: this.actionState('repost', track) },
     };
   }
@@ -193,6 +198,7 @@ export class SoundCloudAdapter {
     return this.drag(this.query('.playbackTimeline__progressWrapper'), Math.min(1, Math.max(0, fraction)), false);
   }
   setVolume(value: number) {
+    if(!this.read().canVolume)return false;
     return this.drag(this.query('.volume__sliderWrapper'), Math.min(1, Math.max(0, value)), true);
   }
   private drag(element: HTMLElement | null, fraction: number, vertical: boolean): boolean {

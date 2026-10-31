@@ -22,5 +22,19 @@ q('.queue').addEventListener('click',e=>{const more=e.target.closest('.queueItem
 q('.playbackTimeline__progressWrapper').onmousedown=e=>{const r=e.currentTarget.getBoundingClientRect();e.currentTarget.setAttribute('aria-valuenow',Math.round((e.clientX-r.left)/r.width*248));};
 q('.volume__sliderWrapper').onmousedown=e=>{const r=e.currentTarget.querySelector('.volume__sliderBackground').getBoundingClientRect();e.currentTarget.setAttribute('aria-valuenow',Math.max(0,Math.min(1,(r.bottom-e.clientY)/r.height)));};
 q('.volume__button').onclick=()=>q('.volume__sliderWrapper').setAttribute('aria-valuenow',q('.volume__sliderWrapper').getAttribute('aria-valuenow')==='0'?'0.4':'0');
+let volumeBeforeGap='0.4';
+q('#volume-gap')?.addEventListener('click',event=>{
+ const volume=q('.volume__sliderWrapper'),missing=volume.hasAttribute('aria-valuenow');
+ if(missing){volumeBeforeGap=volume.getAttribute('aria-valuenow');volume.removeAttribute('aria-valuenow');}else volume.setAttribute('aria-valuenow',volumeBeforeGap);
+ event.currentTarget.setAttribute('aria-pressed',String(missing));
+});
+q('#controls-unavailable')?.addEventListener('click',event=>{
+ const unavailable=event.currentTarget.getAttribute('aria-pressed')!=='true';
+ for(const control of document.querySelectorAll('.skipControl__previous,.skipControl__next'))control.disabled=unavailable;
+ for(const control of document.querySelectorAll('.playbackTimeline__progressWrapper,.volume__sliderWrapper')){
+  if(unavailable)control.setAttribute('aria-disabled','true');else control.removeAttribute('aria-disabled');
+ }
+ event.currentTarget.setAttribute('aria-pressed',String(unavailable));
+});
 
 }
