@@ -129,7 +129,9 @@ export class Turntable {
       event.preventDefault(); event.stopImmediatePropagation();
       if (!event.repeat) play.click();
     }, { capture: true, signal });
-    document.addEventListener('seeking', () => this.cancel(), { capture: true, signal });
+    document.addEventListener('seeking', event => {
+      if(!(event.target instanceof HTMLMediaElement)||event.target===this.media)this.cancel();
+    }, { capture: true, signal });
     document.addEventListener('visibilitychange', () => {
       // Switch the interpolation clock when frames stop in a background tab.
       // Visibility must not disable an audible effect or cancel a requested pause.
@@ -185,7 +187,9 @@ export class Turntable {
     if (!this.watchedMedia.has(media)) {
       this.watchedMedia.add(media);
       // SoundCloud also uses audio elements that never enter the document.
-      for (const event of ['seeking', 'emptied']) media.addEventListener(event, () => this.cancel(), { signal: this.events.signal });
+      for (const event of ['seeking', 'emptied']) media.addEventListener(event, () => {
+        if(this.media===media)this.cancel();else this.restoreMedia(media);
+      }, { signal: this.events.signal });
     }
     if (!this.enabled) return;
     // Also clear the previous pause's release timer. Otherwise it can reset the

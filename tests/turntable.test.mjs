@@ -393,3 +393,28 @@ test('closing a source context restores owned pitch and does not leave a stale s
  h.context.state='closed';h.context.dispatchEvent(new h.w.Event('statechange'));assert.equal(h.source.playbackRate.value,1);
  h.button.click();assert.equal(h.clicks,2,'without a live output the native pause must be immediate');assert.equal(h.timers.size,0);assert.equal(h.frames.size,0);
 });
+
+test('events from a previous media element cannot cancel the current requested pause',t=>{
+ for(const connected of [false,true])for(const event of ['seeking','emptied']){
+  const h=setup(t),previous=h.w.document.createElement('audio'),current=h.w.document.createElement('audio');
+  if(connected)h.w.document.body.append(previous,current);
+  h.turntable.setEnabled(true);h.turntable.startMedia(previous);h.paused.set(previous,false);h.advance(240);
+  h.paused.set(previous,true);h.turntable.startMedia(current);h.paused.set(current,false);h.advance(240);
+  h.button.classList.add('playing');h.button.title='Pause current';
+  h.button.onclick=()=>{h.button.classList.remove('playing');h.button.title='Play current';current.pause();};
+  h.button.click();h.advance(100);assert.ok(current.playbackRate<1);
+  previous.dispatchEvent(new h.w.Event(event));
+  assert.ok(current.playbackRate<1,`${connected?'connected':'detached'} old ${event} must not reset the active ramp`);
+  h.advance(320);assert.equal(current.paused,true);assert.equal(h.button.classList.contains('playing'),false);assert.equal(current.playbackRate,1);
+ }
+});
+
+test('old media cleanup restores only its own unfinished ramp',t=>{
+ const h=setup(t),previous=h.w.document.createElement('audio'),current=h.w.document.createElement('audio');
+ previous.playbackRate=1.25;previous.preservesPitch=true;current.playbackRate=1.5;current.preservesPitch=true;
+ h.turntable.setEnabled(true);h.turntable.startMedia(previous);h.turntable.startMedia(current);
+ previous.dispatchEvent(new h.w.Event('emptied'));
+ assert.equal(previous.playbackRate,1.25);assert.equal(previous.preservesPitch,true);
+ assert.equal(current.playbackRate,.375);assert.equal(current.preservesPitch,false);
+ h.advance(240);assert.equal(current.playbackRate,1.5);assert.equal(current.preservesPitch,true);assert.equal(h.frames.size,0);assert.equal(h.timers.size,0);
+});

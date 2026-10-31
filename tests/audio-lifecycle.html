@@ -1,5 +1,5 @@
 <!doctype html><html lang="ja"><meta charset="utf-8"><title>SoundSky · Web Audio lifecycle verification</title>
 <style>body{max-width:900px;margin:40px auto;padding:0 24px;font:16px/1.7 system-ui;color:#202a30;background:#f5f4f0}button{padding:12px 20px;font:inherit;cursor:pointer}pre{padding:20px;background:white;white-space:pre-wrap;border:1px solid #c9d0d2}[data-status="failed"]{color:#a32922}</style>
 <h1>Web Audio lifecycle verification</h1><p>合成音をOfflineAudioContextで処理します。スピーカーへは出力しません。200回のコンテキスト生成・終了と、SoundSkyを破棄した後の波形を確認します。</p><button id="run">200回の検証を開始</button><pre id="result" data-status="idle" role="status">待機中</pre>
-<h2>再生失敗時の復元</h2><p>無効な音声データを実HTMLMediaElementで再生し、拒否された直後の速度・音程補正・音量を確認します。</p><button id="play-failure">再生失敗の検証を開始</button><pre id="play-result" role="status">待機中</pre>
+<h2>再生失敗と曲切り替え</h2><p>再生拒否の直後の速度・音程補正・音量と、前の音声要素の読み直しが現在の停止処理を取り消さないことを確認します。音声はミュートして処理します。</p><button id="play-failure">再生失敗・曲切替の検証を開始</button><pre id="play-result" role="status">待機中</pre>
 <script src="/audio-lifecycle-monitor.js"></script><script src="/audio-preview.js"></script><script src="/audio-lifecycle.js"></script></html>
