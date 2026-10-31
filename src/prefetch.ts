@@ -179,6 +179,7 @@ export class AudioPrefetch {
       const key=trackKey(meta.permalink_url);
       if(key&&(meta.streamable===false||(typeof meta.policy==='string'&&meta.policy!=='ALLOW'))) {
         this.metadata.delete(key);this.artwork.delete(key);this.ready.delete(key);this.progress.delete(key);
+        this.preparedFormats.delete(key);
         for(const [cacheKey,item]of this.cache)if(item.owner===key){this.bytes-=item.bytes;this.cache.delete(cacheKey);}
         this.status();
       }
@@ -197,11 +198,18 @@ export class AudioPrefetch {
     for(const [url,key]of this.aliases)if(!this.cache.has(key))this.aliases.delete(url);
     const scopeChanged=seconds!==this.seconds;
     const changed=scopeChanged||current!==this.current||count!==this.count||playing!==this.playing||JSON.stringify(next)!==JSON.stringify(this.next);
-    if(!changed){if(expired){this.retryAt=0;this.status();this.schedule();}return;}
+    if(!changed){if(expired){this.trimFormatRecords();this.retryAt=0;this.status();this.schedule();}return;}
     this.retryAt=0;this.issue=null;this.seconds=seconds;if(scopeChanged){this.ready.clear();this.progress.clear();}this.current=current;this.count=count;this.playing=playing;this.next=[...new Set(next)].slice(0,count);this.stop();
     // Queue/title updates can arrive separately. Keep prepared bytes through those transitions.
     if(!count){this.preparedFormats.clear();this.artwork.clear();this.cache.clear();this.aliases.clear();this.ready.clear();this.progress.clear();this.bytes=0;}
+    this.trimFormatRecords();
     this.status();this.schedule();
+  }
+  private trimFormatRecords() {
+    // Keep the format while its bytes can still be reused, including promotion
+    // to the current track. Failed preparations need only the active queue.
+    const retained=new Set([this.current,...this.next,...Array.from(this.cache.values(),entry=>entry.owner)]);
+    for(const key of this.preparedFormats.keys())if(!retained.has(key))this.preparedFormats.delete(key);
   }
   private status() {
     if(this.disposed)return;
@@ -240,7 +248,7 @@ export class AudioPrefetch {
       }
     } catch (error) {
       if(!controller.signal.aborted){this.retryAt=Date.now()+60000;this.issue=error instanceof Error&&error.message==='Cache full'?'capacity':'unavailable';}
-    } finally { if(this.controller===controller)this.controller=null;this.status(); }
+    } finally { if(this.controller===controller)this.controller=null;this.trimFormatRecords();this.status(); }
   }
   private makeSpace(required: number) {
     if(required<=CAP-this.bytes)return;

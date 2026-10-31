@@ -132,3 +132,25 @@ test('temporary queue gaps and unrelated rows do not discard prepared current/fu
 test('observing the native resolver for the already prepared format retains other ready tracks',async t=>{
  const h=setup(t);await h.seed();h.preload.configure(3,true,['/artist/track-1','/artist/track-2','/artist/track-3']);await h.tick();await h.w.fetch('https://api-v2.soundcloud.com/media/1/stream/hls?client_id=client');h.preload.configure(3,true,['/artist/track-2','/artist/track-3'],'/artist/track-1');assert.equal(h.messages.at(-1).ready,2);
 });
+
+test('failed lookahead across a long session releases obsolete format records',async t=>{
+ const h=setup(t);await h.seed();
+ h.preload.nativeFetch=async()=>{throw new Error('Unavailable broker');};
+ for(let i=1;i<=350;i++){
+  const key=`/artist/track-${i}`;
+  h.preload.collect(track(i));h.preload.configure(1,true,[key],'/artist/current');await h.tick();
+  assert.equal(h.messages.at(-1).ready,0);
+  assert.ok(h.preload.preparedFormats.size<=1,`format records retained after ${i} tracks: ${h.preload.preparedFormats.size}`);
+ }
+ assert.equal(h.preload.metadata.size,300);
+});
+
+test('format records follow reusable bytes through promotion and expiry',async t=>{
+ const h=setup(t);await h.seed();h.preload.configure(1,true,['/artist/track-1'],'/artist/current');await h.tick();
+ h.preload.configure(1,true,[],'/artist/track-1');
+ assert.equal(h.preload.preparedFormats.size,1);
+ await h.tick(16*60*1000);
+ h.preload.configure(1,true,[],'/artist/current');
+ assert.equal(h.preload.preparedFormats.size,0);
+ assert.equal(h.preload.cache.size,0);
+});
