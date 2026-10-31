@@ -19,6 +19,7 @@ export interface PlayerState {
   canNext: boolean;
   canSeek: boolean;
   canVolume: boolean;
+  canMute: boolean;
   actions: Record<Action, ActionState>;
 }
 

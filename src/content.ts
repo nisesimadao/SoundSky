@@ -449,7 +449,7 @@ class SoundSky {
     }
     if (state.track.artwork !== this.lastArt) { this.lastArt = state.track.artwork; this.loadArtwork(state.track.artwork, state.track.title); }
     else if (changedTrack && state.track.artwork) this.el<HTMLImageElement>('.art-image').alt = `${state.track.title} artwork`;
-    for (const [command, enabled] of Object.entries({ play: state.canPlay, previous: state.canPrevious, next: state.canNext, mute: state.canVolume })) {
+    for (const [command, enabled] of Object.entries({ play: state.canPlay, previous: state.canPrevious, next: state.canNext, mute: state.canMute })) {
       this.el<HTMLButtonElement>(`[data-command="${command}"]`).disabled = !enabled;
     }
     if (state.playing !== this.lastPlaying) {

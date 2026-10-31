@@ -50,6 +50,12 @@ test('disabled native sliders refuse seek and volume changes',()=>{
  const state=adapter.read();assert.equal(state.canSeek,false);assert.equal(state.canVolume,false);
  assert.equal(adapter.seek(.5,state.track.key),false);assert.equal(adapter.setVolume(.6),false);assert.equal(hits,0);
 });
+
+test('mute availability follows its native button independently of the volume slider',()=>{
+ const volume=document.querySelector('.volume__sliderWrapper'),mute=document.querySelector('.volume__button');let clicks=0;mute.onclick=()=>clicks++;
+ volume.setAttribute('aria-disabled','true');assert.equal(adapter.read().canVolume,false);assert.equal(adapter.read().canMute,true);assert.equal(adapter.click('mute'),true);assert.equal(clicks,1);
+ volume.removeAttribute('aria-disabled');mute.setAttribute('disabled','');assert.equal(adapter.read().canVolume,true);assert.equal(adapter.read().canMute,false);assert.equal(adapter.click('mute'),false);assert.equal(clicks,1);
+});
 test('only current-track and current-artist native controls receive social actions',async()=>{
  let other=0,like=0,follow=0;document.querySelector('main').onclick=()=>other++;
  document.querySelector('.playbackSoundBadge__like').onclick=()=>like++;

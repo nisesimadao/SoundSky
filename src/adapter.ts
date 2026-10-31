@@ -130,6 +130,7 @@ export class SoundCloudAdapter {
       canNext: !!track.key && enabled(this.query('.skipControl__next')),
       canSeek: !!track.key && enabled(progress) && number(progress, 'aria-valuemax') > 0 && !!this.query('.playbackTimeline.is-scrubbable'),
       canVolume: enabled(volume),
+      canMute: enabled(this.query('.volume__button')),
       actions: { like: this.actionState('like', track), follow: this.actionState('follow', track), repost: this.actionState('repost', track) },
     };
   }
