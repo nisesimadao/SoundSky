@@ -395,8 +395,8 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
 :host([data-appearance="light"]) .settings-toggle input:checked {background:color-mix(in srgb,var(--accent) 24%,transparent);border-color:var(--accent);}
 :host([data-appearance="light"]) .settings-section {scrollbar-color:#24384440 transparent;}
 
-.settings-save-status[data-state="error"] {color:var(--ink);}
-.settings-save-status[data-state="error"]::before {background:#c17d50;}
+.settings-save-status:is([data-state="error"],[data-state="load-error"]) {color:var(--ink);}
+.settings-save-status:is([data-state="error"],[data-state="load-error"])::before {background:#c17d50;}
 .settings-footer {flex-wrap:wrap;}
 
 .settings-account {display:flex;flex-direction:column;}

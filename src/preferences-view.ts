@@ -99,6 +99,6 @@ export const preferencesMarkup = `
               </div>
             </div>
             <div class="settings-section settings-account" role="tabpanel" id="settings-account" aria-labelledby="tab-account" hidden></div>
-            <div class="settings-footer"><span class="settings-save-status" role="status" aria-live="polite">自動保存</span><button class="settings-reset" data-command="settings-reset">すべて標準に戻す</button></div>
+            <div class="settings-footer"><span class="settings-save-status" role="status" aria-live="polite">自動保存</span><button class="settings-reset" type="button" data-command="settings-retry" hidden>もう一度試す</button><button class="settings-reset" data-command="settings-reset">すべて標準に戻す</button></div>
           </section>
 `;

@@ -5,6 +5,8 @@ export class NativePreferences {
   private outputs = new Map<HTMLOutputElement, HTMLInputElement | HTMLSelectElement>();
   private resets = new Map<HTMLButtonElement, HTMLInputElement | HTMLSelectElement>();
   private saveLabel = '自動保存';
+  private retryAvailable=false;
+  private retry:HTMLButtonElement|null=null;
   private hints = new Map<HTMLElement,HTMLElement>();
   private entry: HTMLElement | null = null;
   private view: HTMLElement | null = null;
@@ -29,7 +31,7 @@ export class NativePreferences {
       this.entry.append(link);tabs.append(this.entry);
     }
     const show=location.hash==='#soundsky';
-    if (!show) {this.restore();this.view?.remove();this.view=null;this.controls.clear();this.outputs.clear();this.resets.clear();this.hints.clear();return;}
+    if (!show) {this.restore();this.view?.remove();this.view=null;this.retry=null;this.controls.clear();this.outputs.clear();this.resets.clear();this.hints.clear();return;}
     if (!this.view?.isConnected) {
       this.restore();
       for (const child of wrapper.children) if (child instanceof HTMLElement && child !== tabs && child.tagName !== 'SOUNDSKY-PLAYER') {this.hidden.set(child,child.hidden);child.hidden=true;}
@@ -78,12 +80,19 @@ export class NativePreferences {
         }
         this.view.append(section);
       }
+      const retrySource=this.source.querySelector<HTMLButtonElement>('[data-command="settings-retry"]');
+      if(retrySource){
+        this.retry=document.createElement('button');this.retry.type='button';this.retry.className='sc-button sc-button-medium';this.retry.textContent=retrySource.textContent;this.retry.dataset.soundskySaveRetry='';
+        this.retry.addEventListener('click',()=>retrySource.click());this.view.append(this.retry);
+      }
       wrapper.append(this.view);
     }
     this.update();
   }
-  setSaveLabel(label:string){this.saveLabel=label;this.view?.querySelectorAll<HTMLElement>('[data-soundsky-save-status]').forEach(el=>{if(el.textContent!==label)el.textContent=label;});}
+  setSaveLabel(label:string,retryAvailable=false){this.saveLabel=label;this.retryAvailable=retryAvailable;this.view?.querySelectorAll<HTMLElement>('[data-soundsky-save-status]').forEach(el=>{if(el.textContent!==label)el.textContent=label;});this.updateRetry();}
+  private updateRetry(){const hidden=!this.retryAvailable;if(this.retry&&this.retry.hidden!==hidden)this.retry.hidden=hidden;}
   update(){
+    this.updateRetry();
     for(const [hint,source]of this.hints){if(hint.textContent!==source.textContent)hint.textContent=source.textContent;hint.hidden=source.hidden;}
     for(const [input,source]of this.controls){
       input.value=source.value;input.disabled=source.disabled;
@@ -99,6 +108,6 @@ export class NativePreferences {
     for(const [button,source]of this.resets)button.disabled=source.disabled;
   }
   private restore(){for(const [node,hidden]of this.hidden)node.hidden=hidden;this.hidden.clear();for(const [node,active]of this.selected)node.classList.toggle('active',active);this.selected.clear();}
-  private clear(){this.restore();this.entry?.remove();this.entry=null;this.view?.remove();this.view=null;this.controls.clear();this.outputs.clear();this.resets.clear();this.hints.clear();}
+  private clear(){this.restore();this.entry?.remove();this.entry=null;this.view?.remove();this.view=null;this.retry=null;this.controls.clear();this.outputs.clear();this.resets.clear();this.hints.clear();}
   destroy(){this.clear();this.style.remove();document.querySelector('[data-soundsky-settings-tabs]:empty')?.remove();}
 }

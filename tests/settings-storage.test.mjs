@@ -48,3 +48,26 @@ test('local development storage saves synchronously and receives external change
  assert.equal(JSON.parse(h.w.localStorage.getItem('soundsky:settings')).focusMode,true);
  h.w.dispatchEvent(new h.w.StorageEvent('storage',{key:'soundsky:settings',storageArea:h.w.localStorage,newValue:'{"focusMode":false}'}));assert.equal(h.values.at(-1).focusMode,false);
 });
+
+test('failed reads can retry without changing preferences or writing defaults',async t=>{
+ let fail=true,writes=0;const h=setup(t,{local:{get:async()=>{if(fail)throw Error('read failed');return {'soundsky:settings':{pulseMax:.2,turntableSpeed:1.7}};},set:async()=>writes++}});
+ await h.store.load();assert.equal(h.states.at(-1),'load-error');
+ fail=false;await h.store.retry();assert.equal(h.values.at(-1).pulseMax,.2);assert.equal(h.values.at(-1).turntableSpeed,1.7);assert.equal(writes,0);assert.equal(h.states.at(-1),'saved');
+});
+
+test('failed writes retry the unchanged local edit without resetting other fields',async t=>{
+ let fail=true;const writes=[];const h=setup(t,{local:{get:async()=>({'soundsky:settings':{pulseMax:.2}}),set:async value=>{writes.push(value);if(fail)throw Error('write failed');}}});
+ await h.store.load();h.store.save({...h.values.at(-1),focusMode:true});await tick();assert.equal(h.states.at(-1),'error');
+ fail=false;await h.store.retry();assert.equal(writes.length,2);assert.equal(writes[1]['soundsky:settings'].focusMode,true);assert.equal(writes[1]['soundsky:settings'].pulseMax,.2);assert.equal(h.states.at(-1),'saved');
+});
+
+test('a failed initial read cannot erase newer settings delivered by a storage event',async t=>{
+ let rejectRead,changed;const h=setup(t,{local:{get:()=>new Promise((resolve,reject)=>{rejectRead=reject;})},onChanged:{addListener:listener=>{changed=listener;},removeListener(){}}});
+ const loading=h.store.load();changed({'soundsky:settings':{newValue:{focusMode:true,pulseMax:.2}}},'local');rejectRead(Error('read failed'));await loading;
+ assert.equal(h.values.at(-1).focusMode,true);assert.equal(h.values.at(-1).pulseMax,.2);assert.equal(h.states.at(-1),'load-error');
+});
+
+test('repeated retry clicks share one in-flight read',async t=>{
+ let reads=0,finishRead;const h=setup(t,{local:{get:()=>{if(++reads===1)return Promise.reject(Error('read failed'));return new Promise(resolve=>{finishRead=resolve;});}}});
+ await h.store.load();const first=h.store.retry(),second=h.store.retry();assert.equal(reads,2);finishRead({'soundsky:settings':{focusMode:true}});await Promise.all([first,second]);assert.equal(h.values.at(-1).focusMode,true);assert.equal(h.states.at(-1),'saved');
+});

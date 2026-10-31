@@ -4,6 +4,16 @@ import { JSDOM } from 'jsdom';
 import { build } from 'esbuild';
 const result=await build({entryPoints:['src/content.ts'],bundle:true,format:'iife',loader:{'.css':'text'},write:false});
 const code=result.outputFiles[0].text;
+test('settings read errors can recover through the drawer retry without changing preferences',async t=>{
+ const dom=new JSDOM('<body><main>Page</main></body>',{url:'https://soundcloud.com',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;
+ w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});w.ResizeObserver=class{observe(){}disconnect(){}};w.HTMLCanvasElement.prototype.getContext=()=>null;w.requestAnimationFrame=()=>1;w.cancelAnimationFrame=()=>{};
+ let failed=true,writes=0;w.chrome={storage:{local:{get:async()=>{if(failed)throw Error('storage unavailable');return {'soundsky:settings':{turntableSpeed:1.7,focusMode:true}};},set:async()=>writes++}}};
+ t.after(()=>{w.__soundsky?.destroy();w.close();});w.eval(code);await new Promise(resolve=>setImmediate(resolve));
+ const ui=w.document.querySelector('soundsky-player').shadowRoot,retry=ui.querySelector('[data-command="settings-retry"]');
+ assert.equal(ui.querySelector('.settings-save-status').textContent,'設定を読み込めませんでした');assert.equal(retry.hidden,false);
+ failed=false;retry.click();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(retry.hidden,true);assert.equal(ui.querySelector('.settings-save-status').textContent,'自動保存');assert.equal(ui.querySelector('#setting-turntableSpeed').value,'1.7');assert.equal(ui.querySelector('#setting-focusMode').checked,true);assert.equal(writes,0);
+});
 test('reopening and reinjecting retain one instance and release every observer/timer on teardown',async t=>{
  const dom=new JSDOM('<!doctype html><body class="theme-dark"><main id="content">Page</main><div class="playControls"><div class="playControls__elements"><button class="playControl"></button><div class="playbackSoundBadge"><a class="playbackSoundBadge__titleLink" href="/a/b" title="Song"></a><a class="playbackSoundBadge__lightLink" href="/a" title="Artist"></a><a class="playbackSoundBadge__showQueue"></a></div></div><div class="queue"><button class="queue__hide"></button><div class="queue__scrollableInner"></div></div></div></body>',{url:'https://soundcloud.com',runScripts:'outside-only',pretendToBeVisual:true});
  const w=dom.window;const observers=new Set();const timeouts=new Set();const intervals=new Set();

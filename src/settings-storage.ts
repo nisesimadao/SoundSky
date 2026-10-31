@@ -2,7 +2,7 @@ import { loadSavedSettings } from './settings';
 import { defaultSettings, type SoundSkySettings } from './types';
 import { SETTINGS_KEY as key, SETTINGS_REVISION_KEY, type SettingsReply } from './settings-protocol';
 
-export type SaveState = 'saved' | 'saving' | 'error';
+export type SaveState = 'loading' | 'saved' | 'saving' | 'load-error' | 'error';
 /** Merge local edits with versioned worker snapshots, including out-of-order replies. */
 export class SettingsStorage {
   private value = { ...defaultSettings };
@@ -15,6 +15,7 @@ export class SettingsStorage {
   private pending = false;
   private writing = false;
   private disposed = false;
+  private readTask: Promise<void> | null = null;
   private events = new AbortController();
   private storage = globalThis.chrome?.storage;
   private runtime = globalThis.chrome?.runtime;
@@ -25,7 +26,14 @@ export class SettingsStorage {
       try { this.receive(event.newValue ? JSON.parse(event.newValue) : undefined); } catch { /* malformed external data */ }
     }, { signal: this.events.signal });
   }
-  async load() {
+  load(): Promise<void> {
+    if(this.disposed)return Promise.resolve();
+    if(this.readTask)return this.readTask;
+    this.readTask=this.readSaved().finally(()=>{this.readTask=null;});
+    return this.readTask;
+  }
+  private async readSaved() {
+    this.status('loading');
     let saved: unknown, revision: unknown = 0, failed = false;
     try {
       if (this.storage?.local) {
@@ -34,9 +42,20 @@ export class SettingsStorage {
       } else saved = JSON.parse(localStorage.getItem(key) || 'null');
     } catch { failed = true; }
     if (this.disposed) return;
-    this.ready = true; this.receive(saved,revision);
-    if (failed) this.status('error');
-    if (this.pending) void this.flush();
+    this.ready = true;
+    // A failed read has no authoritative snapshot. Preserve any newer event
+    // already received instead of replacing it with default preferences.
+    if(failed)this.receive(this.remote??defaultSettings,this.remoteRevision>=0?this.remoteRevision:undefined);
+    else this.receive(saved,revision);
+    if (failed) this.status('load-error');
+    if (this.pending) {this.status('saving');void this.flush();}
+  }
+  async retry() {
+    if(this.disposed)return;
+    if(this.readTask){await this.readTask;return;}
+    if(this.writing)return;
+    if(this.dirty.size){this.pending=true;this.status('saving');await this.flush();}
+    else await this.load();
   }
   save(settings: SoundSkySettings, replace = false) {
     if (this.disposed) return;

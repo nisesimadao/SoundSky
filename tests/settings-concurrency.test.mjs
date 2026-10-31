@@ -49,10 +49,10 @@ test('edits while an acknowledgement is pending are committed in a second patch'
  const h=harness(t),a=h.client();await a.ready;h.delayNextReply(a);a.edit({focusMode:true});await settle();a.edit({focusMode:false});h.replies.shift()();await settle();await settle();
  assert.equal(h.writes.length,2);assert.equal(h.stored[key].focusMode,false);assert.equal(a.settings.focusMode,false);
 });
-test('failed local edits survive other tabs and retry without undoing their changes',async t=>{
+test('failed local edits retry explicitly without undoing other tabs or changing another setting',async t=>{
  const h=harness(t),a=h.client(),b=h.client();await Promise.all([a.ready,b.ready]);h.failNextWrite();a.edit({focusMode:true});await settle();assert.equal(a.states.at(-1),'error');
  b.edit({pulseMax:.2});await settle();assert.equal(a.settings.focusMode,true);assert.equal(a.settings.pulseMax,.2);assert.equal(a.states.at(-1),'error');
- a.edit({turntable:true});await settle();await settle();assert.equal(a.states.at(-1),'saved');assert.equal(b.settings.focusMode,true);assert.equal(h.stored[key].pulseMax,.2);assert.equal(h.stored[key].turntable,true);
+ await a.store.retry();await settle();assert.equal(a.states.at(-1),'saved');assert.equal(b.settings.focusMode,true);assert.equal(h.stored[key].pulseMax,.2);assert.equal(h.stored[key].turntable,false);
 });
 test('a storage event newer than the initial read is retained',async t=>{
  const gate=deferred(),h=harness(t),a=h.client({holdRead:gate.promise}),b=h.client();await b.ready;b.edit({focusMode:true});await settle();gate.resolve();await a.ready;assert.equal(a.settings.focusMode,true);

@@ -247,6 +247,7 @@ class SoundSky {
         }
       }
       else if (command === 'settings-reset') this.resetSettings();
+      else if (command === 'settings-retry') void this.settingsStorage?.retry();
       else if (command) {
         if (!this.adapter.click(command as 'play' | 'previous' | 'next' | 'mute' | 'track' | 'artist')) this.toast('This control is not available yet.');
       }
@@ -779,10 +780,12 @@ class SoundSky {
     this.materials.setSettings(this.settings.materialSpeed, this.settings.heatSpeed, this.settings.heatEnabled, this.settings.heatResponse);
   }
   private renderSaveState(account=this.el('#tab-account').getAttribute('aria-selected')==='true') {
-    const label=this.settingsSaveState==='saving'?'保存中…':this.settingsSaveState==='error'?'保存できませんでした。設定を変更すると再試行します':'自動保存';
+    const labels:Record<SaveState,string>={loading:'設定を読み込み中…',saving:'保存中…','load-error':'設定を読み込めませんでした',error:'保存できませんでした',saved:'自動保存'};
+    const label=labels[this.settingsSaveState],failed=this.settingsSaveState==='error'||this.settingsSaveState==='load-error';
     this.el('.settings-save-status').textContent=account?'SoundCloudの保存ボタンで反映':label;
     this.el('.settings-save-status').dataset.state=this.settingsSaveState;
-    this.nativePreferences?.setSaveLabel(label);
+    this.el('[data-command="settings-retry"]').hidden=account||!failed;
+    this.nativePreferences?.setSaveLabel(label,failed);
   }
   private saveSettings(replace=false) { this.settingsStorage?.save(this.settings,replace); }
   private async fullscreen() {

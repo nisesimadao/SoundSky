@@ -1,3 +1,12 @@
+// Opt-in, one-shot storage faults for recovery testing through the normal UI.
+const settingsFault=new URLSearchParams(location.search).get('settings-failure');
+if(settingsFault==='read'||settingsFault==='write'){
+ const method=settingsFault==='read'?'getItem':'setItem',native=Storage.prototype[method];let fail=true;
+ Storage.prototype[method]=function(...args){
+  if(fail&&args[0]==='soundsky:settings'){fail=false;throw new DOMException('Fixture storage failure',settingsFault==='read'?'SecurityError':'QuotaExceededError');}
+  return Reflect.apply(native,this,args);
+ };
+}
 // Settings frames emulate SoundCloud's native theme control without creating a second player.
 if (window !== window.top && location.pathname === '/settings') {
  document.body.className='theme-dark';
