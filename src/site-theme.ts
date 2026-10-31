@@ -1,14 +1,14 @@
 import { NativeAppearance, declaredAppearance, type Appearance } from './native-appearance';
 import appearanceCSS from './appearance.css';
 import { createElement } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import type { Root } from 'react-dom/client';
 import { MeshGradient } from '@paper-design/shaders-react';
 import { accentColor } from './accent';
 import { defaultSettings, type SoundSkySettings } from './types';
 import { loadSavedSettings } from './settings';
 import { defaultPalette } from './artwork-palette';
 import css from './site-theme.css';
-import { unmountShader } from './shader-lifecycle';
+import { createShaderRoot, unmountShader } from './shader-lifecycle';
 import { NativeCover, type CoverPlayback } from './native-cover';
 import { SiteGallery } from './site-gallery';
 
@@ -137,7 +137,7 @@ export class SiteTheme {
     const visible=this.preferences.siteBackground&&this.preferences.siteBackdropOpacity>0;
     this.surface.hidden=this.open||!visible;
     if(!visible) { if(this.root){unmountShader(this.root,this.surface);this.root=null;} return; }
-    if(!this.root&&typeof WebGL2RenderingContext!=='undefined')this.root=createRoot(this.surface);
+    if(!this.root&&typeof WebGL2RenderingContext!=='undefined')this.root=createShaderRoot(this.surface);
     const moving=this.inView&&!this.open&&!document.hidden&&!this.motion.matches;
     this.root?.render(createElement(MeshGradient,{width:'100%',height:'100%',colors:this.colors,speed:moving?.22:0,distortion:.65,swirl:.25,grainMixer:.02,grainOverlay:.018,scale:1.25,minPixelRatio:1,maxPixelCount:60000,frame:18000}));
   }

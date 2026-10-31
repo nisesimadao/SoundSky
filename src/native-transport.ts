@@ -1,7 +1,7 @@
 import { PlaybackClock } from './playback-clock';
-import {unmountShader} from './shader-lifecycle';
+import {createShaderRoot,unmountShader} from './shader-lifecycle';
 import {createElement} from 'react';
-import {createRoot,type Root} from 'react-dom/client';
+import type {Root} from 'react-dom/client';
 import {LiquidMetal,MeshGradient} from '@paper-design/shaders-react';
 import {icon} from './icons';
 import {seekMaterial} from './seek-material';
@@ -98,7 +98,7 @@ export class NativeTransport {
   if(typeof WebGL2RenderingContext==='undefined'||this.roots.has(element))return;
   if(kind==='seek'){const surface=document.createElement('span');surface.dataset.soundskySeek='';surface.setAttribute('aria-hidden','true');element.append(surface);this.decorations.add(surface);element=surface;}
   if(this.roots.has(element))return;
-  this.roots.set(element,createRoot(element));this.animateMaterials();
+  this.roots.set(element,createShaderRoot(element));this.animateMaterials();
  }
  private cleanupDetached(){for(const [el,root]of this.roots)if(!el.isConnected){unmountShader(root,el);this.roots.delete(el);}for(const el of this.decorations)if(!el.isConnected)this.decorations.delete(el);}
  private animateMaterials(){

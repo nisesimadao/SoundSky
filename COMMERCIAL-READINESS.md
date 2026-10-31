@@ -1,6 +1,6 @@
 # 商用品質の完了条件
 
-対象: 1.3.40。目標は、日常のSoundCloud利用で再生を壊さず、設定と見た目が一貫し、検証済みの配布物を再現して届けられることです。
+対象: 1.3.41。目標は、日常のSoundCloud利用で再生を壊さず、設定と見た目が一貫し、検証済みの配布物を再現して届けられることです。
 
 商用品質の達成はまだ未証明です。自動テスト・ローカル画面の確認と、更新後の実SoundCloud・OSでの確認を別々に記録します。
 
@@ -16,7 +16,7 @@
 | SoundCloudのLight／Dark／Automaticに追従し、DiscoverとNext Upを読める | `tests/native-appearance.test.mjs`、`tests/site-theme.test.mjs`、ローカルChromeでLight切り替え・Next Upの背景を確認 | 更新後の実Discover、検索、曲・アーティスト・設定ページ、AutomaticのOS切り替え |
 | キーボード操作で背面へ迷い込まず、iframeから戻れる | `tests/focus.test.mjs`、`tests/account-settings.test.mjs`。ローカルChromeで390px幅のTab／Shift+Tabと設定維持を確認 | 実SoundCloudの各設定フォームと読み上げ環境 |
 | 長時間の再生・曲変更・開閉で重くならず、破棄時に資源を解放する | `tests/lifecycle.test.mjs` の開閉・再注入・Observer／タイマー解放、音声とキャッシュの上限・破棄テスト。音声寿命の2000コンテキストの模擬検証と、実Chromeで201件のOfflineAudioContextの波形・監視解放を確認 | 実音声での長時間利用、低性能端末、復帰後のCPU・メモリ・音切れ |
-| 背景描画の喪失・復帰でフォールバックし、最新画像を再構築する | `tests/ambient.test.mjs` の250回の模擬復帰と初期化失敗の資源解放。実Chromeの公式拡張による6回の復帰、最新画像・初期背景のピクセル比較と破棄後の解放を確認 | 実SoundCloud、GPUドライバーの障害、Paper系の各描画要素の復帰 |
+| 背景描画の喪失・復帰でフォールバックし、最新画像を再構築する | `tests/ambient.test.mjs` の250回の模擬復帰、`tests/shader-lifecycle.test.mjs` の複数キャンバス・30回復帰・遅れた速度更新の停止。実ChromeでAmbientの6回復帰とPaperの8面9キャンバスの復帰、RGB・最新設定・停止状態・破棄後の解放を確認 | 実SoundCloud、GPUドライバーの障害・復帰 |
 | 先読みの失敗・中断が本体の再生を妨げず、不要な観測を残さない | `tests/prefetch.test.mjs`。実Chromeのローカル応答で100回のXHR中断・再利用後の監視0、破棄後の本体通信完了、キャッシュ応答とネイティブ例外を確認 | 更新後の実SoundCloudの曲変更、低速通信、オフライン復帰 |
 | ネイティブの読み込み中に音量0と誤認せず、無効な操作を送らない | `tests/adapter.test.mjs`。ローカルChromeで音量欠損中の0.4維持、無効表示と有効状態への復帰を確認 | 更新後の実SoundCloudの読み込み・プレイヤー交換 |
 | 設定の読み込み・保存・起動に失敗しても回復方法が分かる | 読込・保存状態、値を変えない再試行、起動アイコンの説明、iframeの待機・失敗・再試行のテスト。ローカルChromeでサイドバーと通常設定ページの再試行を確認 | 実環境の通信失敗と拡張機能更新中の操作 |

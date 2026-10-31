@@ -1,5 +1,15 @@
 # SoundSky 検証記録
 
+## 1.3.41 — 2026-10-31、Paperエフェクト全体の描画復帰
+
+- 同梱Paper 0.0.81のShaderMountにcontextlost／contextrestoredの処理がないことをローカル実装で確認。共通のReact root管理で喪失イベントを捕捉し、その面の公開setSpeed APIで描画を停止する。複数キャンバスの面では全キャンバスの復帰を待ち、最新のReact要素で子を再構築する。
+- 通常更新は同じroot・キーを維持。復帰後はDOMのcommit後に古いコンテキストを明示的に解放し、GPUの枠を保持しない。破棄中・commit前の閉じる操作・古いキャンバスのイベントを検証。context取得やroot破棄の例外でも、残りの解放を続ける。
+- 実Chromeの停止中チェックで、遅れたPaperのReact effectが非ゼロ速度を再適用する経路を再現。失われた所有インスタンスの公開setSpeedを0へ固定し、新しいインスタンスは通常のAPIを保つ。追加した停止中のフレーム検証も通過。
+- 単体テストで50回の通常更新が再マウントしないこと、30回の復帰で現行の面が1つに収まること、復帰待ちの最新値と複数キャンバスの同期を確認。
+- `/paper-lifecycle` はMaterials、Atmosphere、NativeTransport、SiteThemeの実コードを使うローカル検証ページ。カバー金属・カバーの光2枚・プレイヤー背景・煙・プレイヤーシーク・通常再生ボタン・通常シーク・サイト背景の9キャンバスで公式のWEBGL_lose_contextを使用する。実SoundCloud・実音声・macOS・物理的なGPU障害を代替しない。
+- 1.3.41の実Chromeで8面・9キャンバスすべて復帰。喪失中の停止、復帰後のRGB出力、最新パレット、一時停止状態、ネイティブの位置34秒・音量0.4を確認。旧／新18コンテキストを保持して検証し、各復帰後の稼働は9、破棄後は0。225件の自動テスト、型検証、検証付き配布ZIP生成が成功。
+- 参照仕様: [WebGL context restoration](https://registry.khronos.org/webgl/specs/latest/1.0/#5.15.3)、[WEBGL_lose_context](https://registry.khronos.org/webgl/extensions/WEBGL_lose_context/)。同梱ライブラリー自体は変更していない。
+
 ## 1.3.40 — 2026-10-31、背景WebGLの復帰と画像の初期化
 
 - contextlost後にcontextrestoredを処理していないため背景が戻らない問題を回帰テストで再現。復帰時にprogram・buffer・textureを再構築し、最新画像を読み直す。喪失前の画像コールバックは世代で無効化する。

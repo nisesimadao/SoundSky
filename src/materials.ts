@@ -1,6 +1,6 @@
-import { unmountShader } from './shader-lifecycle';
+import { createShaderRoot, unmountShader } from './shader-lifecycle';
 import { createElement, Fragment } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import type { Root } from 'react-dom/client';
 import { Heatmap, LiquidMetal } from '@paper-design/shaders-react';
 
 const coverShape = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><rect width="512" height="512" rx="12" fill="black"/></svg>')}`;
@@ -45,7 +45,7 @@ export class Materials {
   private render() {
     if (this.disposed) return;
     if (!this.roots && this.active && typeof WebGL2RenderingContext !== 'undefined') {
-      this.roots = { metal: createRoot(this.metal), heat: null };
+      this.roots = { metal: createShaderRoot(this.metal), heat: null };
     }
     if (!this.roots) return;
     // Linear raw RMS + spectral attack mapping: no normalization, compression, envelope smoothing or ceiling.
@@ -59,7 +59,7 @@ export class Materials {
     const showHeat = this.heatEnabled && !!this.artwork;
     this.heat.hidden = !showHeat;
     if (!showHeat) { unmountShader(this.roots.heat, this.heat); this.roots.heat = null; return; }
-    this.roots.heat ??= createRoot(this.heat);
+    this.roots.heat ??= createShaderRoot(this.heat);
     const moving = this.active && this.playing && !document.hidden && !this.motion.matches;
     // Restore the small, filled backing surface. The jacket is no longer a shader input.
     const common = {

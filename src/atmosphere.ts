@@ -1,6 +1,6 @@
-import { unmountShader } from './shader-lifecycle';
+import { createShaderRoot, unmountShader } from './shader-lifecycle';
 import { createElement } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import type { Root } from 'react-dom/client';
 import { seekMaterial } from './seek-material';
 import { defaultPalette } from './artwork-palette';
 import { GemSmoke, MeshGradient } from '@paper-design/shaders-react';
@@ -51,7 +51,7 @@ export class Atmosphere {
     const intensity = Math.min(.84, (.14 + level * 1.8) * this.glow);
     this.background.style.setProperty('--ambient-intensity', String(intensity));
     if (!this.roots && this.active && typeof WebGL2RenderingContext !== 'undefined') {
-      this.roots = { background: createRoot(this.background), console: createRoot(this.console), seek: createRoot(this.seek) };
+      this.roots = { background: createShaderRoot(this.background), console: createShaderRoot(this.console), seek: createShaderRoot(this.seek) };
     }
     if (!this.roots) return;
     const moving = audible && !this.motion.matches;
