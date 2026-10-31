@@ -43,3 +43,12 @@ test('Escape inside the settings frame closes the drawer once and respects nativ
  doc.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));assert.equal(closed,1,'native dialog dismissal owns Escape first');
  settings.destroy();doc.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));assert.equal(closed,1);
 });
+
+test('Tab from the checked radio at frame boundaries returns to the parent focus order',t=>{
+ const dom=new JSDOM('<div id="mount"></div>',{url:'https://soundcloud.com/artist/track',runScripts:'outside-only'}),w=dom.window;w.eval(bundle.outputFiles[0].text);
+ const directions=[],settings=new w.AccountTest.AccountSettings(w.document.querySelector('#mount'),undefined,undefined,direction=>directions.push(direction));t.after(()=>{settings.destroy();w.close();});
+ settings.open();const frame=w.document.querySelector('iframe'),doc=frame.contentDocument;doc.open();doc.write('<html><head></head><body><input id="light" name="theme" type="radio" checked><input id="dark" name="theme" type="radio"></body></html>');doc.close();
+ frame.contentWindow.HTMLElement.prototype.getBoundingClientRect=()=>({width:20,height:20});frame.dispatchEvent(new w.Event('load'));
+ const light=doc.querySelector('#light');light.focus();light.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown',{key:'Tab',bubbles:true,cancelable:true}));
+ light.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown',{key:'Tab',shiftKey:true,bubbles:true,cancelable:true}));assert.deepEqual(directions,[1,-1]);
+});

@@ -28,6 +28,7 @@ test('reopening and reinjecting retain one instance and release every observer/t
  for(let i=0;i<12;i++){w.__soundsky.toggle();w.__soundsky.toggle();}
  w.__soundsky.toggle();
  ui.querySelector('[data-command="settings"]').click();
+ const probeButton=w.document.createElement('button');w.document.body.append(probeButton);probeButton.click();assert.equal(ui.querySelector('.settings-panel').hidden,false,'a synthetic native menu probe must not dismiss settings');probeButton.remove();
  ui.querySelector('#tab-site').click();
  const master=ui.querySelector('#setting-modernSoundCloud');master.checked=true;
  master.dispatchEvent(new w.Event('change',{bubbles:true}));

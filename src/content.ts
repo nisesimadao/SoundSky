@@ -1,3 +1,4 @@
+import { tabStops } from './focus';
 import { VERSION } from './version';
 import { preferencesMarkup, settingValue, type NumericSetting, type SiteToggle } from './preferences-view';
 import { ListeningMode } from './listening-mode';
@@ -140,7 +141,7 @@ class SoundSky {
     this.nativePreferences = new NativePreferences(this.el('.settings-panel'));
     this.accountSettings = new AccountSettings(this.el('#settings-account'), theme => {
       document.body.classList.toggle('theme-dark',theme==='dark');document.body.classList.toggle('theme-light',theme==='light');
-    },()=>this.toggleSettings(false));
+    },()=>this.toggleSettings(false),direction=>this.focusFromSettingsFrame(direction));
     this.settingsRouteObserver.observe(document.body, {childList:true, subtree:true});
     window.addEventListener('popstate', () => this.syncSettingsPage(), {signal:this.events.signal});
     window.addEventListener('hashchange', () => this.syncSettingsPage(), {signal:this.events.signal});
@@ -219,7 +220,9 @@ class SoundSky {
     }, { signal });
     this.el('.launcher').addEventListener('click', () => this.toggle(), { signal });
     document.addEventListener('click', event => {
-      if (!this.settingsOpen) return;
+      // Native read-only menu probes dispatch synthetic clicks when focus returns
+      // from an iframe. Only a real outside click should dismiss preferences.
+      if (!this.settingsOpen || !event.isTrusted) return;
       const path = event.composedPath();
       if (path.includes(this.el('.settings-panel')) || path.includes(this.el('[data-command="settings"]'))) return;
       this.toggleSettings(false);
@@ -362,13 +365,10 @@ class SoundSky {
       return;
     }
     if (event.key === 'Tab') {
-      const own = [...this.shadow.querySelectorAll<HTMLElement>('button:not(:disabled):not([tabindex="-1"]),input:not(:disabled),select:not(:disabled),summary,iframe')]
-        .filter(el => el.getBoundingClientRect().width > 0 && !el.closest('[hidden]'));
-      const queue = this.queue.focusables();
-      const afterQueue = own.findIndex(el => el.dataset.command === 'previous');
-      const order = [...own.slice(0, afterQueue), ...queue, ...own.slice(afterQueue)];
+      const order = this.focusOrder();
       const index = order.indexOf(target);
-      if (order.length) { event.preventDefault(); event.stopImmediatePropagation(); order[(index + (event.shiftKey ? -1 : 1) + order.length) % order.length]?.focus(); }
+      const next=index<0?(event.shiftKey?order.length-1:0):(index+(event.shiftKey?-1:1)+order.length)%order.length;
+      if (order.length) { event.preventDefault(); event.stopImmediatePropagation(); order[next]?.focus(); }
       return;
     }
     if (target.matches('[role="tab"]')) return;
@@ -385,6 +385,22 @@ class SoundSky {
       if (this.state.duration) this.adapter.seek((this.state.current + (event.key === 'ArrowRight' ? 5 : -5)) / this.state.duration, this.state.track.key);
     }
   };
+  private focusOrder() {
+    const own=tabStops(this.shadow).filter(el=>this.settingsOpen||!el.closest('.settings-panel'));
+    const panel=this.el('.settings-panel');
+    // Derive coverage from rendered geometry so this stays aligned with the CSS breakpoint.
+    const covered=this.settingsOpen&&panel.getBoundingClientRect().width>=this.el('.player').clientWidth-1;
+    if(covered)return own.filter(el=>panel.contains(el)||!!el.closest('.topbar'));
+    const footer=own.findIndex(el=>el.closest('.controls'));
+    const split=footer<0?own.length:footer;
+    return [...own.slice(0,split),...this.queue.focusables(),...own.slice(split)];
+  }
+  private focusFromSettingsFrame(direction:1|-1) {
+    if(!this.active||!this.settingsOpen)return;
+    const order=this.focusOrder(),frame=this.shadow.querySelector<HTMLIFrameElement>('#settings-account iframe');
+    const index=frame?order.indexOf(frame):-1;
+    if(index>=0&&order.length)order[(index+direction+order.length)%order.length]?.focus();
+  }
   private async action(action: Action) {
     if (this.pendingActions.has(action)) return;
     const track: Track = { ...this.state.track };

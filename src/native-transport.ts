@@ -37,6 +37,17 @@ export class NativeTransport {
    this.decorate('.playControl',this.playGlyph(play),true);
   }
  });
+ private docked:boolean|null=null;
+ private intersectionVisible:boolean|null=null;
+ private dockObserver=typeof IntersectionObserver==='undefined'?null:new IntersectionObserver(entries=>{
+  const entry=entries[0];this.intersectionVisible=!!entry?.isIntersecting&&entry.intersectionRatio>=.99;this.updateDock();
+ },{threshold:[0,1]});
+ private updateDock=()=>{
+  if(this.open)return;
+  const rect=this.entry.getBoundingClientRect(),style=getComputedStyle(this.entry);
+  const visible=this.entry.isConnected&&!this.entry.hidden&&rect.width>0&&rect.height>0&&rect.left>=0&&rect.top>=0&&rect.right<=innerWidth&&rect.bottom<=innerHeight&&style.display!=='none'&&style.visibility!=='hidden'&&this.intersectionVisible!==false&&(this.entry.checkVisibility?.({checkOpacity:true,checkVisibilityCSS:true})??true);
+  if(visible!==this.docked){this.docked=visible;this.onDock(visible);}
+ };
  private playGlyph(play:HTMLElement){return play.classList.contains('playing')||/pause/i.test(play.getAttribute('title')||play.getAttribute('aria-label')||'')?'pause':'play';}
  private events=new AbortController();
  private motion=matchMedia('(prefers-reduced-motion: reduce)');
@@ -46,6 +57,7 @@ export class NativeTransport {
   this.entry.title='Open SoundSky · Alt/Option + Shift + Y';this.entry.setAttribute('aria-label','Open SoundSky');
   this.entry.addEventListener('click',onOpen,{signal:this.events.signal});
   const signal=this.events.signal;
+  this.dockObserver?.observe(this.entry);window.addEventListener('resize',this.updateDock,{signal});
   document.addEventListener('pointerdown',e=>{if((e.target as Element)?.closest('.playbackTimeline__progressWrapper'))this.dragging=true;},{signal});
   const released=()=>{this.dragging=false;this.adapter.emit();};
   document.addEventListener('pointerup',released,{signal});document.addEventListener('pointercancel',released,{signal});
@@ -59,7 +71,7 @@ export class NativeTransport {
   this.state=state;
   const controls=this.adapter.query<HTMLElement>('.playControls__elements');
   if(controls&&!controls.contains(this.entry)){for(const stale of controls.querySelectorAll('[data-soundsky-entry]'))stale.remove();controls.append(this.entry);}
-  this.onDock(!!controls&&this.entry.isConnected);this.entry.hidden=this.open;
+  this.entry.hidden=this.open;this.updateDock();
   if(!this.enabled)return;
   if(this.observedRoot!==this.adapter.root){this.observer.disconnect();this.observedRoot=this.adapter.root;if(this.observedRoot)this.observer.observe(this.observedRoot,{subtree:true,childList:true,attributes:true,attributeFilter:['class','title','aria-label']});}
   this.decorate('.playControl',state.playing?'pause':'play',true);
@@ -98,7 +110,7 @@ export class NativeTransport {
   }
  }
  setEnabled(enabled:boolean){if(this.enabled===enabled)return;this.enabled=enabled;if(!enabled)this.clear();else if(this.state)this.sync(this.state);}
- setOpen(open:boolean){this.open=open;this.entry.hidden=open;this.animateMaterials();this.start();}
+ setOpen(open:boolean){this.open=open;this.entry.hidden=open;this.updateDock();this.animateMaterials();this.start();}
  setAccent(hue:number){this.hue=hue;this.animateMaterials();}
  setAudio(level:number,onset:number){this.level=level;this.onset=onset;this.audioAt=performance.now();if(this.enabled&&!this.open)this.animateMaterials();}
  setSpeeds(metal:number,seek:number){this.metalSpeed=metal;this.seekSpeed=seek;this.animateMaterials();}
@@ -122,5 +134,5 @@ export class NativeTransport {
   for(const el of this.adapter.root?.querySelectorAll('[data-soundsky-control]')??[])el.removeAttribute('data-soundsky-control');
   for(const el of this.adapter.root?.querySelectorAll<HTMLElement>('[data-soundsky-progress]')??[]){el.removeAttribute('data-soundsky-progress');el.style.removeProperty('--soundsky-progress');el.style.removeProperty('--soundsky-seek-width');}
  }
- destroy(){this.events.abort();this.clear();this.entry.remove();this.style.remove();this.onDock(false);}
+ destroy(){this.dockObserver?.disconnect();this.events.abort();this.clear();this.entry.remove();this.style.remove();this.onDock(false);}
 }

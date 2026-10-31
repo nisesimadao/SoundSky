@@ -1,3 +1,4 @@
+import { tabStops } from './focus';
 import { NativeAppearance, type Appearance } from './native-appearance';
 import appearanceCSS from './appearance.css';
 
@@ -11,7 +12,7 @@ export class AccountSettings {
   private status = document.createElement('p');
   private recovery = document.createElement('div');
   private theme: Appearance = 'dark';
-  constructor(private mount: HTMLElement, private onThemeChange?: (theme: Appearance)=>void, private onClose?: ()=>void) {
+  constructor(private mount: HTMLElement, private onThemeChange?: (theme: Appearance)=>void, private onClose?: ()=>void, private onTabBoundary?: (direction:1|-1)=>void) {
     this.status.className='account-settings-status';this.status.setAttribute('role','status');
     this.recovery.className='account-settings-recovery';
     const retry=document.createElement('button');retry.type='button';retry.textContent='もう一度読み込む';
@@ -39,6 +40,13 @@ export class AccountSettings {
           const win=doc.defaultView!;const events=new win.AbortController();this.documentEvents=events;
           doc.addEventListener('keydown',event=>{
             if(event.key==='Escape'&&!event.defaultPrevented){event.preventDefault();event.stopPropagation();this.onClose?.();}
+            if(event.key==='Tab'&&!event.defaultPrevented&&this.onTabBoundary){
+              const focusable=tabStops(doc);
+              const index=focusable.indexOf(doc.activeElement as HTMLElement);
+              if(!focusable.length||(event.shiftKey?index===0:index===focusable.length-1)){
+                event.preventDefault();event.stopPropagation();this.onTabBoundary(event.shiftKey?-1:1);
+              }
+            }
           },{signal:events.signal});
           const style=doc.createElement('style');style.dataset.soundskyAccountFrame='';
           style.textContent=appearanceCSS+`

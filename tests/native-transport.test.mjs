@@ -3,16 +3,18 @@ import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 import {JSDOM} from 'jsdom';
 const built=await build({entryPoints:['src/native-transport.ts'],bundle:true,write:false,format:'iife',globalName:'transportTest',footer:{js:'window.transportTest=transportTest;'},loader:{'.css':'text'},define:{'process.env.NODE_ENV':'"production"'}});
-const setup=()=>{
+const setup=(withIntersection=false)=>{
  const dom=new JSDOM('<!doctype html><body><div class="playControls"><div class="playControls__elements"><button class="playControl" aria-label="Play"><div>Original icon</div></button><div class="playbackTimeline__progressWrapper" aria-valuenow="10"><div class="playbackTimeline__progressBar"></div></div></div></div></body>',{runScripts:'outside-only',pretendToBeVisual:true,url:'https://soundcloud.com/discover'});
- const w=dom.window;let now=0;let frame=0;const frames=new Map();
+ const w=dom.window;let now=0;let frame=0;const frames=new Map();let intersection,disconnected=false;
+ const originalRect=w.HTMLElement.prototype.getBoundingClientRect;w.HTMLElement.prototype.getBoundingClientRect=function(){return this.hasAttribute('data-soundsky-entry')?{left:10,top:10,right:54,bottom:42,width:44,height:32}:originalRect.call(this);};
+ if(withIntersection)w.IntersectionObserver=class{constructor(callback){intersection=callback;}observe(){}disconnect(){disconnected=true;}};
  w.performance.now=()=>now;w.requestAnimationFrame=cb=>{frames.set(++frame,cb);return frame;};w.cancelAnimationFrame=id=>frames.delete(id);
  w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});w.eval(built.outputFiles[0].text);
  let state={track:{key:'/artist/track'},current:10,duration:100,playing:true,muted:false};let docked=false;let opens=0;
  const adapter={root:w.document.querySelector('.playControls'),query(s){return this.root?.querySelector(s);},emit(){transport.sync(state);}};
  const transport=new w.transportTest.NativeTransport(adapter,()=>opens++,v=>docked=v);
  const tick=time=>{now=time;const callbacks=[...frames.values()];frames.clear();for(const cb of callbacks)cb(now);};
- return {dom,w,adapter,transport,tick,frames,setState(s){state={...state,...s};transport.sync(state);},get docked(){return docked;},get opens(){return opens;}};
+ return {dom,w,adapter,transport,tick,frames,setState(s){state={...state,...s};transport.sync(state);},get docked(){return docked;},get opens(){return opens;},intersect(visible){intersection([{isIntersecting:visible,intersectionRatio:visible?1:0}]);},get disconnected(){return disconnected;}};
 };
 test('native progress interpolates between updates and yields to authoritative seek, pause and drag',()=>{
  const t=setup();t.setState({});t.transport.setEnabled(true);const bar=t.adapter.query('.playbackTimeline__progressWrapper');
@@ -36,4 +38,17 @@ test('native button redraw and replacement reuse the metal surface before the ne
  play.replaceChildren(t.w.document.createElement('div'));play.title='Pause current';await Promise.resolve();assert.equal(play.querySelector('[data-soundsky-metal]'),metal);assert.equal(play.querySelector('[data-soundsky-glyph]').dataset.icon,'pause');
  const next=play.cloneNode(false);next.title='Play current';play.replaceWith(next);await Promise.resolve();assert.equal(next.querySelector('[data-soundsky-metal]'),metal);assert.equal(next.querySelector('[data-soundsky-glyph]').dataset.icon,'play');
  t.transport.destroy();next.replaceChildren(t.w.document.createElement('div'));await Promise.resolve();assert.equal(next.querySelector('[data-soundsky-metal]'),null);t.dom.window.close();
+});
+
+test('hidden or offscreen native entry keeps the floating launcher available while paused',()=>{
+ const t=setup();t.setState({playing:false});assert.equal(t.docked,true);const entry=t.w.document.querySelector('[data-soundsky-entry]');
+ entry.getBoundingClientRect=()=>({left:1200,top:10,right:1244,bottom:42,width:44,height:32});t.w.dispatchEvent(new t.w.Event('resize'));assert.equal(t.docked,false);
+ entry.getBoundingClientRect=()=>({left:10,top:10,right:54,bottom:42,width:44,height:32});t.w.dispatchEvent(new t.w.Event('resize'));assert.equal(t.docked,true);
+ entry.style.visibility='hidden';t.setState({});assert.equal(t.docked,false);entry.style.visibility='visible';t.setState({});assert.equal(t.docked,true);
+ t.transport.destroy();t.dom.window.close();
+});
+test('clipped entry observes visibility and releases its observer on teardown',()=>{
+ const t=setup(true);t.setState({});assert.equal(t.docked,true);t.intersect(false);assert.equal(t.docked,false);t.intersect(true);assert.equal(t.docked,true);
+ t.transport.setOpen(true);t.intersect(false);assert.equal(t.docked,true,'opening the player must not change the underlying dock state');t.transport.setOpen(false);assert.equal(t.docked,false);t.intersect(true);assert.equal(t.docked,true);
+ t.transport.destroy();assert.equal(t.disconnected,true);t.dom.window.close();
 });
