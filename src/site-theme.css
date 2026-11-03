@@ -54,12 +54,18 @@ html[data-soundsky-theme] main { background-color: transparent !important; }
 /* One continuous canvas, with wide content and a readable transport. */
 @media (min-width: 1100px) {
   html[data-soundsky-theme][data-sky-site-wide] .l-container { width: calc(100% - 80px) !important; max-width: 1760px !important; }
-  /* Modern track pages live in a same-origin frame and no longer use .l-container. */
-  html[data-soundsky-theme][data-sky-site-wide] #navigation-shell-right-side-container > main#main { width: calc(100% - 80px) !important; max-width: 1760px !important; min-width: 0; margin-inline: auto !important; box-sizing: border-box; }
   html[data-soundsky-theme][data-sky-site-wide] .l-fluid-fixed > .l-main { width: calc(100% - 360px) !important; box-sizing: border-box; padding-right: 40px; }
   html[data-soundsky-theme][data-sky-site-wide] .l-main > .l-content { width: 100% !important; box-sizing: border-box; }
   html[data-soundsky-theme][data-sky-site-header][data-sky-site-wide] .header__inner { padding-inline: 0 !important; }
   html[data-soundsky-theme][data-sky-site-transport][data-sky-site-wide] .playControls__wrapper { padding-inline: 0 !important; }
+}
+/* Modern track pages render inside a same-origin frame as a centered fixed-width
+   main (1240px, 1080px below a 1240px viewport). Widening below 1320px would
+   shrink SoundCloud's own column, so the override starts where calc(100% - 80px)
+   wins. The v2 shell has no top bar; the sidebar layout that keeps one is already
+   fluid and must keep its native width. */
+@media (min-width: 1320px) {
+  html[data-soundsky-theme][data-sky-site-wide] #navigation-shell-right-side-container:not(:has(#top-bar)) > main#main { width: calc(100% - 80px) !important; max-width: 1760px !important; min-width: 0; margin-inline: auto !important; box-sizing: border-box; }
 }
 html[data-soundsky-theme][data-sky-site-transport] body { padding-bottom: 72px; }
 html[data-soundsky-theme][data-sky-site-transport] :is(.playControls,.playControls__inner,.playControls__wrapper,.playControls__elements) { height: 72px !important; }

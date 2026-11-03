@@ -78,15 +78,22 @@ test('desktop wide layout reaches the modern track frame and restores its native
   const base=w.document.createElement('style');
   base.textContent='.native-track-main { width:1240px; margin:0 auto 100px; }';
   w.document.head.append(base);
-  w.document.body.innerHTML='<div id="navigation-shell-right-side-container"><main id="main" class="native-track-main"><section aria-label="Track header"></section></main></div><aside><main id="unrelated">Other content</main></aside>';
+  w.document.body.innerHTML='<div id="navigation-shell-right-side-container"><main id="main" class="native-track-main"><section aria-label="Track header"></section></main></div>'
+   +'<div id="navigation-shell-right-side-container-sidebar"><header id="top-bar"></header><main id="sidebar-main" class="native-track-main"><section aria-label="Track header"></section></main></div>'
+   +'<aside><main id="unrelated">Other content</main></aside>';
   const main=w.document.getElementById('main');
+  const sidebarMain=w.document.getElementById('sidebar-main');
   theme.setPreferences(preferences);theme.setEnabled(true);
   // jsdom does not evaluate viewport media queries. Activate the shipped desktop
   // rules explicitly to check their selectors, cascade and preference scoping.
-  const media=[...w.document.querySelector('[data-soundsky-site-style]').sheet.cssRules].find(rule=>rule.conditionText==='(min-width: 1100px)');
-  const desktop=w.document.createElement('style');desktop.textContent=[...media.cssRules].map(rule=>rule.cssText).join('\n');w.document.head.append(desktop);
+  const sheets=[...w.document.querySelector('[data-soundsky-site-style]').sheet.cssRules];
+  const desktop=w.document.createElement('style');
+  desktop.textContent=sheets.filter(rule=>rule.conditionText==='(min-width: 1100px)'||rule.conditionText==='(min-width: 1320px)').flatMap(rule=>[...rule.cssRules].map(rule=>rule.cssText)).join('\n');
+  w.document.head.append(desktop);
   assert.equal(w.getComputedStyle(main).width,'calc(100% - 80px)');
   assert.equal(w.getComputedStyle(main).maxWidth,'1760px');
+  // The sidebar shell keeps its fluid native main; wide must not shrink it.
+  assert.equal(w.getComputedStyle(sidebarMain).width,'1240px');
   assert.notEqual(w.getComputedStyle(w.document.getElementById('unrelated')).maxWidth,'1760px');
   theme.setPreferences({...preferences,siteWide:false});
   assert.equal(w.getComputedStyle(main).width,'1240px');

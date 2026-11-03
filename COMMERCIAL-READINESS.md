@@ -1,6 +1,6 @@
 # 商用品質の完了条件
 
-対象: 1.3.41。目標は、日常のSoundCloud利用で再生を壊さず、設定と見た目が一貫し、検証済みの配布物を再現して届けられることです。
+対象: 1.3.42。目標は、日常のSoundCloud利用で再生を壊さず、設定と見た目が一貫し、検証済みの配布物を再現して届けられることです。
 
 商用品質の達成はまだ未証明です。自動テスト・ローカル画面の確認と、更新後の実SoundCloud・OSでの確認を別々に記録します。
 
@@ -14,6 +14,7 @@
 | 設定ページとサイドバーが同じ値を共有し、曲を止めずに使える | `tests/native-preferences.test.mjs`、`tests/lifecycle.test.mjs`、`tests/account-settings.test.mjs` | 更新後の本家設定の保存、認証画面、ページ遷移、低速回線 |
 | 複数タブの同時変更で無関係な項目を消さない | `tests/settings-concurrency.test.mjs`。実際の保存側と表示側のコードを組み合わせ、遅延・返信順逆転・失敗後の再試行を検証。`tests/theme-frame.test.mjs` で遅い初回読込が新しいフレーム設定を上書きしないことと、破棄後の通知の無効化を確認 | 更新後の複数の実SoundCloudタブ。同じ項目への競合は最後の保存を反映 |
 | SoundCloudのLight／Dark／Automaticに追従し、DiscoverとNext Upを読める | `tests/native-appearance.test.mjs`、`tests/site-theme.test.mjs`、ローカルChromeでLight切り替え・Next Upの背景を確認 | 更新後の実Discover、検索、曲・アーティスト・設定ページ、AutomaticのOS切り替え |
+| ワイド設定が新旧両方の曲ページで効き、狭い画面で本家の幅を狭めない | `tests/site-theme.test.mjs`。実Chrome(ログアウト)で新曲ページiframeにワイド適用(1585px)、1320px未満とサイドバーレイアウトはネイティブ幅を維持することを確認 | 更新後の実アカウントでの曲ページ(A/Bコホートでwebiビルドが異なる可能性) |
 | キーボード操作で背面へ迷い込まず、iframeから戻れる | `tests/focus.test.mjs`、`tests/account-settings.test.mjs`。ローカルChromeで390px幅のTab／Shift+Tabと設定維持を確認 | 実SoundCloudの各設定フォームと読み上げ環境 |
 | 長時間の再生・曲変更・開閉で重くならず、破棄時に資源を解放する | `tests/lifecycle.test.mjs` の開閉・再注入・Observer／タイマー解放、音声とキャッシュの上限・破棄テスト。音声寿命の2000コンテキストの模擬検証と、実Chromeで201件のOfflineAudioContextの波形・監視解放を確認 | 実音声での長時間利用、低性能端末、復帰後のCPU・メモリ・音切れ |
 | 背景描画の喪失・復帰でフォールバックし、最新画像を再構築する | `tests/ambient.test.mjs` の250回の模擬復帰、`tests/shader-lifecycle.test.mjs` の複数キャンバス・30回復帰・遅れた速度更新の停止。実ChromeでAmbientの6回復帰とPaperの8面9キャンバスの復帰、RGB・最新設定・停止状態・破棄後の解放を確認 | 実SoundCloud、GPUドライバーの障害・復帰 |

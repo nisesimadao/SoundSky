@@ -1,5 +1,13 @@
 # SoundSky 検証記録
 
+## 1.3.42 — 2026-11-03、新しい曲ページレイアウトのワイド対応
+
+- SoundCloudの新しい曲ページは旧ページ内の同一オリジンiframe(webi、`v2_layout=true`)で中央の固定幅1240px(ビューポート1239px以下は1080px)の`main#main`として描画されることを実機DOMで確認。旧ルール`(min-width: 1100px)`は1100〜1319pxで本家より狭く、サイドバー付きレイアウト(非v2、`#top-bar`あり)の流体幅も16px狭めていた。
+- ワイルールを`(min-width: 1320px)`へ移し、`#navigation-shell-right-side-container:not(:has(#top-bar)) > main#main`へ変更。1320px以上でだけ本家(1240px)より広くなり、非v2レイアウトには干渉しない。legacyページに`<main>`要素は存在しないことも実機で確認。
+- 実Chrome(156、1680×1000、ログアウト環境)で検証: legacy曲ページ+iframe注入でテーマのハンドシェイク(`data-soundsky-theme`/`data-sky-site-wide`)とワイド適用(main=1585px=100%−80px、max 1760px)を確認。1250pxではネイティブ1240px、1200pxではネイティブ1080pxを維持。非v2(top-barあり)はネイティブ流体幅1504pxを維持。
+- jsdomテストでv2/非v2の両構造とワイドON/OFF・テーマOFFの復元を検証し、既存のlegacyセレクタ回帰も確認。225件の自動テスト、型検証、検証付きビルドが成功。
+- 限界: 検証はログアウト環境。ログインユーザーへ配信されるwebiビルドはコホートで異なる可能性があり、実アカウントでの確認は残る。
+
 ## 1.3.41 — 2026-10-31、Paperエフェクト全体の描画復帰
 
 - 同梱Paper 0.0.81のShaderMountにcontextlost／contextrestoredの処理がないことをローカル実装で確認。共通のReact root管理で喪失イベントを捕捉し、その面の公開setSpeed APIで描画を停止する。複数キャンバスの面では全キャンバスの復帰を待ち、最新のReact要素で子を再構築する。
